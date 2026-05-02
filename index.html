@@ -2816,6 +2816,50 @@ var rawTargets=null; // for uploaded overrides
 var rawO=[],rawP=[],rawS=[],rawV=[],rawCarts=[],rawCusts=[],visMap={},prods={},CH={},srcMap={},lO=false,lP=false,lS=false,lV=false,lCarts=false,lCusts=false,aTab='insights';
 var activeProdType='all';
 
+// Function to fetch and convert a CSV file to a raw format your dashboard uses
+async function autoLoadCsv(filename, targetVarName) {
+  try {
+    const response = await fetch(filename);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const csvText = await response.text();
+    
+    // Convert CSV rows into data objects
+    const lines = csvText.split("\n").map(line => line.trim()).filter(Boolean);
+    const headers = lines[0].split(",");
+    
+    const parsedData = lines.slice(1).map(line => {
+      const values = line.split(",");
+      let obj = {};
+      headers.forEach((header, index) => {
+        obj[header.trim()] = values[index] ? values[index].trim() : "";
+      });
+      return obj;
+    });
+
+    // Assign the loaded data to the global variable matching your code
+    window[targetVarName] = parsedData;
+    console.log(`Successfully auto-loaded ${filename}`);
+  } catch (err) {
+    console.error(`Failed to load ${filename}:`, err);
+  }
+}
+
+// Run the loading script as soon as the page loads
+window.addEventListener('DOMContentLoaded', async () => {
+  // Replace these with the exact names of your 6 CSV files
+  await autoLoadCsv('orders.csv', 'rawO');
+  await autoLoadCsv('products.csv', 'rawP');
+  await autoLoadCsv('sales.csv', 'rawS');
+  await autoLoadCsv('visitors.csv', 'rawV');
+  await autoLoadCsv('carts.csv', 'rawCarts');
+  await autoLoadCsv('customers.csv', 'rawCusts');
+
+  // Trigger your dashboard's refresh/render function if it has one
+  // For example, if your code has a function called renderDashboard():
+  if (typeof rOv === 'function') {
+     rOv(window.rawO);
+  }
+});
 // ═══════════════════════════════════════════════════════
 // THEME
 // ═══════════════════════════════════════════════════════
