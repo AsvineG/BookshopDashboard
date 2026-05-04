@@ -10191,7 +10191,7 @@ var GITHUB_FILES = [
   { url: GITHUB_BASE + 'products.csv',  type: 'products'  },
   { url: GITHUB_BASE + 'carts.csv',     type: 'carts'     },
   { url: GITHUB_BASE + 'customers.csv', type: 'customers' },
-  { url: GITHUB_BASE + 'visitors.csv',  type: 'visitors'  }
+  { url: GITHUB_BASE + 'sources.csv',   type: 'source'    }
 ];
 
 function fetchFromGithub(onComplete){
@@ -10201,7 +10201,7 @@ function fetchFromGithub(onComplete){
   showLoader('Fetching data from GitHub…');
   setProgress(5);
   function setFetchStatus(type, msg, ok){
-    var map = {orders:'O',products:'P',carts:'Carts',customers:'Custs',visitors:'V'};
+    var map = {orders:'O',products:'P',carts:'Carts',customers:'Custs',source:'S'};
     var id = map[type];
     var el = id ? document.getElementById('upl'+id+'Status') : null;
     if(el){ el.textContent=msg; el.style.color=ok?'var(--grn)':'var(--red)'; }
