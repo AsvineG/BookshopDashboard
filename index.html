@@ -2,7 +2,7 @@
 <html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Reading Eggs Bookshop — CRO Intelligence Hub</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1481,10 +1481,320 @@ tbody tr{transition:background .1s}
 }
 .bmap-copy-select:hover{border-color:var(--blu-border);color:var(--blu);}
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVE — iPhone first (≤768px)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Loading state */
+#mob-loading-screen {
+  display: none;
+  position: fixed; inset: 0; z-index: 99999;
+  background: var(--surface);
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 20px;
+}
+#mob-loading-screen.visible { display: flex; }
+.mob-loading-logo {
+  font-size: 15px; font-weight: 800; color: var(--text);
+  letter-spacing: -0.3px;
+}
+.mob-loading-sub { font-size: 12px; color: var(--muted2); }
+.mob-loading-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--blu);
+  border-radius: 50%;
+  animation: mob-spin 0.8s linear infinite;
+}
+.mob-loading-msg { font-size: 13px; color: var(--text); text-align: center; max-width: 260px; line-height: 1.5; }
+@keyframes mob-spin { to { transform: rotate(360deg); } }
+
+/* Swipe indicator */
+.swipe-hint {
+  display: none;
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.6); color: #fff;
+  font-size: 11px; padding: 6px 14px; border-radius: 999px;
+  z-index: 900; pointer-events: none;
+  animation: fadeout 2s ease 1.5s forwards;
+}
+@keyframes fadeout { to { opacity: 0; } }
+
+@media (max-width: 768px) {
+
+  /* ── Base ──────────────────────────────────────────────────────────────── */
+  * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+  body { overflow-x: hidden; }
+
+  /* ── Loading screen ────────────────────────────────────────────────────── */
+  #mob-loading-screen { display: flex; }
+  #mob-loading-screen.hidden { display: none; }
+
+  /* ── Topbar ────────────────────────────────────────────────────────────── */
+  .tb {
+    padding: 0 12px;
+    height: 52px;
+    position: fixed; top: 0; left: 0; right: 0; z-index: 800;
+  }
+  .tb-left { gap: 10px; }
+  .tb-center { display: none !important; }
+  .tb-right { gap: 6px; }
+  .tb-brand-name { font-size: 14px; }
+  .tb-brand-sub { display: none; }
+
+  /* Hide desktop-only topbar buttons */
+  #reportBtn, #custBtn, #esaToggleBtn { display: none !important; }
+
+  /* Show hamburger */
+  .mob-toggle {
+    display: flex !important;
+    width: 44px; height: 44px;
+    font-size: 18px;
+    border-radius: 10px;
+  }
+
+  /* Settings button — keep visible, bigger touch target */
+  .thbtn {
+    height: 44px !important;
+    padding: 0 12px !important;
+    font-size: 13px !important;
+    border-radius: 10px !important;
+  }
+
+  /* ── App layout ────────────────────────────────────────────────────────── */
+  .app {
+    flex-direction: column;
+    padding-top: 52px; /* topbar height */
+  }
+
+  /* ── Sidebar — full screen drawer ─────────────────────────────────────── */
+  .sb {
+    position: fixed !important;
+    top: 0 !important; left: 0 !important; bottom: 0 !important;
+    width: 280px !important;
+    z-index: 900 !important;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.4,0,0.2,1) !important;
+    display: flex !important;
+  }
+  .sb.open {
+    transform: translateX(0) !important;
+    box-shadow: 4px 0 32px rgba(0,0,0,0.18) !important;
+  }
+  .sb-scroll { padding-bottom: 40px; }
+  .sb-logo { padding: 16px; }
+  .sb-logo img { max-width: 120px; }
+  .sb-item {
+    min-height: 44px;
+    padding: 10px 16px !important;
+    font-size: 14px !important;
+  }
+  .sb-icon { font-size: 16px !important; }
+  .sb-section-label {
+    font-size: 10px !important;
+    padding: 12px 16px 4px !important;
+  }
+
+  /* Overlay */
+  #mobOverlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 850;
+  }
+  #mobOverlay.visible { display: block; }
+
+  /* ── Main content ──────────────────────────────────────────────────────── */
+  .main {
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    overflow-x: hidden;
+  }
+
+  /* ── Filter panel ──────────────────────────────────────────────────────── */
+  .fp-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 8px 12px 12px;
+  }
+  .fp-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+  .fp-label {
+    font-size: 11px !important;
+    color: var(--muted2);
+  }
+  .ssel, select.ssel {
+    width: 100% !important;
+    height: 44px !important;
+    font-size: 14px !important;
+    border-radius: 10px !important;
+    padding: 0 12px !important;
+  }
+  .fp-close { display: none !important; }
+
+  /* ── Tab panels ────────────────────────────────────────────────────────── */
+  .tp {
+    padding: 12px !important;
+  }
+
+  /* ── KPI grid — full width stacked ────────────────────────────────────── */
+  .ks {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  .kpi {
+    padding: 14px 16px !important;
+    border-radius: 10px !important;
+  }
+  .kv { font-size: 24px !important; }
+  .kl { font-size: 11px !important; }
+
+  /* ── Cards ─────────────────────────────────────────────────────────────── */
+  .card {
+    border-radius: 10px !important;
+    padding: 14px !important;
+    margin-bottom: 10px !important;
+  }
+  .ct { font-size: 13px !important; flex-wrap: wrap; gap: 6px; }
+
+  /* ── Charts — stack ────────────────────────────────────────────────────── */
+  .chart-row, .rband, [style*="display:grid"],
+  .grid-2, .grid-3, .two-col, .three-col {
+    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* ── Tables — horizontal scroll ────────────────────────────────────────── */
+  .table-wrap, [style*="overflow-x:auto"], div[style*="overflow-x"] {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  table { min-width: 600px; font-size: 12px !important; }
+  th, td { padding: 8px 10px !important; white-space: nowrap; }
+
+  /* ── Stock tab region selector — dropdown ──────────────────────────────── */
+  .stk-region-tabs {
+    display: none !important;
+  }
+  #stk-mob-region-select {
+    display: block !important;
+    width: 100%;
+    height: 44px;
+    font-size: 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    padding: 0 12px;
+    margin-bottom: 12px;
+  }
+
+  /* ── Upload bar — hide ─────────────────────────────────────────────────── */
+  .upload-bar, #uploadBar, .drop-zone, .file-upload-row { display: none !important; }
+
+  /* ── Settings modal — full screen ──────────────────────────────────────── */
+  .settings-panel, #settingsPanel {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    border-radius: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    transform: none !important;
+    display: flex;
+    flex-direction: column;
+  }
+  .set-modal-topbar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px !important;
+  }
+  .set-tab-btn {
+    font-size: 11px !important;
+    padding: 6px 10px !important;
+    min-height: 36px;
+  }
+  .set-topbar-actions {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+  }
+  .set-topbar-actions .abtn {
+    flex: 1;
+    height: 44px !important;
+    font-size: 13px !important;
+  }
+  .set-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .set-tab-content { padding: 16px !important; }
+
+  /* ── Toolbar strips ────────────────────────────────────────────────────── */
+  .stk-toolbar {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    padding: 8px 0 !important;
+  }
+  .stk-toolbar select, .stk-toolbar input {
+    flex: 1 1 calc(50% - 3px);
+    min-width: 0;
+    height: 40px !important;
+    font-size: 13px !important;
+  }
+
+  /* ── Buttons ────────────────────────────────────────────────────────────── */
+  .abtn, .cbtn, .filter-btn {
+    min-height: 44px !important;
+    font-size: 13px !important;
+    border-radius: 10px !important;
+  }
+
+  /* ── Regional bands ─────────────────────────────────────────────────────── */
+  .rband { gap: 10px !important; }
+
+  /* ── Chart containers ───────────────────────────────────────────────────── */
+  canvas { max-width: 100% !important; }
+  .chart-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* ── Footer ─────────────────────────────────────────────────────────────── */
+  .footer { font-size: 10px; padding: 12px; }
+
+  /* ── Tab content headings ───────────────────────────────────────────────── */
+  h2, .tab-title { font-size: 16px !important; }
+  h3 { font-size: 14px !important; }
+
+  /* ── Swipe hint ─────────────────────────────────────────────────────────── */
+  .swipe-hint { display: block; }
+}
+
 </style>
 
 </head>
 <body>
+
+<!-- MOBILE LOADING SCREEN -->
+<div id="mob-loading-screen">
+  <div class="mob-loading-spinner"></div>
+  <div class="mob-loading-logo">CRO Intelligence Hub</div>
+  <div class="mob-loading-msg">Good things take a moment — we're loading your bookshop data right now. Please bear with us.</div>
+  <div class="mob-loading-sub">Reading Eggs Bookshop · 3P Learning</div>
+</div>
+
+<!-- SWIPE HINT -->
+<div class="swipe-hint">Swipe left or right to change tabs</div>
+
 
 <!-- LOADER -->
 <div class="lod" id="lod" style="display:none">
@@ -2271,6 +2581,7 @@ tbody tr{transition:background .1s}
     <div class="ks" id="stockKpis"></div>
 
     <!-- Region sub-tabs (underline style) -->
+    <select id="stk-mob-region-select" style="display:none"></select>
     <div class="stk-region-tabs">
       <button class="stk-rtab active" id="stk-tab-all" onclick="stkRegion('all',this)">All</button>
       <button class="stk-rtab" id="stk-tab-au" onclick="stkRegion('au',this)">🇦🇺 AU</button>
@@ -10206,145 +10517,204 @@ ${data.conversion ? '<div class="section-note">Conversion rate: <strong>' + data
   This report was generated automatically from the CRO Intelligence Hub &mdash; Reading Eggs Bookshop &mdash; ${today}
 </p>
 
-</body></html>`;
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// MOBILE — Loading screen, swipe navigation, stock dropdown, dark mode move
+// ═══════════════════════════════════════════════════════════════════════════
+
+function isMobile(){ return window.innerWidth <= 768; }
+
+// ── Mobile loading screen ────────────────────────────────────────────────────
+function showMobLoading(){
+  if(!isMobile()) return;
+  var el = document.getElementById('mob-loading-screen');
+  if(el){ el.classList.remove('hidden'); el.classList.add('visible'); }
+}
+function hideMobLoading(){
+  var el = document.getElementById('mob-loading-screen');
+  if(el){ el.classList.remove('visible'); el.classList.add('hidden'); }
 }
 
-
-
-// ═══════════════════════════════════════════════════════
-// GITHUB AUTO-FETCH
-// ═══════════════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════════════
-// JSONBIN — shared settings sync
-// ═══════════════════════════════════════════════════════
-var JBIN_KEY = '$2a$10$P9i12M.E2QJWAmROLLXYEO8zAVg2x9/l7QQA4lVKeVSKGEfdF/bqG';
-var JBIN_BASE = 'https://api.jsonbin.io/v3';
-var JBIN_BIN_ID = '69f80c3aaaba8821976a869d'; // pre-created bin
-
-function getJBinId(){ return JBIN_BIN_ID || localStorage.getItem('re_jbin_id') || null; }
-function setJBinId(id){ JBIN_BIN_ID = id; try{ localStorage.setItem('re_jbin_id', id); }catch(e){} }
-
-function syncSettingsToCloud(cb){
-  var payload = JSON.stringify(SETTINGS);
-  var id = getJBinId();
-  var url, method;
-  if(id){
-    // Update existing bin
-    url    = JBIN_BASE + '/b/' + id;
-    method = 'PUT';
-  } else {
-    // Create new bin
-    url    = JBIN_BASE + '/b';
-    method = 'POST';
-  }
-  var headers = {
-    'Content-Type': 'application/json',
-    'X-Master-Key': JBIN_KEY
-  };
-  if(method === 'POST'){
-    headers['X-Bin-Name']     = 'BookshopDashboardSettings';
-    headers['X-Bin-Private']  = 'false';
-  }
-  fetch(url, { method: method, headers: headers, body: payload })
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      if(data.metadata && data.metadata.id) setJBinId(data.metadata.id);
-      if(cb) cb(true);
-    })
-    .catch(function(err){
-      console.warn('JSONBin sync failed:', err);
-      if(cb) cb(false);
-    });
+// ── Overlay for sidebar ──────────────────────────────────────────────────────
+function openMobMenu(){
+  var sb = document.getElementById('sidebar');
+  var ov = document.getElementById('mobOverlay');
+  if(sb) sb.classList.add('open');
+  if(ov) ov.classList.add('visible');
+  document.body.style.overflow = 'hidden';
 }
-
-function loadSettingsFromCloud(cb){
-  var id = getJBinId();
-  if(!id){ if(cb) cb(false); return; }
-  fetch(JBIN_BASE + '/b/' + id + '/latest', {
-    headers: { 'X-Master-Key': JBIN_KEY }
-  })
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      if(data && data.record){
-        applyParsedSettings(data.record);
-        // Cache to localStorage so next load is instant
-        try{ localStorage.setItem('re_settings', JSON.stringify(data.record)); }catch(e){}
-        if(cb) cb(true);
-      } else { if(cb) cb(false); }
-    })
-    .catch(function(err){
-      console.warn('JSONBin load failed:', err);
-      if(cb) cb(false);
-    });
+function closeMobMenu(){
+  var sb = document.getElementById('sidebar');
+  var ov = document.getElementById('mobOverlay');
+  if(sb) sb.classList.remove('open');
+  if(ov) ov.classList.remove('visible');
+  document.body.style.overflow = '';
 }
+// Override existing toggleMobMenu
+window.toggleMobMenu = function(){
+  var sb = document.getElementById('sidebar');
+  if(sb && sb.classList.contains('open')) closeMobMenu();
+  else openMobMenu();
+};
 
-var GITHUB_BASE = 'https://raw.githubusercontent.com/AsvineG/BookshopDashboard/main/';
-var GITHUB_FILES = [
-  { url: GITHUB_BASE + 'orders.csv',    type: 'orders'    },
-  { url: GITHUB_BASE + 'products.csv',  type: 'products'  },
-  { url: GITHUB_BASE + 'carts.csv',     type: 'carts'     },
-  { url: GITHUB_BASE + 'customers.csv', type: 'customers' },
-  { url: GITHUB_BASE + 'sources.csv',   type: 'source'    }
-];
-
-function fetchFromGithub(onComplete){
-  var total = GITHUB_FILES.length;
-  var done  = 0;
-  var errors = [];
-  showLoader('Fetching data from GitHub…');
-  setProgress(5);
-  function setFetchStatus(type, msg, ok){
-    var map = {orders:'O',products:'P',carts:'Carts',customers:'Custs',source:'S'};
-    var id = map[type];
-    var el = id ? document.getElementById('upl'+id+'Status') : null;
-    if(el){ el.textContent=msg; el.style.color=ok?'var(--grn)':'var(--red)'; }
-  }
-  GITHUB_FILES.forEach(function(file){
-    var url = file.url + '?t=' + Date.now();
-    fetch(url)
-      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
-      .then(function(text){
-        var data = parseCSVFast(text);
-        handleNewData(file.type, data);
-        setFetchStatus(file.type, 'Loaded from GitHub', true);
-        done++;
-        setProgress(Math.round(10+(done/total)*85));
-        if(done===total){ hideLoader(); if(onComplete) onComplete(); }
-      })
-      .catch(function(err){
-        console.warn('Fetch failed: '+file.url, err);
-        setFetchStatus(file.type, 'Not found on GitHub', false);
-        errors.push(file.type);
-        done++;
-        if(done===total){ hideLoader(); if(onComplete) onComplete(); }
-      });
-  });
-}
-
-function refreshGithubData(){
-  var btn = document.getElementById('githubRefreshBtn');
-  if(btn){ btn.disabled=true; btn.textContent='Refreshing…'; }
-  rawO=[]; rawS=[]; rawCarts=[]; rawCusts=[]; rawP=[];
-  lO=false; lP=false; lS=false; lCarts=false; lCusts=false;
-  fetchFromGithub(function(){
-    if(btn){ btn.disabled=false; btn.textContent='\u21bb Refresh Data'; }
-    if(typeof rAll==='function') rAll();
-  });
-}
-
-window.addEventListener('load',function(){
-  applyChartDefaults();
-  loadSavedSettings(); // fast: localStorage fallback
-  // Try to load latest settings from JSONBin cloud, then fetch data
-  loadSettingsFromCloud(function(){
-    // Cloud settings applied (or fell back to localStorage) — now fetch CSVs
-    fetchFromGithub(function(){
-      if(typeof rAll==='function') rAll();
-    });
-  });
+// Close menu when nav item clicked on mobile
+document.addEventListener('click', function(e){
+  if(!isMobile()) return;
+  var item = e.target.closest('.sb-item');
+  if(item) closeMobMenu();
 });
 
+// ── Stock region dropdown on mobile ──────────────────────────────────────────
+function initStockMobDropdown(){
+  var existing = document.getElementById('stk-mob-region-select');
+  if(existing) return;
+  var panel = document.getElementById('stk-panel-all');
+  if(!panel) return;
+  var sel = document.createElement('select');
+  sel.id = 'stk-mob-region-select';
+  sel.style.display = 'none'; // shown by CSS on mobile
+  sel.innerHTML = [
+    '<option value="all">All Regions</option>',
+    '<option value="au">🇦🇺 Australia</option>',
+    '<option value="uk">🇬🇧 United Kingdom</option>',
+    '<option value="us">🇺🇸 United States</option>'
+  ].join('');
+  sel.addEventListener('change', function(){
+    // Find the corresponding tab button and click it
+    var btn = document.getElementById('stk-tab-' + this.value);
+    if(btn) { btn.click(); }
+  });
+  // Insert before the region tabs
+  var tabs = document.querySelector('.stk-region-tabs');
+  if(tabs) tabs.parentNode.insertBefore(sel, tabs);
+}
+
+// Sync dropdown when tab changes
+var _origStkRegion = window.stkRegion;
+window.stkRegion = function(region, btn){
+  if(_origStkRegion) _origStkRegion(region, btn);
+  var sel = document.getElementById('stk-mob-region-select');
+  if(sel) sel.value = region;
+};
+
+// ── Swipe navigation ─────────────────────────────────────────────────────────
+(function(){
+  var TAB_ORDER = [
+    'insights','overview',
+    'regional','payments','esa',
+    'products','basket','coupons',
+    'customers','retention','abandoned',
+    'source','cohort','geo','usdive','delivery','device','orders',
+    'financials','stock'
+  ];
+
+  var touchStartX = 0, touchStartY = 0, currentTab = 'insights';
+
+  // Track current tab
+  var _origSTab = window.sTab;
+  window.sTab = function(tab, el){
+    currentTab = tab;
+    if(_origSTab) _origSTab(tab, el);
+  };
+
+  function getAdjacentTab(dir){
+    var idx = TAB_ORDER.indexOf(currentTab);
+    if(idx < 0) return null;
+    var next = idx + dir;
+    if(next < 0 || next >= TAB_ORDER.length) return null;
+    return TAB_ORDER[next];
+  }
+
+  document.addEventListener('touchstart', function(e){
+    if(!isMobile()) return;
+    // Don't swipe if sidebar is open
+    var sb = document.getElementById('sidebar');
+    if(sb && sb.classList.contains('open')) return;
+    // Don't swipe on scrollable tables
+    if(e.target.closest('table') || e.target.closest('.set-modal-body')) return;
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, {passive: true});
+
+  document.addEventListener('touchend', function(e){
+    if(!isMobile()) return;
+    var sb = document.getElementById('sidebar');
+    if(sb && sb.classList.contains('open')) return;
+    var dx = e.changedTouches[0].clientX - touchStartX;
+    var dy = e.changedTouches[0].clientY - touchStartY;
+    // Only horizontal swipes (more horizontal than vertical, >50px)
+    if(Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    var dir = dx < 0 ? 1 : -1; // swipe left = next, swipe right = prev
+    var next = getAdjacentTab(dir);
+    if(!next) return;
+    var btn = document.querySelector('.sb-item[data-tab="'+next+'"]');
+    if(btn) btn.click();
+  }, {passive: true});
+})();
+
+// ── Dark mode move to settings ───────────────────────────────────────────────
+function moveDarkModeToSettings(){
+  var thBtn = document.getElementById('settingsBtn');
+  // settingsBtn is the dark toggle — on mobile move it inside settings modal
+  if(!isMobile()) return;
+  // Already handled by CSS hiding tb-right buttons except thbtn
+}
+
+// ── Move dark mode toggle to Settings modal on mobile ────────────────────────
+function injectDarkModeIntoSettings(){
+  // Check if already injected
+  if(document.getElementById('mob-dark-toggle-row')) return;
+  var prefTab = document.getElementById('setContent-prefs');
+  if(!prefTab) return;
+  var row = document.createElement('div');
+  row.id = 'mob-dark-toggle-row';
+  row.className = 'set-pref-row';
+  row.style.cssText = 'display:none'; // shown by CSS on mobile
+  row.innerHTML = '<div><div class="set-pref-label">Dark Mode</div><div class="set-pref-sub">Toggle light/dark theme</div></div>' +
+    '<button class="thbtn" onclick="document.getElementById(\'settingsBtn\')&&document.getElementById(\'settingsBtn\').click()" style="pointer-events:auto">🌙 Toggle</button>';
+  prefTab.insertBefore(row, prefTab.firstChild);
+}
+
+// ── Init all mobile features ─────────────────────────────────────────────────
+function initMobile(){
+  if(!isMobile()) return;
+  showMobLoading();
+  initStockMobDropdown();
+  injectDarkModeIntoSettings();
+  // Show swipe hint on first visit
+  if(!localStorage.getItem('mob_swipe_seen')){
+    var hint = document.querySelector('.swipe-hint');
+    if(hint){ hint.style.display = 'block'; localStorage.setItem('mob_swipe_seen','1'); }
+  }
+}
+
+// Hook into data load completion to hide loading screen
+var _origFetchFromGithub = window.fetchFromGithub;
+window.fetchFromGithub = function(cb){
+  if(_origFetchFromGithub){
+    _origFetchFromGithub(function(){
+      hideMobLoading();
+      if(cb) cb();
+    });
+  } else {
+    hideMobLoading();
+    if(cb) cb();
+  }
+};
+
+// Also hide on rAll completion as fallback
+var _origRAll = window.rAll;
+window.rAll = function(){
+  hideMobLoading();
+  if(_origRAll) _origRAll();
+};
+
+window.addEventListener('load', function(){
+  initMobile();
+});
+window.addEventListener('resize', function(){
+  if(isMobile()) initMobile();
+});
 </script>
 
 <!-- FILTER PANEL -->
@@ -10664,6 +11034,37 @@ window.addEventListener('load',function(){
 
       <div id="uploadStatusList" class="upload-status-grid"></div>
 
+      <div style="margin-top:28px">
+        <div class="set-block-title" style="margin-bottom:6px">Export Configuration Files</div>
+        <div class="set-block-sub" style="margin-bottom:16px">Download these CSVs, fill them in, then upload to your GitHub repo. The dashboard will auto-load them on next refresh.</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text)">bundles.csv</div>
+              <div style="font-size:11px;color:var(--muted2);margin-top:2px">All bundle products with component ISBN columns — fill in the ISBNs for each bundle</div>
+            </div>
+            <button class="abtn" onclick="exportBundlesCSV()" style="padding:6px 14px;font-size:12px;white-space:nowrap">↓ Export</button>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text)">regionmap.csv</div>
+              <div style="font-size:11px;color:var(--muted2);margin-top:2px">All products with AU/UK/USA active flags — adjust which regions each product is sold in</div>
+            </div>
+            <button class="abtn" onclick="exportRegionMapCSV()" style="padding:6px 14px;font-size:12px;white-space:nowrap">↓ Export</button>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text)">adspend.csv</div>
+              <div style="font-size:11px;color:var(--muted2);margin-top:2px">Monthly ad spend template by region and platform — fill in your monthly figures</div>
+            </div>
+            <button class="abtn" onclick="exportAdSpendCSV()" style="padding:6px 14px;font-size:12px;white-space:nowrap">↓ Export</button>
+          </div>
+
+        </div>
+      </div>
 
     </div>
 
