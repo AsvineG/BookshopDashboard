@@ -10220,13 +10220,13 @@ ${data.conversion ? '<div class="section-note">Conversion rate: <strong>' + data
 // ═══════════════════════════════════════════════════════
 var JBIN_KEY = '$2a$10$P9i12M.E2QJWAmROLLXYEO8zAVg2x9/l7QQA4lVKeVSKGEfdF/bqG';
 var JBIN_BASE = 'https://api.jsonbin.io/v3';
-var JBIN_BIN_ID = null; // loaded from localStorage or created on first save
+var JBIN_BIN_ID = '69f80c3aaaba8821976a869d'; // pre-created bin
 
 function getJBinId(){ return JBIN_BIN_ID || localStorage.getItem('re_jbin_id') || null; }
 function setJBinId(id){ JBIN_BIN_ID = id; try{ localStorage.setItem('re_jbin_id', id); }catch(e){} }
 
 function syncSettingsToCloud(cb){
-  var payload = JSON.stringify({ record: SETTINGS });
+  var payload = JSON.stringify(SETTINGS);
   var id = getJBinId();
   var url, method;
   if(id){
