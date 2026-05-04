@@ -7793,9 +7793,35 @@ function saveSettings(){
   if(pcu) SETTINGS.prefs.currency = pcu.value;
   // Persist to localStorage
   try{ localStorage.setItem('re_settings', JSON.stringify(SETTINGS)); }catch(e){}
-  // Show saved indicator
-  var saved = document.getElementById('settingsSaved');
-  if(saved){ saved.style.display='block'; setTimeout(function(){ saved.style.display='none'; }, 2000); }
+  // Sync to JSONBin — password protected
+  var _pwd = prompt('Enter admin password to sync settings:');
+  if(_pwd === null) return; // cancelled
+  var _hash = Array.from(new Uint8Array(
+    new TextEncoder ? 
+    (function(){ var h=''; new TextEncoder().encode(_pwd).forEach(function(b){ h+=('0'+b.toString(16)).slice(-2); }); return h; })() :
+    []
+  )).join('');
+  // Use SubtleCrypto for proper SHA-256
+  crypto.subtle.digest('SHA-256', new TextEncoder().encode(_pwd)).then(function(buf){
+    var hash = Array.from(new Uint8Array(buf)).map(function(b){ return ('0'+b.toString(16)).slice(-2); }).join('');
+    if(hash !== 'ef9a8bd2fae60b5602309ac6ee35ef74ebd379a28025e60f1c155c07e40ef6d8'){
+      alert('Incorrect password. Settings saved locally only.');
+      var saved = document.getElementById('settingsSaved');
+      if(saved){ saved.textContent='✓ Saved locally only'; saved.style.display='block'; setTimeout(function(){ saved.style.display='none'; saved.textContent='✓ Settings saved'; },2500); }
+      return;
+    }
+    syncSettingsToCloud(function(ok){
+      var saved = document.getElementById('settingsSaved');
+      if(saved){
+        saved.textContent = ok ? '✓ Settings saved & synced' : '✓ Settings saved (offline)';
+        saved.style.display='block';
+        setTimeout(function(){ saved.style.display='none'; saved.textContent='✓ Settings saved'; }, 3000);
+      }
+    });
+  }).catch(function(){
+    // Fallback for browsers without SubtleCrypto — simple check
+    alert('Sync not available in this browser. Settings saved locally.');
+  });
 }
 
 function applySettings(){
@@ -7814,28 +7840,31 @@ function applySettings(){
   }
 }
 
-function loadSavedSettings(){
-  try{
-    var saved = localStorage.getItem('re_settings');
-    if(saved){
-      var parsed = JSON.parse(saved);
-      if(parsed.spend) SETTINGS.spend = parsed.spend;
-      if(parsed.margin) SETTINGS.margin = parsed.margin;
-      if(parsed.prefs) SETTINGS.prefs = parsed.prefs;
-      if(parsed.regionMap) SETTINGS.regionMap = parsed.regionMap;
-      if(parsed.visitors) SETTINGS.visitors = parsed.visitors;
-      if(parsed.bundleMap) SETTINGS.bundleMap = parsed.bundleMap;
-      else if(!SETTINGS.bundleMap) SETTINGS.bundleMap = {au:{},uk:{},us:{}};
-    }
-  }catch(e){}
-  // Init regionMap from stock data if not yet saved
+function applyParsedSettings(parsed){
+  if(!parsed) return;
+  if(parsed.spend)     SETTINGS.spend     = parsed.spend;
+  if(parsed.margin)    SETTINGS.margin    = parsed.margin;
+  if(parsed.prefs)     SETTINGS.prefs     = parsed.prefs;
+  if(parsed.regionMap) SETTINGS.regionMap = parsed.regionMap;
+  if(parsed.visitors)  SETTINGS.visitors  = parsed.visitors;
+  if(parsed.bundleMap) SETTINGS.bundleMap = parsed.bundleMap;
+  else if(!SETTINGS.bundleMap) SETTINGS.bundleMap = {au:{},uk:{},us:{}};
   if(!SETTINGS.regionMap || Object.keys(SETTINGS.regionMap).length === 0){
     SETTINGS.regionMap = buildDefaultRegionMap();
   }
-  // Apply visitors from settings
-  if(SETTINGS.visitors && SETTINGS.visitors.length){
-    applyVisitorsToRawV();
+  if(SETTINGS.visitors && SETTINGS.visitors.length) applyVisitorsToRawV();
+}
+
+function loadSavedSettings(){
+  // Always apply localStorage first as fast fallback
+  try{
+    var saved = localStorage.getItem('re_settings');
+    if(saved) applyParsedSettings(JSON.parse(saved));
+  }catch(e){}
+  if(!SETTINGS.regionMap || Object.keys(SETTINGS.regionMap).length === 0){
+    SETTINGS.regionMap = buildDefaultRegionMap();
   }
+  if(SETTINGS.visitors && SETTINGS.visitors.length) applyVisitorsToRawV();
 }
 
 // ── Financial calculations ─────────────────────────────────────────────────────
@@ -10185,6 +10214,71 @@ ${data.conversion ? '<div class="section-note">Conversion rate: <strong>' + data
 // ═══════════════════════════════════════════════════════
 // GITHUB AUTO-FETCH
 // ═══════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════
+// JSONBIN — shared settings sync
+// ═══════════════════════════════════════════════════════
+var JBIN_KEY = '$2a$10$P9i12M.E2QJWAmROLLXYEO8zAVg2x9/l7QQA4lVKeVSKGEfdF/bqG';
+var JBIN_BASE = 'https://api.jsonbin.io/v3';
+var JBIN_BIN_ID = null; // loaded from localStorage or created on first save
+
+function getJBinId(){ return JBIN_BIN_ID || localStorage.getItem('re_jbin_id') || null; }
+function setJBinId(id){ JBIN_BIN_ID = id; try{ localStorage.setItem('re_jbin_id', id); }catch(e){} }
+
+function syncSettingsToCloud(cb){
+  var payload = JSON.stringify({ record: SETTINGS });
+  var id = getJBinId();
+  var url, method;
+  if(id){
+    // Update existing bin
+    url    = JBIN_BASE + '/b/' + id;
+    method = 'PUT';
+  } else {
+    // Create new bin
+    url    = JBIN_BASE + '/b';
+    method = 'POST';
+  }
+  var headers = {
+    'Content-Type': 'application/json',
+    'X-Master-Key': JBIN_KEY
+  };
+  if(method === 'POST'){
+    headers['X-Bin-Name']     = 'BookshopDashboardSettings';
+    headers['X-Bin-Private']  = 'false';
+  }
+  fetch(url, { method: method, headers: headers, body: payload })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(data.metadata && data.metadata.id) setJBinId(data.metadata.id);
+      if(cb) cb(true);
+    })
+    .catch(function(err){
+      console.warn('JSONBin sync failed:', err);
+      if(cb) cb(false);
+    });
+}
+
+function loadSettingsFromCloud(cb){
+  var id = getJBinId();
+  if(!id){ if(cb) cb(false); return; }
+  fetch(JBIN_BASE + '/b/' + id + '/latest', {
+    headers: { 'X-Master-Key': JBIN_KEY }
+  })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(data && data.record){
+        applyParsedSettings(data.record);
+        // Cache to localStorage so next load is instant
+        try{ localStorage.setItem('re_settings', JSON.stringify(data.record)); }catch(e){}
+        if(cb) cb(true);
+      } else { if(cb) cb(false); }
+    })
+    .catch(function(err){
+      console.warn('JSONBin load failed:', err);
+      if(cb) cb(false);
+    });
+}
+
 var GITHUB_BASE = 'https://raw.githubusercontent.com/AsvineG/BookshopDashboard/main/';
 var GITHUB_FILES = [
   { url: GITHUB_BASE + 'orders.csv',    type: 'orders'    },
@@ -10241,10 +10335,13 @@ function refreshGithubData(){
 
 window.addEventListener('load',function(){
   applyChartDefaults();
-  loadSavedSettings();
-  // Auto-fetch CSVs from GitHub, then render
-  fetchFromGithub(function(){
-    if(typeof rAll==='function') rAll();
+  loadSavedSettings(); // fast: localStorage fallback
+  // Try to load latest settings from JSONBin cloud, then fetch data
+  loadSettingsFromCloud(function(){
+    // Cloud settings applied (or fell back to localStorage) — now fetch CSVs
+    fetchFromGithub(function(){
+      if(typeof rAll==='function') rAll();
+    });
   });
 });
 
@@ -10397,6 +10494,7 @@ window.addEventListener('load',function(){
     <button class="set-tab-btn"        id="setTab-prefs"    onclick="showSetTab('prefs',this)">🎛 Preferences</button>
     <button class="set-tab-btn"        id="setTab-upload"   onclick="showSetTab('upload',this)">📂 Upload Status</button>
     <div class="set-topbar-actions">
+      <span id="settingsSyncStatus" style="font-size:11px;color:var(--muted2);margin-right:8px"></span>
       <button class="abtn" style="padding:7px 20px;font-size:13px" onclick="applySettings()">✓ Apply &amp; Close</button>
       <button class="fp-close" onclick="closeSettings()">✕</button>
     </div>
