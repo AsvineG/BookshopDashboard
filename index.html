@@ -1510,261 +1510,325 @@ tbody tr{transition:background .1s}
 
 @media (max-width: 768px) {
 
-  /* ── Base ──────────────────────────────────────────────────────────────── */
-  * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-  body { overflow-x: hidden; }
+/* ═══════════════════════════════════════════════════════
+   BASE
+═══════════════════════════════════════════════════════ */
+* { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+body { overflow-x: hidden; font-size: 14px; }
 
-  /* ── Loading screen ────────────────────────────────────────────────────── */
-  #mob-loading-screen { display: flex; }
-  #mob-loading-screen.hidden { display: none; }
+/* ═══════════════════════════════════════════════════════
+   LOADING SCREEN
+═══════════════════════════════════════════════════════ */
+#mob-loading-screen { display: flex; }
+#mob-loading-screen.hidden { display: none; }
 
-  /* ── Topbar ────────────────────────────────────────────────────────────── */
-  .tb {
-    padding: 0 12px;
-    height: 52px;
-    position: fixed; top: 0; left: 0; right: 0; z-index: 800;
-  }
-  .tb-left { gap: 10px; }
-  .tb-center { display: none !important; }
-  .tb-right { gap: 6px; }
-  .tb-brand-name { font-size: 14px; }
-  .tb-brand-sub { display: none; }
+/* ═══════════════════════════════════════════════════════
+   TOPBAR — hamburger | brand | ESA | ⚙
+═══════════════════════════════════════════════════════ */
+.tb {
+  padding: 0 10px;
+  height: 52px;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 800;
+  display: flex; align-items: center;
+}
+.tb-left { gap: 8px; flex: 1; min-width: 0; }
+.tb-brand-sub { display: none; }
+.tb-brand-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+.tb-center { display: none !important; }
 
-  /* Hide desktop-only topbar buttons */
-  #reportBtn, #custBtn, #esaToggleBtn { display: none !important; }
+/* Hide desktop-only buttons */
+#reportBtn, #custBtn { display: none !important; }
 
-  /* Show hamburger */
-  .mob-toggle {
-    display: flex !important;
-    width: 44px; height: 44px;
-    font-size: 18px;
-    border-radius: 10px;
-  }
+/* ESA — stays in topbar on mobile, compact */
+#esaToggleBtn {
+  display: inline-flex !important;
+  height: 36px !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+  border-radius: 8px !important;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+#esaToggleBtn span { font-size: 11px; }
 
-  /* Settings button — keep visible, bigger touch target */
-  .thbtn {
-    height: 44px !important;
-    padding: 0 12px !important;
-    font-size: 13px !important;
-    border-radius: 10px !important;
-  }
+/* Settings — icon only in topbar */
+#settingsBtn {
+  display: inline-flex !important;
+  height: 36px !important;
+  width: 36px !important;
+  padding: 0 !important;
+  justify-content: center;
+  font-size: 16px !important;
+  border-radius: 8px !important;
+  flex-shrink: 0;
+}
+#settingsBtn::after { content: ''; }
 
-  /* ── App layout ────────────────────────────────────────────────────────── */
-  .app {
-    flex-direction: column;
-    padding-top: 52px; /* topbar height */
-  }
+/* Dark toggle — hide from topbar on mobile */
+.thbtn:not(#settingsBtn) { display: none !important; }
 
-  /* ── Sidebar — full screen drawer ─────────────────────────────────────── */
-  .sb {
-    position: fixed !important;
-    top: 0 !important; left: 0 !important; bottom: 0 !important;
-    width: 280px !important;
-    z-index: 900 !important;
-    transform: translateX(-100%);
-    transition: transform 0.28s cubic-bezier(0.4,0,0.2,1) !important;
-    display: flex !important;
-  }
-  .sb.open {
-    transform: translateX(0) !important;
-    box-shadow: 4px 0 32px rgba(0,0,0,0.18) !important;
-  }
-  .sb-scroll { padding-bottom: 40px; }
-  .sb-logo { padding: 16px; }
-  .sb-logo img { max-width: 120px; }
-  .sb-item {
-    min-height: 44px;
-    padding: 10px 16px !important;
-    font-size: 14px !important;
-  }
-  .sb-icon { font-size: 16px !important; }
-  .sb-section-label {
-    font-size: 10px !important;
-    padding: 12px 16px 4px !important;
-  }
+/* Filter button — hide from topbar (use FAB instead) */
+#filterBtn, .filter-btn { display: none !important; }
 
-  /* Overlay */
-  #mobOverlay {
-    display: none;
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.4);
-    z-index: 850;
-  }
-  #mobOverlay.visible { display: block; }
-
-  /* ── Main content ──────────────────────────────────────────────────────── */
-  .main {
-    width: 100% !important;
-    min-width: 0 !important;
-    padding: 0 !important;
-    overflow-x: hidden;
-  }
-
-  /* ── Filter panel ──────────────────────────────────────────────────────── */
-  .fp-scroll {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    padding: 8px 12px 12px;
-  }
-  .fp-section {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin-bottom: 8px;
-  }
-  .fp-label {
-    font-size: 11px !important;
-    color: var(--muted2);
-  }
-  .ssel, select.ssel {
-    width: 100% !important;
-    height: 44px !important;
-    font-size: 14px !important;
-    border-radius: 10px !important;
-    padding: 0 12px !important;
-  }
-  .fp-close { display: none !important; }
-
-  /* ── Tab panels ────────────────────────────────────────────────────────── */
-  .tp {
-    padding: 12px !important;
-  }
-
-  /* ── KPI grid — full width stacked ────────────────────────────────────── */
-  .ks {
-    grid-template-columns: 1fr !important;
-    gap: 8px !important;
-  }
-  .kpi {
-    padding: 14px 16px !important;
-    border-radius: 10px !important;
-  }
-  .kv { font-size: 24px !important; }
-  .kl { font-size: 11px !important; }
-
-  /* ── Cards ─────────────────────────────────────────────────────────────── */
-  .card {
-    border-radius: 10px !important;
-    padding: 14px !important;
-    margin-bottom: 10px !important;
-  }
-  .ct { font-size: 13px !important; flex-wrap: wrap; gap: 6px; }
-
-  /* ── Charts — stack ────────────────────────────────────────────────────── */
-  .chart-row, .rband, [style*="display:grid"],
-  .grid-2, .grid-3, .two-col, .three-col {
-    grid-template-columns: 1fr !important;
-    display: flex !important;
-    flex-direction: column !important;
-  }
-
-  /* ── Tables — horizontal scroll ────────────────────────────────────────── */
-  .table-wrap, [style*="overflow-x:auto"], div[style*="overflow-x"] {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
-  }
-  table { min-width: 600px; font-size: 12px !important; }
-  th, td { padding: 8px 10px !important; white-space: nowrap; }
-
-  /* ── Stock tab region selector — dropdown ──────────────────────────────── */
-  .stk-region-tabs {
-    display: none !important;
-  }
-  #stk-mob-region-select {
-    display: block !important;
-    width: 100%;
-    height: 44px;
-    font-size: 14px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text);
-    padding: 0 12px;
-    margin-bottom: 12px;
-  }
-
-  /* ── Upload bar — hide ─────────────────────────────────────────────────── */
-  .upload-bar, #uploadBar, .drop-zone, .file-upload-row { display: none !important; }
-
-  /* ── Settings modal — full screen ──────────────────────────────────────── */
-  .settings-panel, #settingsPanel {
-    width: 100% !important;
-    height: 100% !important;
-    max-width: 100% !important;
-    max-height: 100% !important;
-    border-radius: 0 !important;
-    top: 0 !important;
-    left: 0 !important;
-    transform: none !important;
-    display: flex;
-    flex-direction: column;
-  }
-  .set-modal-topbar {
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 12px !important;
-  }
-  .set-tab-btn {
-    font-size: 11px !important;
-    padding: 6px 10px !important;
-    min-height: 36px;
-  }
-  .set-topbar-actions {
-    width: 100%;
-    display: flex;
-    gap: 8px;
-  }
-  .set-topbar-actions .abtn {
-    flex: 1;
-    height: 44px !important;
-    font-size: 13px !important;
-  }
-  .set-modal-body {
-    flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .set-tab-content { padding: 16px !important; }
-
-  /* ── Toolbar strips ────────────────────────────────────────────────────── */
-  .stk-toolbar {
-    flex-wrap: wrap !important;
-    gap: 6px !important;
-    padding: 8px 0 !important;
-  }
-  .stk-toolbar select, .stk-toolbar input {
-    flex: 1 1 calc(50% - 3px);
-    min-width: 0;
-    height: 40px !important;
-    font-size: 13px !important;
-  }
-
-  /* ── Buttons ────────────────────────────────────────────────────────────── */
-  .abtn, .cbtn, .filter-btn {
-    min-height: 44px !important;
-    font-size: 13px !important;
-    border-radius: 10px !important;
-  }
-
-  /* ── Regional bands ─────────────────────────────────────────────────────── */
-  .rband { gap: 10px !important; }
-
-  /* ── Chart containers ───────────────────────────────────────────────────── */
-  canvas { max-width: 100% !important; }
-  .chart-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-
-  /* ── Footer ─────────────────────────────────────────────────────────────── */
-  .footer { font-size: 10px; padding: 12px; }
-
-  /* ── Tab content headings ───────────────────────────────────────────────── */
-  h2, .tab-title { font-size: 16px !important; }
-  h3 { font-size: 14px !important; }
-
-  /* ── Swipe hint ─────────────────────────────────────────────────────────── */
-  .swipe-hint { display: block; }
+/* Show hamburger */
+.mob-toggle {
+  display: flex !important;
+  width: 40px; height: 40px;
+  font-size: 17px;
+  border-radius: 9px;
+  flex-shrink: 0;
 }
 
+/* tb-right — compact row */
+.tb-right {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   APP LAYOUT
+═══════════════════════════════════════════════════════ */
+.app { flex-direction: column; padding-top: 52px; }
+.main { width: 100% !important; min-width: 0 !important; padding: 0 !important; overflow-x: hidden; }
+
+/* ═══════════════════════════════════════════════════════
+   SIDEBAR DRAWER
+═══════════════════════════════════════════════════════ */
+.sb {
+  position: fixed !important;
+  top: 0 !important; left: 0 !important; bottom: 0 !important;
+  width: 272px !important;
+  z-index: 900 !important;
+  transform: translateX(-100%);
+  transition: transform 0.26s cubic-bezier(0.4,0,0.2,1) !important;
+  display: flex !important;
+}
+.sb.open {
+  transform: translateX(0) !important;
+  box-shadow: 6px 0 40px rgba(0,0,0,0.2) !important;
+}
+.sb-scroll { padding-bottom: 32px; }
+.sb-logo { padding: 14px 16px; }
+.sb-logo img { max-width: 110px; }
+.sb-item { min-height: 44px; padding: 10px 16px !important; font-size: 14px !important; }
+.sb-icon { font-size: 16px !important; }
+.sb-section-label { font-size: 10px !important; padding: 14px 16px 4px !important; }
+
+/* Dark toggle in sidebar */
+.mob-sb-dark { display: flex !important; }
+.mob-sb-esa { display: none; } /* ESA is in topbar now */
+.mob-sb-settings { display: none; } /* Settings is in topbar now */
+
+/* Overlay */
+#mobOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 850; }
+#mobOverlay.visible { display: block; }
+
+/* ═══════════════════════════════════════════════════════
+   TAB PANELS
+═══════════════════════════════════════════════════════ */
+.tp { padding: 10px 12px 80px !important; } /* bottom padding for FABs */
+
+/* ═══════════════════════════════════════════════════════
+   KPI STRIP — 2 per row, big and readable
+═══════════════════════════════════════════════════════ */
+.ks {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px !important;
+  margin-bottom: 12px !important;
+}
+.kpi { padding: 12px 14px !important; border-radius: 12px !important; }
+.kv { font-size: 22px !important; font-weight: 800 !important; }
+.kl { font-size: 10px !important; }
+.ks2 { font-size: 10px !important; }
+.kpi-accent { width: 3px !important; }
+
+/* ═══════════════════════════════════════════════════════
+   CARDS — clean, breathable
+═══════════════════════════════════════════════════════ */
+.card {
+  border-radius: 12px !important;
+  padding: 14px 14px !important;
+  margin-bottom: 10px !important;
+  overflow: hidden;
+}
+.ct {
+  font-size: 12px !important;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 10px !important;
+  line-height: 1.4;
+}
+/* Export/action buttons in card headers — smaller */
+.ct .tbl-export, .ct button, .ct .cbtn {
+  height: 28px !important;
+  font-size: 10px !important;
+  padding: 0 8px !important;
+  border-radius: 6px !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   GRID LAYOUTS — all collapse to single column
+═══════════════════════════════════════════════════════ */
+.g2, .g3, .g4, .rband {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+}
+.ins-grid { display: flex !important; flex-direction: column !important; gap: 10px !important; }
+
+/* ═══════════════════════════════════════════════════════
+   CHARTS — full width, capped height
+═══════════════════════════════════════════════════════ */
+canvas { max-width: 100% !important; }
+.cw { width: 100% !important; }
+/* Cap chart heights for readability */
+.h150, .h170, .h185, .h210, .h230, .h250, .h270, .h300, .h320, .h350, .h400 {
+  height: 200px !important;
+}
+/* Heatmaps need more height */
+.h300.heatmap, [id*="heatmap"] { height: 260px !important; }
+
+/* ═══════════════════════════════════════════════════════
+   TABLES — horizontal scroll, sticky first col
+═══════════════════════════════════════════════════════ */
+.tw { overflow-x: auto !important; -webkit-overflow-scrolling: touch; max-height: 300px !important; }
+table { min-width: 500px; font-size: 12px !important; }
+th, td { padding: 7px 10px !important; white-space: nowrap; }
+/* First column sticky for context */
+table td:first-child, table th:first-child {
+  position: sticky; left: 0;
+  background: var(--card);
+  z-index: 2;
+  box-shadow: 2px 0 4px rgba(0,0,0,0.06);
+}
+
+/* ═══════════════════════════════════════════════════════
+   STOCK TAB
+═══════════════════════════════════════════════════════ */
+.stk-region-tabs { display: none !important; }
+#stk-mob-region-select {
+  display: block !important;
+  width: 100%; height: 44px;
+  font-size: 14px; border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface); color: var(--text);
+  padding: 0 12px; margin-bottom: 10px;
+}
+.stk-toolbar { flex-wrap: wrap !important; gap: 6px !important; padding: 6px 0 !important; }
+.stk-toolbar select, .stk-toolbar input {
+  flex: 1 1 calc(50% - 3px); min-width: 0;
+  height: 40px !important; font-size: 13px !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   UPLOAD BAR — hide (data from GitHub)
+═══════════════════════════════════════════════════════ */
+.upload-bar, #uploadBar, .drop-zone, .file-upload-row { display: none !important; }
+
+/* ═══════════════════════════════════════════════════════
+   FILTER PANEL — bottom sheet
+═══════════════════════════════════════════════════════ */
+.filter-panel, #filterPanel {
+  position: fixed !important;
+  left: 0 !important; right: 0 !important;
+  bottom: 0 !important; top: auto !important;
+  width: 100% !important; max-height: 80vh !important;
+  border-radius: 20px 20px 0 0 !important;
+  z-index: 851 !important;
+  overflow-y: auto !important; -webkit-overflow-scrolling: touch;
+  transform: translateY(100%);
+  transition: transform 0.28s cubic-bezier(0.4,0,0.2,1) !important;
+  display: block !important;
+  box-shadow: 0 -8px 40px rgba(0,0,0,0.18) !important;
+}
+.filter-panel.open, #filterPanel.open { transform: translateY(0) !important; }
+#filterPanel::before {
+  content: ''; display: block;
+  width: 36px; height: 4px;
+  background: var(--border); border-radius: 2px;
+  margin: 12px auto 0;
+}
+.fp-head { padding: 10px 16px 12px !important; }
+.fp-head-title { font-size: 15px !important; font-weight: 700 !important; }
+.fp-scroll { padding: 0 16px 40px !important; display: flex !important; flex-direction: column !important; gap: 14px !important; }
+.fp-section { flex-direction: column !important; gap: 6px !important; margin-bottom: 0 !important; }
+.fp-label { font-size: 11px !important; font-weight: 600 !important; color: var(--muted2) !important; text-transform: uppercase; letter-spacing: .04em; }
+.ssel, select.ssel { height: 44px !important; font-size: 14px !important; width: 100% !important; border-radius: 10px !important; padding: 0 12px !important; }
+.fp-overlay, #fpOverlay { z-index: 840 !important; background: rgba(0,0,0,0.4) !important; }
+.fp-close { display: none !important; }
+
+/* ═══════════════════════════════════════════════════════
+   FLOATING ACTION BUTTONS (bottom right)
+═══════════════════════════════════════════════════════ */
+#mob-filter-fab {
+  display: flex !important;
+  position: fixed !important;
+  bottom: 20px; right: 16px;
+  z-index: 700;
+  background: var(--blu); color: #fff;
+  border: none; border-radius: 999px;
+  padding: 0 18px; height: 44px;
+  font-size: 13px; font-weight: 700;
+  align-items: center; gap: 6px;
+  box-shadow: 0 4px 20px rgba(37,99,235,0.4);
+  cursor: pointer;
+}
+#mob-filter-fab .fbadge { background: rgba(255,255,255,0.25); color: #fff; border: none; padding: 1px 5px; border-radius: 999px; font-size: 10px; }
+
+/* ═══════════════════════════════════════════════════════
+   SETTINGS PANEL — full screen takeover
+═══════════════════════════════════════════════════════ */
+.settings-panel, #settingsPanel {
+  width: 100% !important; height: 100% !important;
+  max-width: 100% !important; max-height: 100% !important;
+  border-radius: 0 !important;
+  top: 0 !important; left: 0 !important;
+  transform: none !important;
+  flex-direction: column;
+}
+.settings-panel.open, #settingsPanel.open { display: flex !important; }
+.set-modal-topbar { flex-wrap: wrap; gap: 6px; padding: 10px 12px !important; }
+.set-modal-title { font-size: 15px !important; font-weight: 700 !important; }
+.set-tab-btn { font-size: 10px !important; padding: 5px 8px !important; min-height: 34px; }
+.set-topbar-actions { width: 100%; display: flex; gap: 8px; }
+.set-topbar-actions .abtn { flex: 1; height: 44px !important; font-size: 13px !important; }
+.set-modal-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.set-tab-content { padding: 14px !important; }
+
+/* ═══════════════════════════════════════════════════════
+   BUTTONS — 44px touch targets
+═══════════════════════════════════════════════════════ */
+.abtn, .cbtn { min-height: 44px !important; font-size: 13px !important; border-radius: 10px !important; }
+
+/* ═══════════════════════════════════════════════════════
+   INSIGHTS TAB — special layout
+═══════════════════════════════════════════════════════ */
+.ins-grid { gap: 10px !important; }
+.ins-section { border-radius: 12px !important; }
+.ins-sec-head { padding: 12px 14px !important; }
+.ins-items { max-height: none !important; } /* show all items */
+.ins-item { padding: 10px 14px !important; }
+
+/* ═══════════════════════════════════════════════════════
+   SWIPE HINT
+═══════════════════════════════════════════════════════ */
+.swipe-hint { display: block; }
+
+/* ═══════════════════════════════════════════════════════
+   TYPOGRAPHY
+═══════════════════════════════════════════════════════ */
+.footer { font-size: 10px; padding: 12px; }
+
+}
+/* End mobile */
+
+/* Mobile-hide utility — used on text labels next to icons in topbar */
+@media (max-width: 768px) {
+  .mob-hide { display: none !important; }
+}
 </style>
 
 </head>
@@ -1785,6 +1849,9 @@ tbody tr{transition:background .1s}
   </div>
 </div>
 <div class="swipe-hint">Swipe left or right to change tabs</div>
+<button id="mob-filter-fab" style="display:none" onclick="toggleFilters()">
+  ⚡ Filters <span class="fbadge" id="filterBadgeMob">0</span>
+</button>
 
 <!-- LOADER -->
 <div class="lod" id="lod" style="display:none">
@@ -1819,7 +1886,7 @@ tbody tr{transition:background .1s}
   <div class="tb-left">
     <button class="mob-toggle" id="mobMenuBtn" onclick="toggleMobMenu()">☰</button>
     <div class="tb-brand">
-      <span class="tb-brand-name">CRO Intelligence Hub</span>
+      <span class="tb-brand-name" id="tbBrandName">CRO Intelligence Hub</span>
       <span class="tb-brand-sub">Reading Eggs Bookshop</span>
     </div>
   </div>
@@ -1858,8 +1925,8 @@ tbody tr{transition:background .1s}
     <button class="cust-btn" id="custBtn" onclick="toggleCustomize()" title="Rearrange dashboard blocks">
       ⠿ Layout
     </button>
-    <button class="thbtn" id="settingsBtn" onclick="toggleSettings()" title="Settings & Financials">
-      ⚙ Settings
+    <button class="thbtn" id="settingsBtn" onclick="toggleSettings()" title="Settings">
+      ⚙<span class="mob-hide"> Settings</span>
     </button>
     <button class="filter-btn" id="filterBtn" onclick="toggleFilters()">
       ⚡ Filters <span class="fbadge" id="filterBadge">0</span>
@@ -1920,6 +1987,22 @@ tbody tr{transition:background .1s}
 
 
 
+      <!-- MOBILE ONLY — sidebar controls -->
+      <div class="mob-sb-esa" style="display:none;padding:12px 16px;border-top:1px solid var(--border);margin-top:8px">
+        <button class="esa-toggle" style="width:100%;justify-content:center;height:44px;font-size:14px" onclick="toggleESA();closeMobMenu()">
+          🔥 <span id="esaToggleLblSb">ESA On</span>
+        </button>
+      </div>
+      <div class="mob-sb-settings" style="display:none;padding:8px 16px 4px">
+        <button class="thbtn" style="width:100%;justify-content:center;height:44px;font-size:14px;border-radius:10px" onclick="toggleSettings();closeMobMenu()">
+          ⚙ Settings
+        </button>
+      </div>
+      <div class="mob-sb-dark" style="display:none;padding:4px 16px 16px">
+        <button class="thbtn" style="width:100%;justify-content:center;height:44px;font-size:14px;border-radius:10px" onclick="toggleTheme()">
+          <span id="ticSb">🌙</span> <span id="tlblSb">Dark</span>
+        </button>
+      </div>
     </div><!-- /sb-scroll -->
 
 
@@ -3109,6 +3192,11 @@ var dk=function(){return document.documentElement.getAttribute('data-theme')==='
 // ═══════════════════════════════════════════════════════
 // LOADING UI
 // ═══════════════════════════════════════════════════════
+  // Sync sidebar dark toggle label
+  var ticSb=document.getElementById('ticSb'), tlblSb=document.getElementById('tlblSb');
+  if(ticSb) ticSb.textContent=document.getElementById('tic').textContent;
+  if(tlblSb) tlblSb.textContent=document.getElementById('tlbl').textContent;
+
 function showLoader(msg){
   var l=document.getElementById('lod');
   l.style.display='flex';
@@ -3834,13 +3922,13 @@ function toggleFilters(){
   else{
     panel.classList.add('open');
     overlay.classList.add('show');
-    document.getElementById('filterBtn').classList.add('active');
+    var fb=document.getElementById('filterBtn');
+    if(fb) fb.classList.add('active');
   }
 }
 function closeFilters(){
-  document.getElementById('filterPanel').classList.remove('open');
-  document.getElementById('fpOverlay').classList.remove('show');
-  // Keep filter button active if filters are applied
+  var fp=document.getElementById('filterPanel');if(fp)fp.classList.remove('open');
+  var fo=document.getElementById('fpOverlay');if(fo)fo.classList.remove('show');
   updateFilterBadge();
 }
 
@@ -3976,6 +4064,10 @@ function updateFilterBadge(){
 
 // ── COMPARISON MODE ──────────────────────────────────────────────────────────
 var compMode='prior'; // 'prior' | 'ly' | 'none'
+  // Sync to mobile FAB
+  var mobBadge = document.getElementById('filterBadgeMob');
+  var mainBadge = document.getElementById('filterBadge');
+  if(mobBadge && mainBadge) mobBadge.textContent = mainBadge.textContent;
 
 function setCompMode(mode){
   compMode=mode;
@@ -4000,6 +4092,7 @@ function setCompMode(mode){
 }
 function rAll(){
   var _land=document.getElementById("land"); if(_land) _land.style.display="none";
+  if(typeof hideMobLoading==="function") hideMobLoading();
   try{updateFilterBadge();}catch(e){}
   try{updateTbKpis();}catch(e){}
   if(aTab==='overview')try{updateTargetBar();}catch(e){}
@@ -7417,6 +7510,9 @@ function toggleESA(){
 // ═══════════════════════════════════════════════════════
 var custMode=false;
 var dragSrc=null;
+  // Sync sidebar ESA label
+  var sbLbl = document.getElementById('esaToggleLblSb');
+  if(sbLbl) sbLbl.textContent = document.getElementById('esaToggleLbl').textContent;
 
 function toggleCustomize(){
   custMode=!custMode;
@@ -10451,26 +10547,58 @@ var GITHUB_FILES = [
 ];
 
 function setStartupStep(msg, pct){
-  // Update startup splash card
+  // Desktop startup card
   var step = document.getElementById('startupStep');
   var bar  = document.getElementById('startupBar');
   if(step) step.textContent = msg;
   if(bar)  bar.style.width  = pct + '%';
-  // Also update the loader if visible
+  // Loader overlay
   var lodtx = document.getElementById('lodtx');
   var lodBar = document.getElementById('lodBar');
   if(lodtx) lodtx.textContent = msg;
   if(lodBar) lodBar.style.width = pct + '%';
+  // Mobile progress card — update directly, no patching needed
+  var mobStep = document.getElementById('mobStartupStep');
+  var mobBar  = document.getElementById('mobStartupBar');
+  if(mobStep) mobStep.textContent = msg;
+  if(mobBar)  mobBar.style.width  = pct + '%';
 }
 
 function addStartupLog(icon, msg, ok){
+  var color = ok===false?'var(--red)':ok===true?'var(--grn)':'var(--muted2)';
+  var rowHtml = '<div style="display:flex;align-items:center;gap:8px">'+
+    '<span style="font-size:13px">'+icon+'</span>'+
+    '<span style="color:'+color+'">'+msg+'</span></div>';
+  // Desktop log
   var log = document.getElementById('startupLog');
-  if(!log) return;
-  var row = document.createElement('div');
-  row.style.cssText = 'display:flex;align-items:center;gap:8px';
-  row.innerHTML = '<span style="font-size:14px">'+icon+'</span>' +
-    '<span style="color:'+(ok===false?'var(--red)':ok===true?'var(--grn)':'var(--muted2)')+'">'+msg+'</span>';
-  log.appendChild(row);
+  if(log){ var el=document.createElement('div'); el.innerHTML=rowHtml; log.appendChild(el.firstChild); }
+  // Mobile log — update directly
+  var mobLog = document.getElementById('mobStartupLog');
+  if(mobLog){ var el2=document.createElement('div'); el2.innerHTML=rowHtml; mobLog.appendChild(el2.firstChild); }
+}
+
+var CSV_CACHE_TTL = 4 * 60 * 60 * 1000; // 4 hours in ms
+
+function getCachedCSV(key){
+  try{
+    var raw = localStorage.getItem('csv_cache_' + key);
+    if(!raw) return null;
+    var obj = JSON.parse(raw);
+    if(Date.now() - obj.ts > CSV_CACHE_TTL) return null; // expired
+    return obj.text;
+  }catch(e){ return null; }
+}
+
+function setCachedCSV(key, text){
+  try{
+    localStorage.setItem('csv_cache_' + key, JSON.stringify({ts: Date.now(), text: text}));
+  }catch(e){
+    // localStorage full — clear CSV caches and try again
+    try{
+      Object.keys(localStorage).forEach(function(k){ if(k.indexOf('csv_cache_')===0) localStorage.removeItem(k); });
+      localStorage.setItem('csv_cache_' + key, JSON.stringify({ts: Date.now(), text: text}));
+    }catch(e2){}
+  }
 }
 
 function fetchFromGithub(onComplete){
@@ -10499,12 +10627,14 @@ function fetchFromGithub(onComplete){
   var log = document.getElementById('startupLog');
   if(log) log.innerHTML = '';
 
-  function setFetchStatus(type,ok){
+  function setFetchStatus(type,ok,fromCache){
     var m = FILE_META[type]||{icon:'📄',label:type};
     var statusMap={orders:'O',products:'P',carts:'Carts',customers:'Custs',source:'S'};
     var el = statusMap[type]?document.getElementById('upl'+statusMap[type]+'Status'):null;
-    if(el){ el.textContent=ok?'\u2713 Loaded':'Not found'; el.style.color=ok?'var(--grn)':'var(--red)'; }
-    addStartupLog(ok ? '\u2705' : '\u26a0\ufe0f', m.label + (ok ? ' loaded successfully' : ' \u2014 not found in repo'), ok);
+    var lbl = ok?(fromCache?'\u2713 Cached':'\u2713 Loaded'):'Not found';
+    if(el){ el.textContent=lbl; el.style.color=ok?'var(--grn)':'var(--red)'; }
+    var logMsg = m.label+(ok?(fromCache?' \u2014 from cache':' \u2014 fetched from GitHub'):' \u2014 not found');
+    addStartupLog(ok?'\u2705':'\u26a0\ufe0f', logMsg, ok);
   }
 
   GITHUB_FILES.forEach(function(file, i){
@@ -10513,25 +10643,38 @@ function fetchFromGithub(onComplete){
       setStartupStep(STEPS[stepIdx].msg, STEPS[stepIdx].pct);
     }, i * 80);
 
-    fetch(file.url+'?t='+Date.now())
+    // Try cache first
+    var cached = getCachedCSV(file.type);
+    if(cached){
+      handleNewData(file.type, parseCSVFast(cached));
+      setFetchStatus(file.type, true, true); // true = from cache
+      done++;
+      if(done === total){
+        setStartupStep('Dashboard ready \u2014 opening now\u2026', 100);
+        setTimeout(function(){ if(onComplete) onComplete(); }, 300);
+      }
+      return;
+    }
+
+    // Not cached — fetch from CDN
+    fetch(file.url)
       .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
       .then(function(text){
         handleNewData(file.type, parseCSVFast(text));
-        setFetchStatus(file.type, true);
+        setCachedCSV(file.type, text); // cache for next time
+        setFetchStatus(file.type, true, false);
         done++;
         if(done === total){
           setStartupStep(STEPS[STEPS.length-1].msg, 95);
           setTimeout(function(){
             setStartupStep('Dashboard ready \u2014 opening now\u2026', 100);
-            setTimeout(function(){
-              if(onComplete) onComplete();
-            }, 400);
+            setTimeout(function(){ if(onComplete) onComplete(); }, 400);
           }, 300);
         }
       })
       .catch(function(err){
         console.warn('Fetch failed:', file.url, err);
-        setFetchStatus(file.type, false);
+        setFetchStatus(file.type, false, false);
         done++;
         if(done === total){
           setStartupStep('Data loaded \u2014 some files missing from repo', 95);
@@ -10544,6 +10687,7 @@ function fetchFromGithub(onComplete){
 function refreshGithubData(){
   var btn=document.getElementById('githubRefreshBtn');
   if(btn){btn.disabled=true;btn.textContent='Refreshing…';}
+  try{ Object.keys(localStorage).forEach(function(k){ if(k.indexOf('csv_cache_')===0) localStorage.removeItem(k); }); }catch(e){}
   rawO=[];rawS=[];rawCarts=[];rawCusts=[];rawP=[];
   lO=false;lP=false;lS=false;lCarts=false;lCusts=false;
   fetchFromGithub(function(){
@@ -11108,30 +11252,7 @@ function hideMobLoading(){
 
 // Hook setStartupStep to also update mobile progress UI
 var _origSetStartupStep = null;
-function initMobProgressHook(){
-  // Patch setStartupStep (defined in main script) to mirror to mobile UI
-  var mainSetStartup = window.setStartupStep;
-  window.setStartupStep = function(msg, pct){
-    if(mainSetStartup) mainSetStartup(msg, pct);
-    // Mirror to mobile progress card
-    var mobStep = document.getElementById('mobStartupStep');
-    var mobBar  = document.getElementById('mobStartupBar');
-    if(mobStep) mobStep.textContent = msg;
-    if(mobBar)  mobBar.style.width  = pct + '%';
-  };
-  // Mirror addStartupLog to mobile
-  var mainAddLog = window.addStartupLog;
-  window.addStartupLog = function(icon, msg, ok){
-    if(mainAddLog) mainAddLog(icon, msg, ok);
-    var mobLog = document.getElementById('mobStartupLog');
-    if(!mobLog) return;
-    var row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:8px';
-    row.innerHTML = '<span style="font-size:13px">'+icon+'</span>' +
-      '<span style="color:'+(ok===false?'var(--red)':ok===true?'var(--grn)':'var(--muted2)')+'">'+msg+'</span>';
-    mobLog.appendChild(row);
-  };
-}
+function initMobProgressHook(){ /* mobile progress handled by main script */ }
 
 // ── Overlay for sidebar ──────────────────────────────────────────────────────
 function openMobMenu(){
@@ -11280,6 +11401,17 @@ function initMobile(){
   initMobProgressHook();
   initStockMobDropdown();
   injectDarkModeIntoSettings();
+  // Update brand name on mobile - shorter
+  var bn = document.getElementById('tbBrandName');
+  if(bn) bn.textContent = 'Bookshop';
+  // Sync ESA + dark labels to sidebar
+  var esaSb = document.getElementById('esaToggleLblSb');
+  var esaMain = document.getElementById('esaToggleLbl');
+  if(esaSb && esaMain) esaSb.textContent = esaMain.textContent;
+  var ticSb = document.getElementById('ticSb'), tlblSb = document.getElementById('tlblSb');
+  var ticMain = document.getElementById('tic'), tlblMain = document.getElementById('tlbl');
+  if(ticSb && ticMain) ticSb.textContent = ticMain.textContent;
+  if(tlblSb && tlblMain) tlblSb.textContent = tlblMain.textContent;
   // Show swipe hint on first visit
   if(!localStorage.getItem('mob_swipe_seen')){
     var hint = document.querySelector('.swipe-hint');
