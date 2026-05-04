@@ -3470,7 +3470,12 @@ function preProcess(cb){
       _sl.includes('refund')||_sl==='disputed'||_sl==='manual verification required');
     row._qty=parseInt(row['Total Quantity']||0)||0;
     row._ref=parseFloat(String(row['Refund Amount']||0).replace(/[^\d.\-]/g,''))||0;
-    row._email=(row['Customer Email']||row['Billing Email']||'').toLowerCase().trim();
+    // _email is used throughout for customer identity (new vs returning, retention, LTV)
+    // With PII sanitisation, Customer Email is removed — use Customer ID instead
+    // Customer ID is a stable numeric identifier kept in sanitised exports
+    var _custEmail=(row['Customer Email']||row['Billing Email']||'').toLowerCase().trim();
+    var _custId=String(row['Customer ID']||'').trim();
+    row._email=_custEmail||(_custId?'cid_'+_custId:'');
     row._name='';
     row._id=String(row['Order ID']||'');
     row._zero=row._aud<0.01||row._excluded;
@@ -5391,20 +5396,24 @@ function rCustomers(orders){
     return null;
   }
 
-  var optIn=rawCusts.filter(function(c){return c['Receive Review/Abandoned Cart Emails?']==='Y';});
-  var optOut=rawCusts.filter(function(c){return c['Receive Review/Abandoned Cart Emails?']==='N';});
+  var optIn=rawCusts.filter(function(c){return (c['Receive Review/Abandoned Cart Emails?']||'Y').toUpperCase()==='Y';});
+  var optOut=rawCusts.filter(function(c){return (c['Receive Review/Abandoned Cart Emails?']||'').toUpperCase()==='N';});
   var withCredit=rawCusts.filter(function(c){return parseFloat(c['Store Credit']||0)>0;});
   var totalCredit=withCredit.reduce(function(s,c){return s+parseFloat(c['Store Credit']||0);},0);
 
   // Match customers to orders by email
   var emailToOrders={};
+  // Customer identity: _email = 'cid_'+CustomerID in sanitised data, or real email
   paid.forEach(function(r){
-    if(r._email){
-      if(!emailToOrders[r._email])emailToOrders[r._email]=[];
-      emailToOrders[r._email].push(r);
+    var key=r._email||'';
+    if(key){
+      if(!emailToOrders[key])emailToOrders[key]=[];
+      emailToOrders[key].push(r);
     }
   });
-  var matched=rawCusts.filter(function(c){return emailToOrders[c['Email']?.toLowerCase()?.trim()];});
+  var matched=rawCusts.filter(function(c){var cid=String(c['Customer ID']||'').trim();
+      var cem=(c['Email']||'').toLowerCase().trim();
+      return emailToOrders['cid_'+cid]||emailToOrders[cid]||emailToOrders[cem];});
 
   // RFM segments
   var now=new Date();
@@ -5417,7 +5426,7 @@ function rCustomers(orders){
     var recency=dates.length?Math.round((now-dates[0])/86400000):999;
     var frequency=ords.length;
     var monetary=ords.reduce(function(s,r){return s+r._aud;},0);
-    rfmData.push({email:em,name:c['First Name']+' '+c['Last Name'],R:recency,F:frequency,M:monetary,joined:parseDtC(c['Date Joined'])});
+    rfmData.push({email:em,name:String(c['First Name']||c['Last Name']||'Customer #'+String(c['Customer ID']||'')).trim(),R:recency,F:frequency,M:monetary,joined:parseDtC(c['Date Joined'])});
   });
 
   // RFM scoring (1-5 each)
@@ -7114,6 +7123,8 @@ function rRet(orders){
   var totRev=paid.reduce(function(s,r){return s+r._aud;},0)||1;
 
   // Build customer order history
+  // Customer identity: uses hashed Customer ID (email removed for PII compliance)
+  // _email falls back to Customer ID in preProcess when email not available
   var emailMap={};
   paid.forEach(function(r){
     if(!r._email)return;
