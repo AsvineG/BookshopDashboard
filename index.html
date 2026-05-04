@@ -1493,23 +1493,9 @@ tbody tr{transition:background .1s}
   background: var(--surface);
   flex-direction: column;
   align-items: center; justify-content: center;
-  gap: 20px;
 }
 #mob-loading-screen.visible { display: flex; }
-.mob-loading-logo {
-  font-size: 15px; font-weight: 800; color: var(--text);
-  letter-spacing: -0.3px;
-}
-.mob-loading-sub { font-size: 12px; color: var(--muted2); }
-.mob-loading-spinner {
-  width: 36px; height: 36px;
-  border: 3px solid var(--border);
-  border-top-color: var(--blu);
-  border-radius: 50%;
-  animation: mob-spin 0.8s linear infinite;
-}
-.mob-loading-msg { font-size: 13px; color: var(--text); text-align: center; max-width: 260px; line-height: 1.5; }
-@keyframes mob-spin { to { transform: rotate(360deg); } }
+#mob-loading-screen.hidden  { display: none; }
 
 /* Swipe indicator */
 .swipe-hint {
@@ -1783,24 +1769,29 @@ tbody tr{transition:background .1s}
 
 </head>
 <body>
-
 <!-- MOBILE LOADING SCREEN -->
 <div id="mob-loading-screen">
-  <div class="mob-loading-spinner"></div>
-  <div class="mob-loading-logo">CRO Intelligence Hub</div>
-  <div class="mob-loading-msg">Good things take a moment — we're loading your bookshop data right now. Please bear with us.</div>
-  <div class="mob-loading-sub">Reading Eggs Bookshop · 3P Learning</div>
+  <div style="width:100%;max-width:340px;padding:0 24px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--grn);margin-bottom:14px;text-align:center">Reading Eggs Bookshop</div>
+    <div style="font-size:24px;font-weight:800;color:var(--text);letter-spacing:-.03em;margin-bottom:8px;text-align:center">CRO Intelligence Hub</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:28px;text-align:center">Connecting to your data repository&hellip;</div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;box-shadow:var(--shadow-xs)">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px" id="mobStartupStep">Initialising&hellip;</div>
+      <div style="background:var(--border);border-radius:999px;height:6px;overflow:hidden;margin-bottom:14px">
+        <div id="mobStartupBar" style="height:100%;background:var(--grn);border-radius:999px;width:0%;transition:width 0.4s ease"></div>
+      </div>
+      <div id="mobStartupLog" style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted2)"></div>
+    </div>
+  </div>
 </div>
-
-<!-- SWIPE HINT -->
 <div class="swipe-hint">Swipe left or right to change tabs</div>
-
 
 <!-- LOADER -->
 <div class="lod" id="lod" style="display:none">
-  <div class="lod-ic">⚙️</div>
+  <div class="lod-ic" id="lodIc">⚙️</div>
   <div class="lod-tx" id="lodtx">Loading…</div>
   <div class="lod-bar"><div class="lod-fill" id="lodBar" style="width:0"></div></div>
+  <div id="lodSub" style="font-size:11px;color:var(--muted2);margin-top:6px;text-align:center;max-width:300px"></div>
 </div>
 
 <!-- Hidden ESA state inputs -->
@@ -1937,74 +1928,19 @@ tbody tr{transition:background .1s}
   <!-- MAIN CONTENT -->
   <div class="main">
 
-    <!-- LANDING -->
-    <div class="land" id="land">
-      <div style="max-width:680px;width:100%;text-align:center">
-        <div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--grn);margin-bottom:12px">Reading Eggs Bookshop</div>
-        <h1 style="font-size:38px;font-weight:800;color:var(--text);letter-spacing:-.03em;line-height:1.1;margin-bottom:12px">CRO Intelligence Hub</h1>
-        <p style="font-size:15px;color:var(--muted);line-height:1.7;margin-bottom:32px">Upload your BigCommerce exports to unlock deep revenue, customer and conversion analytics.<br>All data stays in your browser — never sent anywhere.</p>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:24px">
-          <!-- Required -->
-          <label class="uc uc-required" id="ucO">
-            <input type="file" accept=".csv" onchange="loadFile('orders',this)">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-              <span style="font-size:20px">📦</span>
-              <span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--grn);background:var(--grn-bg);padding:2px 7px;border-radius:4px;border:1px solid var(--grn-border)">Required</span>
-            </div>
-            <div class="uct">Orders Export</div>
-            <div class="ucs">Orders → Export → CSV<br>The core dataset. Upload this first.</div>
-            <div class="ucok">✓ Loaded</div>
-          </label>
-          <!-- Optional group -->
-          <label class="uc" id="ucP">
-            <input type="file" accept=".csv" onchange="loadFile('products',this)">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-              <span style="font-size:20px">🏷️</span>
-              <span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--surface2);padding:2px 7px;border-radius:4px;border:1px solid var(--border)">Optional</span>
-            </div>
-            <div class="uct">Products Export</div>
-            <div class="ucs">Products → Export → CSV<br>Enables product performance tab.</div>
-            <div class="ucok">✓ Loaded</div>
-          </label>
-          <label class="uc" id="ucS">
-            <input type="file" accept=".csv" onchange="loadFile('source',this)">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-              <span style="font-size:20px">🔗</span>
-              <span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--surface2);padding:2px 7px;border-radius:4px;border:1px solid var(--border)">Optional</span>
-            </div>
-            <div class="uct">Orders by Source</div>
-            <div class="ucs">Analytics → Orders by Source → CSV</div>
-            <div class="ucok">✓ Loaded</div>
-          </label>
-          <label class="uc" id="ucC">
-            <input type="file" accept=".csv" onchange="loadFile('carts',this)">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-              <span style="font-size:20px">🛒</span>
-              <span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--surface2);padding:2px 7px;border-radius:4px;border:1px solid var(--border)">Optional</span>
-            </div>
-            <div class="uct">Abandoned Carts</div>
-            <div class="ucs">Analytics → Abandoned Carts → CSV</div>
-            <div class="ucok">✓ Loaded</div>
-          </label>
-          <label class="uc" id="ucCU">
-            <input type="file" accept=".csv" onchange="loadFile('customers',this)">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-              <span style="font-size:20px">👤</span>
-              <span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--surface2);padding:2px 7px;border-radius:4px;border:1px solid var(--border)">Optional</span>
-            </div>
-            <div class="uct">Customers CSV</div>
-            <div class="ucs">Customers → Export → CSV</div>
-            <div class="ucok">✓ Loaded</div>
-          </label>
-        </div>
-
-        <div style="display:flex;align-items:center;justify-content:center;gap:16px;font-size:12px;color:var(--muted)">
-          <span>🔒 Data never leaves your browser</span>
-          <span>•</span>
-          <span>💾 Auto-saved locally</span>
-          <span>•</span>
-          <span>⚡ No server required</span>
+    <!-- STARTUP SPLASH — auto-dismissed, replaced by progress loader -->
+    <div class="land" id="land" style="background:var(--surface);display:flex;align-items:center;justify-content:center;min-height:100vh">
+      <div style="max-width:480px;width:100%;text-align:center;padding:40px 24px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--grn);margin-bottom:16px">Reading Eggs Bookshop</div>
+        <h1 style="font-size:32px;font-weight:800;color:var(--text);letter-spacing:-.03em;line-height:1.1;margin-bottom:12px">CRO Intelligence Hub</h1>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:32px">Connecting to your data repository&hellip;</p>
+        <!-- Progress card -->
+        <div id="startupCard" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;text-align:left;box-shadow:var(--shadow-xs)">
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:16px" id="startupStep">Initialising&hellip;</div>
+          <div style="background:var(--border);border-radius:999px;height:6px;overflow:hidden;margin-bottom:16px">
+            <div id="startupBar" style="height:100%;background:var(--grn);border-radius:999px;width:0%;transition:width 0.4s ease"></div>
+          </div>
+          <div id="startupLog" style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted2)"></div>
         </div>
       </div>
     </div>
@@ -3646,7 +3582,9 @@ function clf(){
 // TAB / RENDER
 // ═══════════════════════════════════════════════════════
 function showDash(){
-  document.getElementById('land').style.display='none';
+  // Keep land visible during startup — it now shows the progress card
+  // It hides itself once fetchFromGithub completes via rAll()
+  var landEl = document.getElementById('land');
   document.getElementById('sidebar').style.display='flex';
   var db=document.getElementById('dataBar');if(db)db.style.display='flex';
   var aiFab=document.getElementById('aiFab');if(aiFab)aiFab.classList.add('show');
@@ -3665,6 +3603,11 @@ function showDash(){
   setTimeout(function(){
     try{ rInsights(fOrders()); }catch(e){ console.error('rInsights:',e); }
   }, 200);
+  // If data already loaded (snapshot), hide startup splash immediately
+  if(window.lO) {
+    var landEl2 = document.getElementById('land');
+    if(landEl2) landEl2.style.display='none';
+  }
 }
 function sTab(t,el){
   // Clear all sidebar active states
@@ -4056,6 +3999,7 @@ function setCompMode(mode){
   rAll();
 }
 function rAll(){
+  var _land=document.getElementById("land"); if(_land) _land.style.display="none";
   try{updateFilterBadge();}catch(e){}
   try{updateTbKpis();}catch(e){}
   if(aTab==='overview')try{updateTargetBar();}catch(e){}
@@ -8104,35 +8048,9 @@ function saveSettings(){
   if(pcu) SETTINGS.prefs.currency = pcu.value;
   // Persist to localStorage
   try{ localStorage.setItem('re_settings', JSON.stringify(SETTINGS)); }catch(e){}
-  // Sync to JSONBin — password protected
-  var _pwd = prompt('Enter admin password to sync settings:');
-  if(_pwd === null) return; // cancelled
-  var _hash = Array.from(new Uint8Array(
-    new TextEncoder ? 
-    (function(){ var h=''; new TextEncoder().encode(_pwd).forEach(function(b){ h+=('0'+b.toString(16)).slice(-2); }); return h; })() :
-    []
-  )).join('');
-  // Use SubtleCrypto for proper SHA-256
-  crypto.subtle.digest('SHA-256', new TextEncoder().encode(_pwd)).then(function(buf){
-    var hash = Array.from(new Uint8Array(buf)).map(function(b){ return ('0'+b.toString(16)).slice(-2); }).join('');
-    if(hash !== 'ef9a8bd2fae60b5602309ac6ee35ef74ebd379a28025e60f1c155c07e40ef6d8'){
-      alert('Incorrect password. Settings saved locally only.');
-      var saved = document.getElementById('settingsSaved');
-      if(saved){ saved.textContent='✓ Saved locally only'; saved.style.display='block'; setTimeout(function(){ saved.style.display='none'; saved.textContent='✓ Settings saved'; },2500); }
-      return;
-    }
-    syncSettingsToCloud(function(ok){
-      var saved = document.getElementById('settingsSaved');
-      if(saved){
-        saved.textContent = ok ? '✓ Settings saved & synced' : '✓ Settings saved (offline)';
-        saved.style.display='block';
-        setTimeout(function(){ saved.style.display='none'; saved.textContent='✓ Settings saved'; }, 3000);
-      }
-    });
-  }).catch(function(){
-    // Fallback for browsers without SubtleCrypto — simple check
-    alert('Sync not available in this browser. Settings saved locally.');
-  });
+  // Show saved indicator
+  var saved = document.getElementById('settingsSaved');
+  if(saved){ saved.style.display='block'; setTimeout(function(){ saved.style.display='none'; }, 2000); }
 }
 
 function applySettings(){
@@ -8151,31 +8069,28 @@ function applySettings(){
   }
 }
 
-function applyParsedSettings(parsed){
-  if(!parsed) return;
-  if(parsed.spend)     SETTINGS.spend     = parsed.spend;
-  if(parsed.margin)    SETTINGS.margin    = parsed.margin;
-  if(parsed.prefs)     SETTINGS.prefs     = parsed.prefs;
-  if(parsed.regionMap) SETTINGS.regionMap = parsed.regionMap;
-  if(parsed.visitors)  SETTINGS.visitors  = parsed.visitors;
-  if(parsed.bundleMap) SETTINGS.bundleMap = parsed.bundleMap;
-  else if(!SETTINGS.bundleMap) SETTINGS.bundleMap = {au:{},uk:{},us:{}};
-  if(!SETTINGS.regionMap || Object.keys(SETTINGS.regionMap).length === 0){
-    SETTINGS.regionMap = buildDefaultRegionMap();
-  }
-  if(SETTINGS.visitors && SETTINGS.visitors.length) applyVisitorsToRawV();
-}
-
 function loadSavedSettings(){
-  // Always apply localStorage first as fast fallback
   try{
     var saved = localStorage.getItem('re_settings');
-    if(saved) applyParsedSettings(JSON.parse(saved));
+    if(saved){
+      var parsed = JSON.parse(saved);
+      if(parsed.spend) SETTINGS.spend = parsed.spend;
+      if(parsed.margin) SETTINGS.margin = parsed.margin;
+      if(parsed.prefs) SETTINGS.prefs = parsed.prefs;
+      if(parsed.regionMap) SETTINGS.regionMap = parsed.regionMap;
+      if(parsed.visitors) SETTINGS.visitors = parsed.visitors;
+      if(parsed.bundleMap) SETTINGS.bundleMap = parsed.bundleMap;
+      else if(!SETTINGS.bundleMap) SETTINGS.bundleMap = {au:{},uk:{},us:{}};
+    }
   }catch(e){}
+  // Init regionMap from stock data if not yet saved
   if(!SETTINGS.regionMap || Object.keys(SETTINGS.regionMap).length === 0){
     SETTINGS.regionMap = buildDefaultRegionMap();
   }
-  if(SETTINGS.visitors && SETTINGS.visitors.length) applyVisitorsToRawV();
+  // Apply visitors from settings
+  if(SETTINGS.visitors && SETTINGS.visitors.length){
+    applyVisitorsToRawV();
+  }
 }
 
 // ── Financial calculations ─────────────────────────────────────────────────────
@@ -10517,204 +10432,292 @@ ${data.conversion ? '<div class="section-note">Conversion rate: <strong>' + data
   This report was generated automatically from the CRO Intelligence Hub &mdash; Reading Eggs Bookshop &mdash; ${today}
 </p>
 
-<script>
-// ═══════════════════════════════════════════════════════════════════════════
-// MOBILE — Loading screen, swipe navigation, stock dropdown, dark mode move
-// ═══════════════════════════════════════════════════════════════════════════
 
-function isMobile(){ return window.innerWidth <= 768; }
-
-// ── Mobile loading screen ────────────────────────────────────────────────────
-function showMobLoading(){
-  if(!isMobile()) return;
-  var el = document.getElementById('mob-loading-screen');
-  if(el){ el.classList.remove('hidden'); el.classList.add('visible'); }
-}
-function hideMobLoading(){
-  var el = document.getElementById('mob-loading-screen');
-  if(el){ el.classList.remove('visible'); el.classList.add('hidden'); }
+</body></html>`;
 }
 
-// ── Overlay for sidebar ──────────────────────────────────────────────────────
-function openMobMenu(){
-  var sb = document.getElementById('sidebar');
-  var ov = document.getElementById('mobOverlay');
-  if(sb) sb.classList.add('open');
-  if(ov) ov.classList.add('visible');
-  document.body.style.overflow = 'hidden';
-}
-function closeMobMenu(){
-  var sb = document.getElementById('sidebar');
-  var ov = document.getElementById('mobOverlay');
-  if(sb) sb.classList.remove('open');
-  if(ov) ov.classList.remove('visible');
-  document.body.style.overflow = '';
-}
-// Override existing toggleMobMenu
-window.toggleMobMenu = function(){
-  var sb = document.getElementById('sidebar');
-  if(sb && sb.classList.contains('open')) closeMobMenu();
-  else openMobMenu();
-};
 
-// Close menu when nav item clicked on mobile
-document.addEventListener('click', function(e){
-  if(!isMobile()) return;
-  var item = e.target.closest('.sb-item');
-  if(item) closeMobMenu();
-});
 
-// ── Stock region dropdown on mobile ──────────────────────────────────────────
-function initStockMobDropdown(){
-  var existing = document.getElementById('stk-mob-region-select');
-  if(existing) return;
-  var panel = document.getElementById('stk-panel-all');
-  if(!panel) return;
-  var sel = document.createElement('select');
-  sel.id = 'stk-mob-region-select';
-  sel.style.display = 'none'; // shown by CSS on mobile
-  sel.innerHTML = [
-    '<option value="all">All Regions</option>',
-    '<option value="au">🇦🇺 Australia</option>',
-    '<option value="uk">🇬🇧 United Kingdom</option>',
-    '<option value="us">🇺🇸 United States</option>'
-  ].join('');
-  sel.addEventListener('change', function(){
-    // Find the corresponding tab button and click it
-    var btn = document.getElementById('stk-tab-' + this.value);
-    if(btn) { btn.click(); }
-  });
-  // Insert before the region tabs
-  var tabs = document.querySelector('.stk-region-tabs');
-  if(tabs) tabs.parentNode.insertBefore(sel, tabs);
+// ═══════════════════════════════════════════════════════
+// GITHUB AUTO-FETCH
+// ═══════════════════════════════════════════════════════
+var GITHUB_BASE = 'https://raw.githubusercontent.com/AsvineG/BookshopDashboard/main/';
+var GITHUB_FILES = [
+  { url: GITHUB_BASE + 'orders.csv',    type: 'orders'    },
+  { url: GITHUB_BASE + 'products.csv',  type: 'products'  },
+  { url: GITHUB_BASE + 'carts.csv',     type: 'carts'     },
+  { url: GITHUB_BASE + 'customers.csv', type: 'customers' },
+  { url: GITHUB_BASE + 'sources.csv',   type: 'source'    }
+];
+
+function setStartupStep(msg, pct){
+  // Update startup splash card
+  var step = document.getElementById('startupStep');
+  var bar  = document.getElementById('startupBar');
+  if(step) step.textContent = msg;
+  if(bar)  bar.style.width  = pct + '%';
+  // Also update the loader if visible
+  var lodtx = document.getElementById('lodtx');
+  var lodBar = document.getElementById('lodBar');
+  if(lodtx) lodtx.textContent = msg;
+  if(lodBar) lodBar.style.width = pct + '%';
 }
 
-// Sync dropdown when tab changes
-var _origStkRegion = window.stkRegion;
-window.stkRegion = function(region, btn){
-  if(_origStkRegion) _origStkRegion(region, btn);
-  var sel = document.getElementById('stk-mob-region-select');
-  if(sel) sel.value = region;
-};
+function addStartupLog(icon, msg, ok){
+  var log = document.getElementById('startupLog');
+  if(!log) return;
+  var row = document.createElement('div');
+  row.style.cssText = 'display:flex;align-items:center;gap:8px';
+  row.innerHTML = '<span style="font-size:14px">'+icon+'</span>' +
+    '<span style="color:'+(ok===false?'var(--red)':ok===true?'var(--grn)':'var(--muted2)')+'">'+msg+'</span>';
+  log.appendChild(row);
+}
 
-// ── Swipe navigation ─────────────────────────────────────────────────────────
-(function(){
-  var TAB_ORDER = [
-    'insights','overview',
-    'regional','payments','esa',
-    'products','basket','coupons',
-    'customers','retention','abandoned',
-    'source','cohort','geo','usdive','delivery','device','orders',
-    'financials','stock'
+function fetchFromGithub(onComplete){
+  var total = GITHUB_FILES.length;
+  var done  = 0;
+  var FILE_META = {
+    orders:    { icon:'📦', label:'Orders' },
+    products:  { icon:'🏷️', label:'Products' },
+    carts:     { icon:'🛒', label:'Abandoned Carts' },
+    customers: { icon:'👥', label:'Customers' },
+    source:    { icon:'🔗', label:'Sources' }
+  };
+  var STEPS = [
+    { pct:5,  msg:'Connecting to repository\u2026' },
+    { pct:15, msg:'Loading orders data\u2026' },
+    { pct:30, msg:'Loading product catalogue\u2026' },
+    { pct:50, msg:'Loading cart data\u2026' },
+    { pct:65, msg:'Loading customer records\u2026' },
+    { pct:80, msg:'Loading source attribution\u2026' },
+    { pct:90, msg:'Processing and building dashboard\u2026' }
   ];
 
-  var touchStartX = 0, touchStartY = 0, currentTab = 'insights';
+  setStartupStep(STEPS[0].msg, STEPS[0].pct);
 
-  // Track current tab
-  var _origSTab = window.sTab;
-  window.sTab = function(tab, el){
-    currentTab = tab;
-    if(_origSTab) _origSTab(tab, el);
-  };
+  // Clear previous log
+  var log = document.getElementById('startupLog');
+  if(log) log.innerHTML = '';
 
-  function getAdjacentTab(dir){
-    var idx = TAB_ORDER.indexOf(currentTab);
-    if(idx < 0) return null;
-    var next = idx + dir;
-    if(next < 0 || next >= TAB_ORDER.length) return null;
-    return TAB_ORDER[next];
+  function setFetchStatus(type,ok){
+    var m = FILE_META[type]||{icon:'📄',label:type};
+    var statusMap={orders:'O',products:'P',carts:'Carts',customers:'Custs',source:'S'};
+    var el = statusMap[type]?document.getElementById('upl'+statusMap[type]+'Status'):null;
+    if(el){ el.textContent=ok?'\u2713 Loaded':'Not found'; el.style.color=ok?'var(--grn)':'var(--red)'; }
+    addStartupLog(ok ? '\u2705' : '\u26a0\ufe0f', m.label + (ok ? ' loaded successfully' : ' \u2014 not found in repo'), ok);
   }
 
-  document.addEventListener('touchstart', function(e){
-    if(!isMobile()) return;
-    // Don't swipe if sidebar is open
-    var sb = document.getElementById('sidebar');
-    if(sb && sb.classList.contains('open')) return;
-    // Don't swipe on scrollable tables
-    if(e.target.closest('table') || e.target.closest('.set-modal-body')) return;
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-  }, {passive: true});
+  GITHUB_FILES.forEach(function(file, i){
+    setTimeout(function(){
+      var stepIdx = Math.min(i+1, STEPS.length-2);
+      setStartupStep(STEPS[stepIdx].msg, STEPS[stepIdx].pct);
+    }, i * 80);
 
-  document.addEventListener('touchend', function(e){
-    if(!isMobile()) return;
-    var sb = document.getElementById('sidebar');
-    if(sb && sb.classList.contains('open')) return;
-    var dx = e.changedTouches[0].clientX - touchStartX;
-    var dy = e.changedTouches[0].clientY - touchStartY;
-    // Only horizontal swipes (more horizontal than vertical, >50px)
-    if(Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    var dir = dx < 0 ? 1 : -1; // swipe left = next, swipe right = prev
-    var next = getAdjacentTab(dir);
-    if(!next) return;
-    var btn = document.querySelector('.sb-item[data-tab="'+next+'"]');
-    if(btn) btn.click();
-  }, {passive: true});
-})();
-
-// ── Dark mode move to settings ───────────────────────────────────────────────
-function moveDarkModeToSettings(){
-  var thBtn = document.getElementById('settingsBtn');
-  // settingsBtn is the dark toggle — on mobile move it inside settings modal
-  if(!isMobile()) return;
-  // Already handled by CSS hiding tb-right buttons except thbtn
+    fetch(file.url+'?t='+Date.now())
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
+      .then(function(text){
+        handleNewData(file.type, parseCSVFast(text));
+        setFetchStatus(file.type, true);
+        done++;
+        if(done === total){
+          setStartupStep(STEPS[STEPS.length-1].msg, 95);
+          setTimeout(function(){
+            setStartupStep('Dashboard ready \u2014 opening now\u2026', 100);
+            setTimeout(function(){
+              if(onComplete) onComplete();
+            }, 400);
+          }, 300);
+        }
+      })
+      .catch(function(err){
+        console.warn('Fetch failed:', file.url, err);
+        setFetchStatus(file.type, false);
+        done++;
+        if(done === total){
+          setStartupStep('Data loaded \u2014 some files missing from repo', 95);
+          setTimeout(function(){ if(onComplete) onComplete(); }, 600);
+        }
+      });
+  });
 }
 
-// ── Move dark mode toggle to Settings modal on mobile ────────────────────────
-function injectDarkModeIntoSettings(){
-  // Check if already injected
-  if(document.getElementById('mob-dark-toggle-row')) return;
-  var prefTab = document.getElementById('setContent-prefs');
-  if(!prefTab) return;
-  var row = document.createElement('div');
-  row.id = 'mob-dark-toggle-row';
-  row.className = 'set-pref-row';
-  row.style.cssText = 'display:none'; // shown by CSS on mobile
-  row.innerHTML = '<div><div class="set-pref-label">Dark Mode</div><div class="set-pref-sub">Toggle light/dark theme</div></div>' +
-    '<button class="thbtn" onclick="document.getElementById(\'settingsBtn\')&&document.getElementById(\'settingsBtn\').click()" style="pointer-events:auto">🌙 Toggle</button>';
-  prefTab.insertBefore(row, prefTab.firstChild);
+function refreshGithubData(){
+  var btn=document.getElementById('githubRefreshBtn');
+  if(btn){btn.disabled=true;btn.textContent='Refreshing…';}
+  rawO=[];rawS=[];rawCarts=[];rawCusts=[];rawP=[];
+  lO=false;lP=false;lS=false;lCarts=false;lCusts=false;
+  fetchFromGithub(function(){
+    if(btn){btn.disabled=false;btn.textContent='↻ Refresh Data from GitHub';}
+    if(typeof rAll==='function')rAll();
+  });
 }
 
-// ── Init all mobile features ─────────────────────────────────────────────────
-function initMobile(){
-  if(!isMobile()) return;
-  showMobLoading();
-  initStockMobDropdown();
-  injectDarkModeIntoSettings();
-  // Show swipe hint on first visit
-  if(!localStorage.getItem('mob_swipe_seen')){
-    var hint = document.querySelector('.swipe-hint');
-    if(hint){ hint.style.display = 'block'; localStorage.setItem('mob_swipe_seen','1'); }
+// ═══════════════════════════════════════════════════════
+// JSONBIN — shared settings sync
+// ═══════════════════════════════════════════════════════
+var JBIN_KEY='$2a$10$P9i12M.E2QJWAmROLLXYEO8zAVg2x9/l7QQA4lVKeVSKGEfdF/bqG';
+var JBIN_BASE='https://api.jsonbin.io/v3';
+var JBIN_BIN_ID='69f80c3aaaba8821976a869d';
+
+function getJBinId(){return JBIN_BIN_ID||localStorage.getItem('re_jbin_id')||null;}
+function setJBinId(id){JBIN_BIN_ID=id;try{localStorage.setItem('re_jbin_id',id);}catch(e){}}
+
+function syncSettingsToCloud(cb){
+  var id=getJBinId();
+  var url=id?JBIN_BASE+'/b/'+id:JBIN_BASE+'/b';
+  var method=id?'PUT':'POST';
+  var headers={'Content-Type':'application/json','X-Master-Key':JBIN_KEY};
+  if(!id){headers['X-Bin-Name']='BookshopDashboardSettings';headers['X-Bin-Private']='false';}
+  fetch(url,{method:method,headers:headers,body:JSON.stringify(SETTINGS)})
+    .then(function(r){return r.json();})
+    .then(function(d){if(d.metadata&&d.metadata.id)setJBinId(d.metadata.id);if(cb)cb(true);})
+    .catch(function(){if(cb)cb(false);});
+}
+
+function loadSettingsFromCloud(cb){
+  var id=getJBinId();
+  if(!id){if(cb)cb(false);return;}
+  fetch(JBIN_BASE+'/b/'+id+'/latest',{headers:{'X-Master-Key':JBIN_KEY}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d&&d.record){
+        applyParsedSettings(d.record);
+        try{localStorage.setItem('re_settings',JSON.stringify(d.record));}catch(e){}
+        if(cb)cb(true);
+      }else{if(cb)cb(false);}
+    })
+    .catch(function(){if(cb)cb(false);});
+}
+
+function applyParsedSettings(parsed){
+  if(!parsed)return;
+  if(parsed.spend)     SETTINGS.spend=parsed.spend;
+  if(parsed.margin)    SETTINGS.margin=parsed.margin;
+  if(parsed.prefs)     SETTINGS.prefs=parsed.prefs;
+  if(parsed.regionMap) SETTINGS.regionMap=parsed.regionMap;
+  if(parsed.visitors)  SETTINGS.visitors=parsed.visitors;
+  if(parsed.bundleMap) SETTINGS.bundleMap=parsed.bundleMap;
+  else if(!SETTINGS.bundleMap) SETTINGS.bundleMap={au:{},uk:{},us:{}};
+  if(!SETTINGS.regionMap||!Object.keys(SETTINGS.regionMap).length){
+    if(typeof buildDefaultRegionMap==='function') SETTINGS.regionMap=buildDefaultRegionMap();
   }
+  if(SETTINGS.visitors&&SETTINGS.visitors.length&&typeof applyVisitorsToRawV==='function') applyVisitorsToRawV();
 }
 
-// Hook into data load completion to hide loading screen
-var _origFetchFromGithub = window.fetchFromGithub;
-window.fetchFromGithub = function(cb){
-  if(_origFetchFromGithub){
-    _origFetchFromGithub(function(){
-      hideMobLoading();
-      if(cb) cb();
+// ═══════════════════════════════════════════════════════
+// SETTINGS SAVE — password gate for cloud sync
+// ═══════════════════════════════════════════════════════
+var _origSaveSettings = window.saveSettings;
+window.saveSettings = function(){
+  if(_origSaveSettings) _origSaveSettings();
+  try{localStorage.setItem('re_settings',JSON.stringify(SETTINGS));}catch(e){}
+  var _pwd=prompt('Enter admin password to sync settings to cloud for all users:\n(Cancel to save locally only)');
+  if(!_pwd)return;
+  crypto.subtle.digest('SHA-256',new TextEncoder().encode(_pwd)).then(function(buf){
+    var hash=Array.from(new Uint8Array(buf)).map(function(b){return('0'+b.toString(16)).slice(-2);}).join('');
+    if(hash!=='ef9a8bd2fae60b5602309ac6ee35ef74ebd379a28025e60f1c155c07e40ef6d8'){
+      alert('Incorrect password. Settings saved locally only.');
+      return;
+    }
+    syncSettingsToCloud(function(ok){
+      var el=document.getElementById('settingsSaved');
+      if(el){el.textContent=ok?'✓ Synced to cloud':'✓ Saved locally';el.style.display='block';setTimeout(function(){el.style.display='none';},3000);}
     });
-  } else {
-    hideMobLoading();
-    if(cb) cb();
+  }).catch(function(){alert('Sync not supported in this browser.');});
+};
+
+// ═══════════════════════════════════════════════════════
+// EXPORT FUNCTIONS
+// ═══════════════════════════════════════════════════════
+function dlCSV(filename,content){
+  var blob=new Blob([content],{type:'text/csv'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download=filename;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+
+function exportBundlesCSV(){
+  var bundles=(RAW_PRODUCTS||[]).filter(function(p){
+    var nm=(p.name||'').toLowerCase(),sk=(p.sku||'');
+    return p.bundle||/bundle|book pack|working/i.test(nm)||(!sk.match(/^\d/));
+  });
+  var bm=SETTINGS.bundleMap||{au:{},uk:{},us:{}};
+  var maxIsbns=20;
+  ['au','uk','us'].forEach(function(r){Object.values(bm[r]||{}).forEach(function(isbns){maxIsbns=Math.max(maxIsbns,(isbns||[]).length);});});
+  var header=['bundle_sku','bundle_name','region'];
+  for(var i=1;i<=maxIsbns;i++) header.push('isbn_'+i);
+  var rows=[header.join(',')];
+  bundles.forEach(function(p){
+    var regs=[];
+    if(p.stock&&'au'in p.stock)regs.push('au');
+    if(p.stock&&'uk'in p.stock)regs.push('uk');
+    if(p.stock&&'us'in p.stock)regs.push('us');
+    if(!regs.length)regs=['au','uk','us'];
+    regs.forEach(function(reg){
+      var ex=(bm[reg]||{})[p.sku]||[];
+      var row=['"'+p.sku+'"','"'+(p.name||'').replace(/"/g,'""')+'"',reg];
+      for(var i=0;i<maxIsbns;i++)row.push(ex[i]||'');
+      rows.push(row.join(','));
+    });
+  });
+  dlCSV('bundles.csv',rows.join('\n'));
+}
+
+function exportRegionMapCSV(){
+  var rm=SETTINGS.regionMap||{};
+  var rows=[['product_id','sku','product_name','au','uk','us'].join(',')];
+  (RAW_PRODUCTS||[]).forEach(function(p){
+    var map=rm[p.id]||{au:'au'in(p.stock||{}),uk:'uk'in(p.stock||{}),us:'us'in(p.stock||{})};
+    rows.push([p.id||'','"'+(p.sku||'')+'"','"'+(p.name||'').replace(/"/g,'""')+'"',
+      map.au?'TRUE':'FALSE',map.uk?'TRUE':'FALSE',map.us?'TRUE':'FALSE'].join(','));
+  });
+  dlCSV('regionmap.csv',rows.join('\n'));
+}
+
+function exportAdSpendCSV(){
+  var spend=SETTINGS.spend||{au:[],uk:[],us:[]};
+  var rows=[['year','month','region','platform','spend_aud'].join(',')];
+  var hasData=false;
+  ['au','uk','us'].forEach(function(reg){
+    (spend[reg]||[]).forEach(function(entry){
+      if(!entry||!entry.month)return;
+      var parts=(entry.month||'').split('-');
+      (entry.platforms||[{platform:'Google',amount:entry.amount||0}]).forEach(function(plat){
+        rows.push([parts[0]||'',parts[1]||'',reg,'"'+(plat.platform||'Google')+'"',plat.amount||0].join(','));
+        hasData=true;
+      });
+    });
+  });
+  if(!hasData){
+    var now=new Date(),fyStart=now.getMonth()>=6?now.getFullYear():now.getFullYear()-1;
+    var plats={au:['Google','Meta'],uk:['Google','Meta'],us:['Google','Meta','Amazon']};
+    for(var m=0;m<12;m++){
+      var d=new Date(fyStart,6+m,1);
+      var yr=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0');
+      ['au','uk','us'].forEach(function(reg){
+        (plats[reg]||['Google']).forEach(function(plat){
+          rows.push([yr,mo,reg,'"'+plat+'"',0].join(','));
+        });
+      });
+    }
   }
-};
+  dlCSV('adspend.csv',rows.join('\n'));
+}
 
-// Also hide on rAll completion as fallback
-var _origRAll = window.rAll;
-window.rAll = function(){
-  hideMobLoading();
-  if(_origRAll) _origRAll();
-};
 
-window.addEventListener('load', function(){
-  initMobile();
+window.addEventListener('load',function(){
+  applyChartDefaults();
+  loadSavedSettings();
+  // Skip landing page entirely — go straight to dashboard
+  showDash();
+  loadSettingsFromCloud(function(){
+    fetchFromGithub(function(){
+      // Re-render with fetched data
+      if(typeof rAll==='function') rAll();
+    });
+  });
 });
-window.addEventListener('resize', function(){
-  if(isMobile()) initMobile();
-});
+
 </script>
 
 <!-- FILTER PANEL -->
@@ -10864,7 +10867,6 @@ window.addEventListener('resize', function(){
     <button class="set-tab-btn"        id="setTab-prefs"    onclick="showSetTab('prefs',this)">🎛 Preferences</button>
     <button class="set-tab-btn"        id="setTab-upload"   onclick="showSetTab('upload',this)">📂 Upload Status</button>
     <div class="set-topbar-actions">
-      <span id="settingsSyncStatus" style="font-size:11px;color:var(--muted2);margin-right:8px"></span>
       <button class="abtn" style="padding:7px 20px;font-size:13px" onclick="applySettings()">✓ Apply &amp; Close</button>
       <button class="fp-close" onclick="closeSettings()">✕</button>
     </div>
@@ -11003,7 +11005,7 @@ window.addEventListener('resize', function(){
             <option value="lm">Last month</option>
             <option value="30">Last 30 days</option>
             <option value="90">Last 90 days</option>
-            <option value="fytd" selected>FY to date</option>
+            <option value="fytd">FY to date</option>
           </select>
         </div>
         <div class="set-pref-row">
@@ -11033,39 +11035,27 @@ window.addEventListener('resize', function(){
       <div class="set-block-sub">Current data loaded into the dashboard. Upload new files via the bar at the bottom of the screen.</div>
 
       <div id="uploadStatusList" class="upload-status-grid"></div>
-
-      <div style="margin-top:28px">
+      <div style="margin-top:16px">
+        <button class="abtn" id="githubRefreshBtn" onclick="refreshGithubData()" style="padding:7px 18px;font-size:13px;background:#1e40af;border-color:#1e40af;color:#fff">&#8635; Refresh Data from GitHub</button>
+      </div>
+      <div style="margin-top:24px">
         <div class="set-block-title" style="margin-bottom:6px">Export Configuration Files</div>
-        <div class="set-block-sub" style="margin-bottom:16px">Download these CSVs, fill them in, then upload to your GitHub repo. The dashboard will auto-load them on next refresh.</div>
-        <div style="display:flex;flex-direction:column;gap:10px">
-
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
-            <div>
-              <div style="font-size:13px;font-weight:600;color:var(--text)">bundles.csv</div>
-              <div style="font-size:11px;color:var(--muted2);margin-top:2px">All bundle products with component ISBN columns — fill in the ISBNs for each bundle</div>
-            </div>
-            <button class="abtn" onclick="exportBundlesCSV()" style="padding:6px 14px;font-size:12px;white-space:nowrap">↓ Export</button>
+        <div class="set-block-sub" style="margin-bottom:12px">Download, fill in, upload to GitHub repo.</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+            <div><div style="font-size:13px;font-weight:600">bundles.csv</div><div style="font-size:11px;color:var(--muted2)">Bundle SKUs with component ISBNs</div></div>
+            <button class="abtn" onclick="exportBundlesCSV()" style="padding:5px 12px;font-size:12px">&#8595; Export</button>
           </div>
-
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
-            <div>
-              <div style="font-size:13px;font-weight:600;color:var(--text)">regionmap.csv</div>
-              <div style="font-size:11px;color:var(--muted2);margin-top:2px">All products with AU/UK/USA active flags — adjust which regions each product is sold in</div>
-            </div>
-            <button class="abtn" onclick="exportRegionMapCSV()" style="padding:6px 14px;font-size:12px;white-space:nowrap">↓ Export</button>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+            <div><div style="font-size:13px;font-weight:600">regionmap.csv</div><div style="font-size:11px;color:var(--muted2)">Products with AU/UK/USA flags</div></div>
+            <button class="abtn" onclick="exportRegionMapCSV()" style="padding:5px 12px;font-size:12px">&#8595; Export</button>
           </div>
-
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
-            <div>
-              <div style="font-size:13px;font-weight:600;color:var(--text)">adspend.csv</div>
-              <div style="font-size:11px;color:var(--muted2);margin-top:2px">Monthly ad spend template by region and platform — fill in your monthly figures</div>
-            </div>
-            <button class="abtn" onclick="exportAdSpendCSV()" style="padding:6px 14px;font-size:12px;white-space:nowrap">↓ Export</button>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+            <div><div style="font-size:13px;font-weight:600">adspend.csv</div><div style="font-size:11px;color:var(--muted2)">Monthly ad spend by region/platform</div></div>
+            <button class="abtn" onclick="exportAdSpendCSV()" style="padding:5px 12px;font-size:12px">&#8595; Export</button>
           </div>
-
         </div>
       </div>
-
     </div>
 
   </div><!-- /set-modal-body -->
@@ -11097,5 +11087,234 @@ window.addEventListener('resize', function(){
     <div id="reportError" style="display:none;color:var(--red);font-size:12px"></div>
   </div>
 </div>
+<script>
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MOBILE — Loading screen, swipe navigation, stock dropdown, dark mode move
+// ═══════════════════════════════════════════════════════════════════════════
+
+function isMobile(){ return window.innerWidth <= 768; }
+
+// ── Mobile loading screen ────────────────────────────────────────────────────
+function showMobLoading(){
+  if(!isMobile()) return;
+  var el = document.getElementById('mob-loading-screen');
+  if(el){ el.classList.remove('hidden'); el.classList.add('visible'); }
+}
+function hideMobLoading(){
+  var el = document.getElementById('mob-loading-screen');
+  if(el){ el.classList.remove('visible'); el.classList.add('hidden'); }
+}
+
+// Hook setStartupStep to also update mobile progress UI
+var _origSetStartupStep = null;
+function initMobProgressHook(){
+  // Patch setStartupStep (defined in main script) to mirror to mobile UI
+  var mainSetStartup = window.setStartupStep;
+  window.setStartupStep = function(msg, pct){
+    if(mainSetStartup) mainSetStartup(msg, pct);
+    // Mirror to mobile progress card
+    var mobStep = document.getElementById('mobStartupStep');
+    var mobBar  = document.getElementById('mobStartupBar');
+    if(mobStep) mobStep.textContent = msg;
+    if(mobBar)  mobBar.style.width  = pct + '%';
+  };
+  // Mirror addStartupLog to mobile
+  var mainAddLog = window.addStartupLog;
+  window.addStartupLog = function(icon, msg, ok){
+    if(mainAddLog) mainAddLog(icon, msg, ok);
+    var mobLog = document.getElementById('mobStartupLog');
+    if(!mobLog) return;
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px';
+    row.innerHTML = '<span style="font-size:13px">'+icon+'</span>' +
+      '<span style="color:'+(ok===false?'var(--red)':ok===true?'var(--grn)':'var(--muted2)')+'">'+msg+'</span>';
+    mobLog.appendChild(row);
+  };
+}
+
+// ── Overlay for sidebar ──────────────────────────────────────────────────────
+function openMobMenu(){
+  var sb = document.getElementById('sidebar');
+  var ov = document.getElementById('mobOverlay');
+  if(sb) sb.classList.add('open');
+  if(ov) ov.classList.add('visible');
+  document.body.style.overflow = 'hidden';
+}
+function closeMobMenu(){
+  var sb = document.getElementById('sidebar');
+  var ov = document.getElementById('mobOverlay');
+  if(sb) sb.classList.remove('open');
+  if(ov) ov.classList.remove('visible');
+  document.body.style.overflow = '';
+}
+// Override existing toggleMobMenu
+window.toggleMobMenu = function(){
+  var sb = document.getElementById('sidebar');
+  if(sb && sb.classList.contains('open')) closeMobMenu();
+  else openMobMenu();
+};
+
+// Close menu when nav item clicked on mobile
+document.addEventListener('click', function(e){
+  if(!isMobile()) return;
+  var item = e.target.closest('.sb-item');
+  if(item) closeMobMenu();
+});
+
+// ── Stock region dropdown on mobile ──────────────────────────────────────────
+function initStockMobDropdown(){
+  var existing = document.getElementById('stk-mob-region-select');
+  if(existing) return;
+  var panel = document.getElementById('stk-panel-all');
+  if(!panel) return;
+  var sel = document.createElement('select');
+  sel.id = 'stk-mob-region-select';
+  sel.style.display = 'none'; // shown by CSS on mobile
+  sel.innerHTML = [
+    '<option value="all">All Regions</option>',
+    '<option value="au">🇦🇺 Australia</option>',
+    '<option value="uk">🇬🇧 United Kingdom</option>',
+    '<option value="us">🇺🇸 United States</option>'
+  ].join('');
+  sel.addEventListener('change', function(){
+    // Find the corresponding tab button and click it
+    var btn = document.getElementById('stk-tab-' + this.value);
+    if(btn) { btn.click(); }
+  });
+  // Insert before the region tabs
+  var tabs = document.querySelector('.stk-region-tabs');
+  if(tabs) tabs.parentNode.insertBefore(sel, tabs);
+}
+
+// Sync dropdown when tab changes
+var _origStkRegion = window.stkRegion;
+window.stkRegion = function(region, btn){
+  if(_origStkRegion) _origStkRegion(region, btn);
+  var sel = document.getElementById('stk-mob-region-select');
+  if(sel) sel.value = region;
+};
+
+// ── Swipe navigation ─────────────────────────────────────────────────────────
+(function(){
+  var TAB_ORDER = [
+    'insights','overview',
+    'regional','payments','esa',
+    'products','basket','coupons',
+    'customers','retention','abandoned',
+    'source','cohort','geo','usdive','delivery','device','orders',
+    'financials','stock'
+  ];
+
+  var touchStartX = 0, touchStartY = 0, currentTab = 'insights';
+
+  // Track current tab
+  var _origSTab = window.sTab;
+  window.sTab = function(tab, el){
+    currentTab = tab;
+    if(_origSTab) _origSTab(tab, el);
+  };
+
+  function getAdjacentTab(dir){
+    var idx = TAB_ORDER.indexOf(currentTab);
+    if(idx < 0) return null;
+    var next = idx + dir;
+    if(next < 0 || next >= TAB_ORDER.length) return null;
+    return TAB_ORDER[next];
+  }
+
+  document.addEventListener('touchstart', function(e){
+    if(!isMobile()) return;
+    // Don't swipe if sidebar is open
+    var sb = document.getElementById('sidebar');
+    if(sb && sb.classList.contains('open')) return;
+    // Don't swipe on scrollable tables
+    if(e.target.closest('table') || e.target.closest('.set-modal-body')) return;
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, {passive: true});
+
+  document.addEventListener('touchend', function(e){
+    if(!isMobile()) return;
+    var sb = document.getElementById('sidebar');
+    if(sb && sb.classList.contains('open')) return;
+    var dx = e.changedTouches[0].clientX - touchStartX;
+    var dy = e.changedTouches[0].clientY - touchStartY;
+    // Only horizontal swipes (more horizontal than vertical, >50px)
+    if(Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    var dir = dx < 0 ? 1 : -1; // swipe left = next, swipe right = prev
+    var next = getAdjacentTab(dir);
+    if(!next) return;
+    var btn = document.querySelector('.sb-item[data-tab="'+next+'"]');
+    if(btn) btn.click();
+  }, {passive: true});
+})();
+
+// ── Dark mode move to settings ───────────────────────────────────────────────
+function moveDarkModeToSettings(){
+  var thBtn = document.getElementById('settingsBtn');
+  // settingsBtn is the dark toggle — on mobile move it inside settings modal
+  if(!isMobile()) return;
+  // Already handled by CSS hiding tb-right buttons except thbtn
+}
+
+// ── Move dark mode toggle to Settings modal on mobile ────────────────────────
+function injectDarkModeIntoSettings(){
+  // Check if already injected
+  if(document.getElementById('mob-dark-toggle-row')) return;
+  var prefTab = document.getElementById('setContent-prefs');
+  if(!prefTab) return;
+  var row = document.createElement('div');
+  row.id = 'mob-dark-toggle-row';
+  row.className = 'set-pref-row';
+  row.style.cssText = 'display:none'; // shown by CSS on mobile
+  row.innerHTML = '<div><div class="set-pref-label">Dark Mode</div><div class="set-pref-sub">Toggle light/dark theme</div></div>' +
+    '<button class="thbtn" onclick="document.getElementById(\'settingsBtn\')&&document.getElementById(\'settingsBtn\').click()" style="pointer-events:auto">🌙 Toggle</button>';
+  prefTab.insertBefore(row, prefTab.firstChild);
+}
+
+// ── Init all mobile features ─────────────────────────────────────────────────
+function initMobile(){
+  if(!isMobile()) return;
+  showMobLoading();
+  initMobProgressHook();
+  initStockMobDropdown();
+  injectDarkModeIntoSettings();
+  // Show swipe hint on first visit
+  if(!localStorage.getItem('mob_swipe_seen')){
+    var hint = document.querySelector('.swipe-hint');
+    if(hint){ hint.style.display = 'block'; localStorage.setItem('mob_swipe_seen','1'); }
+  }
+}
+
+// Hook into data load completion to hide loading screen
+var _origFetchFromGithub = window.fetchFromGithub;
+window.fetchFromGithub = function(cb){
+  if(_origFetchFromGithub){
+    _origFetchFromGithub(function(){
+      hideMobLoading();
+      if(cb) cb();
+    });
+  } else {
+    hideMobLoading();
+    if(cb) cb();
+  }
+};
+
+// Hide mobile loading screen when rAll completes
+var _origRAll = window.rAll;
+window.rAll = function(){
+  hideMobLoading();
+  if(_origRAll) _origRAll();
+};
+
+window.addEventListener('load', function(){
+  initMobile();
+});
+window.addEventListener('resize', function(){
+  if(isMobile()) initMobile();
+});
+
+</script>
 </body>
 </html>
