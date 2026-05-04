@@ -7462,11 +7462,11 @@ var finExcludeDigital = false;
 var SETTINGS = {
   spend: { au:[], uk:[], us:[] },
   margin: {
-    au:{ digital:null, physical:null, bundle:null },
-    uk:{ digital:null, physical:null, bundle:null },
-    us:{ digital:null, physical:null, bundle:null }
+    au:{ digital:100, physical:55, bundle:55 },
+    uk:{ digital:100, physical:65, bundle:65 },
+    us:{ digital:100, physical:80, bundle:80 }
   },
-  prefs: { range:'mtd', comp:'prior', currency:'aud' },
+  prefs: { range:'fytd', comp:'prior', currency:'aud' },
   regionMap: {},  // productId -> { au:bool, uk:bool, us:bool },
   bundleMap: {"au": {}, "uk": {}, "us": {"140READEGG": ["9781742150154", "9781742150161", "9781742150178", "9781742150185", "9781742150758", "9781742150765", "9781742150772", "9781742150789", "9781742150451", "9781742150468", "9781742150475", "9781742150482", "9781742151199", "9781742151205", "9781742151212", "9781742151229", "9781742150499", "9781742151236"], "MSWBK3": ["9781742153384", "9781742153391", "9781742153407", "9781923253162"], "REWBK5": ["9781742153414", "9781742153421", "9781742153438", "9781742153490", "9781742153506", "9781742153513"], "REMSWBK5": ["9781742153384", "9781742153391", "9781742153407", "9781923253162", "9781742153414", "9781742153421", "9781742153438", "9781742153490", "9781742153506", "9781742153513"], "REMSULTBKB": ["9781742150154", "9781742150161", "9781742150178", "9781742150185", "9781742150758", "9781742150765", "9781742150772", "9781742150789", "9781742150451", "9781742150468", "9781742150475", "9781742150482", "9781742151199", "9781742151205", "9781742151212", "9781742151229", "9781742150499", "9781742151236", "9781742153384", "9781742153391", "9781742153407", "9781742153414", "9781742153421", "9781742153438"], "RE7995ACT3": ["9781742150451", "9781742150468", "9781742150475", "9781742150482", "9781742151199", "9781742151205", "9781742151212", "9781742151229"], "RE7995PK1": ["9781742150154", "9781742150161", "9781742150178", "9781742150185", "9781742150451", "9781742150468", "9781742150475", "9781742150482", "9781742150499"], "RE7995PK2": ["9781742150758", "9781742150765", "9781742150772", "9781742150789", "9781742151199", "9781742151205", "9781742151212", "9781742151229", "9781742151236"]}},
   visitors: [{"month": "2024-07", "all": 33673, "apac": 22277, "emea": 3538, "amer": 7858}, {"month": "2024-08", "all": 32792, "apac": 13743, "emea": 5030, "amer": 14019}, {"month": "2024-09", "all": 45243, "apac": 20414, "emea": 7557, "amer": 17272}, {"month": "2024-10", "all": 34872, "apac": 14845, "emea": 3509, "amer": 16518}, {"month": "2024-11", "all": 54603, "apac": 24777, "emea": 9571, "amer": 20255}, {"month": "2024-12", "all": 51062, "apac": 22515, "emea": 9326, "amer": 19221}, {"month": "2025-01", "all": 56211, "apac": 20935, "emea": 10288, "amer": 24988}, {"month": "2025-02", "all": 58060, "apac": 28424, "emea": 9188, "amer": 20448}, {"month": "2025-03", "all": 50289, "apac": 23870, "emea": 8306, "amer": 18113}, {"month": "2025-04", "all": 61244, "apac": 29571, "emea": 9775, "amer": 21898}, {"month": "2025-05", "all": 51793, "apac": 26397, "emea": 8250, "amer": 17146}, {"month": "2025-06", "all": 46980, "apac": 24699, "emea": 7796, "amer": 14485}, {"month": "2025-07", "all": 37525, "apac": 11105, "emea": 10186, "amer": 16234}, {"month": "2025-08", "all": 34374, "apac": 10468, "emea": 7260, "amer": 16646}, {"month": "2025-09", "all": 63482, "apac": 24495, "emea": 14082, "amer": 24905}, {"month": "2025-10", "all": 48243, "apac": 17474, "emea": 12114, "amer": 18655}, {"month": "2025-11", "all": 61030, "apac": 29669, "emea": 12706, "amer": 18655}, {"month": "2025-12", "all": 44772, "apac": 20342, "emea": 9065, "amer": 15365}, {"month": "2026-01", "all": 46621, "apac": 20466, "emea": 9015, "amer": 17140}, {"month": "2026-02", "all": 43585, "apac": 21849, "emea": 6365, "amer": 15371}, {"month": "2026-03", "all": 48622, "apac": 25895, "emea": 7755, "amer": 14972}, {"month": "2026-04", "all": 51182, "apac": 26843, "emea": 10425, "amer": 13914}]  // pre-populated from visitors_data.csv
@@ -10365,14 +10365,14 @@ window.addEventListener('load',function(){
       <div class="fp-label">📅 Date range</div>
       <select class="ssel" id="fR" onchange="onRC()">
         <option value="today">Today</option>
-        <option value="mtd" selected>Month to date</option>
+        <option value="mtd">Month to date</option>
         <option value="lm">Last month</option>
         <option value="7">Last 7 days</option>
         <option value="30">Last 30 days</option>
         <option value="90">Last 90 days</option>
         <option value="180">Last 6 months</option>
         <option value="365">Last 12 months</option>
-        <option value="fytd">FY to date (Jul–now)</option>
+        <option value="fytd" selected>FY to date (Jul–now)</option>
         <option value="all">All time</option>
         <option value="custom">Custom…</option>
       </select>
@@ -10633,7 +10633,7 @@ window.addEventListener('load',function(){
             <option value="lm">Last month</option>
             <option value="30">Last 30 days</option>
             <option value="90">Last 90 days</option>
-            <option value="fytd">FY to date</option>
+            <option value="fytd" selected>FY to date</option>
           </select>
         </div>
         <div class="set-pref-row">
