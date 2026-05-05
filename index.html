@@ -2950,6 +2950,21 @@ table td:first-child, table th:first-child {
               <option value="Rainbow Resources">Rainbow Resources</option>
             </select>
             
+            <button class="cbtn" onclick="exportRetailersCSV()" style="padding:4px 10px;font-size:11px">&#8595; Export</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto" id="retailerProductTable"></div>
+      </div>
+
+      <!-- Product x Retailer Matrix -->
+      <div class="card">
+        <div class="ct">Product &times; Retailer Revenue Matrix</div>
+        <div style="overflow-x:auto" id="retailerMatrix"></div>
+      </div>
+
+    </div><!-- /tp-retailers -->
+
+<script>
 // ═══════════════════════════════════════════════════════
 // INDEXEDDB PERSISTENCE
 // Storage strategy:
@@ -9909,7 +9924,7 @@ function renderVisitorsTable(){
   tbody.innerHTML=rows.map(function(r,i){
     function inp(field){
       return '<input type="number" min="0" step="1" class="set-inp" style="width:100%;text-align:right;padding:5px 8px;font-size:12px"'+
-        ' value="'+(r[field]||0)+'"'+
+        ' value="'+parseInt(r[field]||0,10)+'"'+
         ' data-idx="'+i+'" data-field="'+field+'"'+
         ' onchange="updateVisitorCell(this)">';
     }
@@ -11671,6 +11686,7 @@ window.addEventListener('load',function(){
     <div id="reportError" style="display:none;color:var(--red);font-size:12px"></div>
   </div>
 </div>
+
 <script>
 
 // ═══════════════════════════════════════════════════════════════════════════
