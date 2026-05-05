@@ -1520,7 +1520,7 @@ body { overflow-x: hidden; font-size: 14px; }
    LOADING SCREEN
 ═══════════════════════════════════════════════════════ */
 #mob-loading-screen { display: flex; }
-#mob-loading-screen.hidden { display: none; }
+#mob-loading-screen.hidden { display: none !important; }
 
 /* ═══════════════════════════════════════════════════════
    TOPBAR — hamburger | brand | ESA | ⚙
@@ -1829,8 +1829,119 @@ table td:first-child, table th:first-child {
 @media (max-width: 768px) {
   .mob-hide { display: none !important; }
 }
+
+
+/* ── Settings redesign — Option B left sidebar ─────────────────────────── */
+.set-layout {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+.set-nav {
+  width: 210px;
+  flex-shrink: 0;
+  background: var(--sbar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.set-nav-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.set-nav-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -.01em;
+}
+.set-nav-group {
+  padding: 12px 8px 4px;
+}
+.set-nav-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--muted2);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 0 8px;
+  margin-bottom: 4px;
+}
+.set-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background .12s;
+  margin-bottom: 2px;
+}
+.set-nav-item:hover { background: var(--surface2); }
+.set-nav-item.active { background: var(--blu); color: #fff; font-weight: 600; }
+.set-nav-icon { font-size: 14px; }
+.set-nav-bottom {
+  margin-top: auto;
+  padding: 12px;
+  border-top: 1px solid var(--border);
+}
+.set-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.set-content-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+  flex-shrink: 0;
+}
+.set-content-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.set-panel {
+  display: none;
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+.set-panel.active { display: block; }
+.set-export-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--surface2);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+/* Mobile settings override */
+@media (max-width: 768px) {
+  .set-nav { width: 100%; border-right: none; border-bottom: 1px solid var(--border); max-height: 50vh; }
+  .set-layout { flex-direction: column; }
+  .set-nav-bottom { display: none; }
+}
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 <!-- MOBILE LOADING SCREEN -->
@@ -1916,22 +2027,12 @@ table td:first-child, table th:first-child {
     <div class="tb-period-info" id="tbPeriodInfo" style="font-size:11px;color:var(--muted);margin-left:10px;flex-shrink:0"></div>
   </div>
   <div class="tb-right">
-    <button class="cust-btn" id="reportBtn" onclick="generateMonthEndReport()" title="Generate month-end executive report" style="background:#1e40af;color:#fff;border-color:#1e40af;gap:5px">
-      📄 Month-End Report
-    </button>
     <button class="esa-toggle" id="esaToggleBtn" onclick="toggleESA()" title="Toggle ESA / Funded orders">
       🔥 <span id="esaToggleLbl">ESA On</span>
     </button>
-    <button class="cust-btn" id="custBtn" onclick="toggleCustomize()" title="Rearrange dashboard blocks">
-      ⠿ Layout
-    </button>
-    <button class="thbtn" id="settingsBtn" onclick="toggleSettings()" title="Settings">
+    <button class="thbtn" id="settingsBtn" onclick="toggleSettings()" title="Settings" style="padding:0 14px;gap:5px">
       ⚙<span class="mob-hide"> Settings</span>
     </button>
-    <button class="filter-btn" id="filterBtn" onclick="toggleFilters()">
-      ⚡ Filters <span class="fbadge" id="filterBadge">0</span>
-    </button>
-    <button class="thbtn" onclick="toggleTheme()"><span id="tic">🌙</span> <span id="tlbl">Dark</span></button>
   </div>
 </div>
 
@@ -1984,6 +2085,8 @@ table td:first-child, table th:first-child {
       <div class="sb-section-label">Financials</div>
       <div class="sb-item" onclick="sTab('financials',this)" data-tab="financials"><span class="sb-icon">💰</span>Profit &amp; Spend</div>
       <div class="sb-item" onclick="sTab('stock',this)" data-tab="stock"><span class="sb-icon">📦</span>Stock</div>
+      <div class="sb-section-label">US RETAIL CHANNELS</div>
+      <div class="sb-item" onclick="sTab('retailers',this)" data-tab="retailers"><span class="sb-icon">🛍️</span>US Retailers</div>
 
 
 
@@ -2212,6 +2315,15 @@ table td:first-child, table th:first-child {
       <div class="card"><div class="ct">Top payment methods</div><div class="cw h185"><canvas id="cPayPie"></canvas></div></div>
       <div class="card"><div class="ct">AOV by channel (AUD, excl. zero)</div><div id="aovb" style="margin-top:.3rem"></div></div>
     </div>
+
+    <!-- US Retailers Summary Card -->
+    <div class="card" id="retailersSummaryCard" style="margin-top:14px;display:none">
+      <div class="ct">🛍️ US Retailers
+        <button class="cbtn" onclick="sTab('retailers',document.querySelector('[data-tab=retailers]'))" style="margin-left:auto;font-size:11px;padding:3px 8px">View Detail →</button>
+      </div>
+      <div id="retailersSummaryContent" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px"></div>
+    </div>
+
   </div>
 
   <!-- REGIONAL -->
@@ -2796,9 +2908,47 @@ table td:first-child, table th:first-child {
 </div><!-- /main -->
 </div><!-- /app -->
 
+    <!-- RETAILERS TAB -->
+    <div class="tp" id="tp-retailers" style="display:none">
 
+      <!-- KPI Strip -->
+      <div class="ks" id="retailerKpis"></div>
 
-<script>
+      <!-- Revenue by Retailer + Monthly Trend -->
+      <div class="g2" style="grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div class="card">
+          <div class="ct">Revenue by Retailer</div>
+          <div class="cw h250"><canvas id="chartRetailerRev"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="ct">Monthly Revenue Trend</div>
+          <div class="cw h250"><canvas id="chartRetailerTrend"></canvas></div>
+        </div>
+      </div>
+
+      <!-- GP by Retailer + Units by Retailer -->
+      <div class="g2" style="grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div class="card">
+          <div class="ct">Gross Profit by Retailer</div>
+          <div class="cw h250"><canvas id="chartRetailerGP"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="ct">Units Sold by Retailer</div>
+          <div class="cw h250"><canvas id="chartRetailerUnits"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Product Performance Table -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="ct">Product Performance by Retailer
+          <div style="display:flex;gap:8px;margin-left:auto;align-items:center">
+            <select id="retailerFilter" class="set-sel" style="font-size:12px;padding:4px 8px;height:28px" onchange="rRetailers()">
+              <option value="all">All Retailers</option>
+              <option value="Amazon">Amazon</option>
+              <option value="TikTok">TikTok</option>
+              <option value="Walmart">Walmart</option>
+              <option value="Rainbow Resources">Rainbow Resources</option>
+            
 // ═══════════════════════════════════════════════════════
 // INDEXEDDB PERSISTENCE
 // Storage strategy:
@@ -3671,14 +3821,11 @@ function clf(){
 // TAB / RENDER
 // ═══════════════════════════════════════════════════════
 function showDash(){
-  // Keep land visible during startup — it now shows the progress card
-  // It hides itself once fetchFromGithub completes via rAll()
-  var landEl = document.getElementById('land');
-  document.getElementById('sidebar').style.display='flex';
-  var db=document.getElementById('dataBar');if(db)db.style.display='flex';
-  var aiFab=document.getElementById('aiFab');if(aiFab)aiFab.classList.add('show');
-  buildFilters();
-  updateRangeLabel();
+  try{document.getElementById('sidebar').style.display='flex';}catch(e){}
+  try{var db=document.getElementById('dataBar');if(db)db.style.display='flex';}catch(e){}
+  try{var aiFab=document.getElementById('aiFab');if(aiFab)aiFab.classList.add('show');}catch(e){}
+  try{buildFilters();}catch(e){console.warn('buildFilters:',e);}
+  try{updateRangeLabel();}catch(e){console.warn('updateRangeLabel:',e);}
   // Show insights tab shell immediately — render deferred
   document.querySelectorAll('.tp').forEach(function(p){p.style.display='none';});
   var insTab=document.getElementById('tp-insights');if(insTab)insTab.style.display='block';
@@ -3691,6 +3838,7 @@ function showDash(){
   // Render insights after a short delay so loader can hide first
   setTimeout(function(){
     try{ rInsights(fOrders()); }catch(e){ console.error('rInsights:',e); }
+    try{ updateRetailersCard(); }catch(e){}
   }, 200);
   // If data already loaded (snapshot), hide startup splash immediately
   if(window.lO) {
@@ -4091,6 +4239,29 @@ function setCompMode(mode){
   updateFilterBadge();
   rAll();
 }
+function updateRetailersCard(){
+  var card = document.getElementById('retailersSummaryCard');
+  var cont = document.getElementById('retailersSummaryContent');
+  if(!card || !cont) return;
+  if(!lRetailers || !rawRetailers.sales.length){ card.style.display='none'; return; }
+  card.style.display = 'block';
+  var RC = {Amazon:'#EA580C', TikTok:'#16A34A', Walmart:'#2563EB', 'Rainbow Resources':'#7C3AED'};
+  var rt = {};
+  rawRetailers.sales.forEach(function(s){
+    rt[s.retailer] = (rt[s.retailer]||0) + (s.revenueAUD - (s.returnRevenueAUD||0));
+  });
+  var tot = Object.values(rt).reduce(function(a,b){return a+b;},0);
+  cont.innerHTML = Object.entries(rt).sort(function(a,b){return b[1]-a[1];}).map(function(e){
+    return '<div style="flex:1;min-width:120px;padding:10px 14px;border-radius:10px;background:var(--surface2);border-left:3px solid '+(RC[e[0]]||'#64748b')+'">' +
+      '<div style="font-size:10px;color:var(--muted2);font-weight:700;text-transform:uppercase;letter-spacing:.04em">'+e[0]+'</div>' +
+      '<div style="font-size:18px;font-weight:800;color:var(--text);margin-top:2px">'+fmd(e[1])+'</div>' +
+      '<div style="font-size:10px;color:var(--muted2);margin-top:1px">'+(tot>0?(e[1]/tot*100).toFixed(1)+'% of US retail':'')+'</div></div>';
+  }).join('') +
+  '<div style="flex:1;min-width:120px;padding:10px 14px;border-radius:10px;background:var(--blu);color:#fff">' +
+    '<div style="font-size:10px;font-weight:700;opacity:.8;text-transform:uppercase;letter-spacing:.04em">Total US Retail</div>' +
+    '<div style="font-size:18px;font-weight:800;margin-top:2px">'+fmd(tot)+'</div></div>';
+}
+
 function rAll(){
   var _land=document.getElementById("land"); if(_land) _land.style.display="none";
   if(typeof hideMobLoading==="function") hideMobLoading();
@@ -4103,7 +4274,7 @@ function rTab(t){
   var o=fOrders();
   var fns={
     'insights':function(){rInsights(o);},
-    'overview':function(){rOv(o);},
+    'overview':function(){rOv(o); updateRetailersCard();},
     'regional':function(){rReg(o);},
     'geo':function(){rGeo(o);},
     'payments':function(){rPay(o);},
@@ -4121,7 +4292,8 @@ function rTab(t){
     'customers':function(){rCustomers(o);},
     'abandoned':function(){rAbandoned(o);},
     'financials':function(){rFinancials(o);},
-    'stock':function(){rStock(o);}
+    'stock':function(){rStock(o);},
+    'retailers':function(){rRetailers();}
   };
   if(fns[t]){
     try{fns[t]();}
@@ -6756,6 +6928,7 @@ function rOCh(orders){
   mkC('cOD',{type:'bar',data:{labels:bl,datasets:[{data:bk,backgroundColor:rHx('Other')+'77',borderColor:rHx('Other'),borderWidth:1,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9.5},color:TC()},grid:{display:false}},y:{ticks:{font:{size:11},color:TC()},grid:{color:GC()}}}}});
 }
 
+
 function rOT(){
   var all=fOrders();
   var q=(document.getElementById('oSrch')?.value||'').toLowerCase();
@@ -7916,6 +8089,66 @@ function showSetTab(tab, btn){
   if(tab === 'upload') renderUploadStatus();
   if(tab === 'visitors'){ renderVisitorsTable(); }
   if(tab === 'bundles'){ showBmapRegion(bmapActiveRegion, document.getElementById('bmap-tab-'+bmapActiveRegion)); }
+}
+
+
+function sNavTab(tab, btn){
+  // Update nav items
+  document.querySelectorAll('.set-nav-item').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  // Update panels
+  document.querySelectorAll('.set-panel').forEach(function(p){ p.classList.remove('active'); });
+  var panel = document.getElementById('setPanel-'+tab);
+  if(panel) panel.classList.add('active');
+  // Update header title
+  var titles = {upload:'Upload Status',spend:'Ad Spend',margin:'Margins',bundle:'Bundle Mapping',region:'Region Mapping',prefs:'Preferences',visitors:'Visitors'};
+  var titleEl = document.getElementById('setContentTitle');
+  if(titleEl) titleEl.textContent = titles[tab] || tab;
+  // Lazy-render content
+  if(tab==='spend')    renderSpendInSettings();
+  if(tab==='margin')   renderMarginsInSettings();
+  if(tab==='bundle')   renderBundleInSettings();
+  if(tab==='region')   renderRegionInSettings();
+  if(tab==='prefs')    renderPrefsInSettings();
+  if(tab==='visitors') renderVisitorsInSettings();
+}
+
+function renderSpendInSettings(){
+  var el=document.getElementById('spendContent');
+  if(!el||el.innerHTML.trim()) return; // already rendered
+  // Move existing spend content here
+  var orig=document.getElementById('setContent-spend');
+  if(orig) el.innerHTML=orig.innerHTML;
+}
+function renderMarginsInSettings(){
+  var el=document.getElementById('marginContent');
+  if(!el||el.innerHTML.trim()) return;
+  var orig=document.getElementById('setContent-margin');
+  if(orig) el.innerHTML=orig.innerHTML;
+}
+function renderBundleInSettings(){
+  var el=document.getElementById('bundleContent');
+  if(!el||el.innerHTML.trim()) return;
+  var orig=document.getElementById('setContent-bundle');
+  if(orig) el.innerHTML=orig.innerHTML;
+}
+function renderRegionInSettings(){
+  var el=document.getElementById('regionContent');
+  if(!el||el.innerHTML.trim()) return;
+  var orig=document.getElementById('setContent-region');
+  if(orig) el.innerHTML=orig.innerHTML;
+}
+function renderPrefsInSettings(){
+  var el=document.getElementById('prefsContent');
+  if(!el||el.innerHTML.trim()) return;
+  var orig=document.getElementById('setContent-prefs');
+  if(orig) el.innerHTML=orig.innerHTML;
+}
+function renderVisitorsInSettings(){
+  var el=document.getElementById('visitorsContent');
+  if(!el||el.innerHTML.trim()) return;
+  var orig=document.getElementById('setContent-visitors');
+  if(orig) el.innerHTML=orig.innerHTML;
 }
 
 function toggleSettings(){
@@ -10542,11 +10775,12 @@ ${data.conversion ? '<div class="section-note">Conversion rate: <strong>' + data
 // ═══════════════════════════════════════════════════════
 var GITHUB_BASE = 'https://raw.githubusercontent.com/AsvineG/BookshopDashboard/main/';
 var GITHUB_FILES = [
-  { url: GITHUB_BASE + 'orders.csv',    type: 'orders'    },
-  { url: GITHUB_BASE + 'products.csv',  type: 'products'  },
-  { url: GITHUB_BASE + 'carts.csv',     type: 'carts'     },
-  { url: GITHUB_BASE + 'customers.csv', type: 'customers' },
-  { url: GITHUB_BASE + 'sources.csv',   type: 'source'    }
+  { url: GITHUB_BASE + 'orders.csv',       type: 'orders'    },
+  { url: GITHUB_BASE + 'products.csv',     type: 'products'  },
+  { url: GITHUB_BASE + 'carts.csv',        type: 'carts'     },
+  { url: GITHUB_BASE + 'customers.csv',    type: 'customers' },
+  { url: GITHUB_BASE + 'sources.csv',      type: 'source'    },
+  { url: GITHUB_BASE + 'us_retailers.xlsx', type: 'retailers', isXlsx: true }
 ];
 
 function setStartupStep(msg, pct){
@@ -10605,84 +10839,83 @@ function setCachedCSV(key, text){
 }
 
 function fetchFromGithub(onComplete){
-  var total = GITHUB_FILES.length;
+  var csvFiles = GITHUB_FILES.filter(function(f){ return !f.isXlsx; });
+  var xlsxFiles = GITHUB_FILES.filter(function(f){ return f.isXlsx; });
+  var total = csvFiles.length;
   var done  = 0;
-  var FILE_META = {
-    orders:    { icon:'📦', label:'Orders' },
-    products:  { icon:'🏷️', label:'Products' },
-    carts:     { icon:'🛒', label:'Abandoned Carts' },
-    customers: { icon:'👥', label:'Customers' },
-    source:    { icon:'🔗', label:'Sources' }
-  };
-  var STEPS = [
-    { pct:5,  msg:'Connecting to repository\u2026' },
-    { pct:15, msg:'Loading orders data\u2026' },
-    { pct:30, msg:'Loading product catalogue\u2026' },
-    { pct:50, msg:'Loading cart data\u2026' },
-    { pct:65, msg:'Loading customer records\u2026' },
-    { pct:80, msg:'Loading source attribution\u2026' },
-    { pct:90, msg:'Processing and building dashboard\u2026' }
-  ];
+  var finished = false;
 
-  setStartupStep(STEPS[0].msg, STEPS[0].pct);
-
-  // Clear previous log
-  var log = document.getElementById('startupLog');
-  if(log) log.innerHTML = '';
-
-  function setFetchStatus(type,ok,fromCache){
-    var m = FILE_META[type]||{icon:'📄',label:type};
-    var statusMap={orders:'O',products:'P',carts:'Carts',customers:'Custs',source:'S'};
-    var el = statusMap[type]?document.getElementById('upl'+statusMap[type]+'Status'):null;
-    var lbl = ok?(fromCache?'\u2713 Cached':'\u2713 Loaded'):'Not found';
-    if(el){ el.textContent=lbl; el.style.color=ok?'var(--grn)':'var(--red)'; }
-    var logMsg = m.label+(ok?(fromCache?' \u2014 from cache':' \u2014 fetched from GitHub'):' \u2014 not found');
-    addStartupLog(ok?'\u2705':'\u26a0\ufe0f', logMsg, ok);
+  function finish(){
+    if(finished) return;
+    finished = true;
+    setStartupStep('Dashboard ready \u2014 opening now\u2026', 100);
+    setTimeout(function(){
+      var mls=document.getElementById('mob-loading-screen');
+      if(mls){mls.classList.add('hidden');mls.classList.remove('visible');}
+      var land=document.getElementById('land');
+      if(land) land.style.display='none';
+      try{ if(onComplete) onComplete(); }catch(e){ console.error('onComplete error:',e); }
+    }, 500);
   }
 
-  GITHUB_FILES.forEach(function(file, i){
-    setTimeout(function(){
-      var stepIdx = Math.min(i+1, STEPS.length-2);
-      setStartupStep(STEPS[stepIdx].msg, STEPS[stepIdx].pct);
-    }, i * 80);
+  function tick(type, ok, fromCache){
+    var statusMap={orders:'O',products:'P',carts:'Carts',customers:'Custs',source:'S'};
+    var el=statusMap[type]?document.getElementById('upl'+statusMap[type]+'Status'):null;
+    if(el){el.textContent=ok?(fromCache?'\u2713 Cached':'\u2713 Loaded'):'Not found';el.style.color=ok?'var(--grn)':'var(--red)';}
+    try{ addStartupLog(ok?'\u2705':'\u26a0\ufe0f', type+(ok?(fromCache?' from cache':' loaded'):' not found'), ok); }catch(e){}
+    done++;
+    var pct = Math.round(10 + (done/total)*80);
+    setStartupStep((done<total?'Loading data\u2026':'Processing\u2026'), pct);
+    if(done >= total) finish();
+  }
 
+  setStartupStep('Connecting to repository\u2026', 5);
+  var log=document.getElementById('startupLog');
+  if(log) log.innerHTML='';
+  var mobLog=document.getElementById('mobStartupLog');
+  if(mobLog) mobLog.innerHTML='';
+
+  // Fetch xlsx in background - non-blocking
+  xlsxFiles.forEach(function(file){
+    fetch(file.url)
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
+      .then(function(buf){ try{parseRetailersXlsx(buf);}catch(e){console.warn('xlsx parse error:',e);} })
+      .catch(function(e){ console.warn('xlsx fetch failed:',e); });
+  });
+
+  // Fetch CSVs - these control the loading screen
+  if(total === 0){ finish(); return; }
+
+  csvFiles.forEach(function(file){
     // Try cache first
-    var cached = getCachedCSV(file.type);
+    var cached = null;
+    try{ cached = getCachedCSV(file.type); }catch(e){}
+
     if(cached){
-      handleNewData(file.type, parseCSVFast(cached));
-      setFetchStatus(file.type, true, true); // true = from cache
-      done++;
-      if(done === total){
-        setStartupStep('Dashboard ready \u2014 opening now\u2026', 100);
-        setTimeout(function(){ if(onComplete) onComplete(); }, 300);
-      }
+      try{ handleNewData(file.type, parseCSVFast(cached)); }catch(e){ console.warn('cache parse error',file.type,e); }
+      tick(file.type, true, true);
       return;
     }
 
-    // Not cached — fetch from CDN
+    // Fetch from GitHub
     fetch(file.url)
-      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
+      .then(function(r){
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        return r.text();
+      })
       .then(function(text){
-        handleNewData(file.type, parseCSVFast(text));
-        setCachedCSV(file.type, text); // cache for next time
-        setFetchStatus(file.type, true, false);
-        done++;
-        if(done === total){
-          setStartupStep(STEPS[STEPS.length-1].msg, 95);
-          setTimeout(function(){
-            setStartupStep('Dashboard ready \u2014 opening now\u2026', 100);
-            setTimeout(function(){ if(onComplete) onComplete(); }, 400);
-          }, 300);
+        try{
+          handleNewData(file.type, parseCSVFast(text));
+          try{ setCachedCSV(file.type, text); }catch(e){}
+          tick(file.type, true, false);
+        }catch(e){
+          console.error('parse error',file.type,e);
+          tick(file.type, false, false);
         }
       })
       .catch(function(err){
-        console.warn('Fetch failed:', file.url, err);
-        setFetchStatus(file.type, false, false);
-        done++;
-        if(done === total){
-          setStartupStep('Data loaded \u2014 some files missing from repo', 95);
-          setTimeout(function(){ if(onComplete) onComplete(); }, 600);
-        }
+        console.warn('fetch failed:', file.url, err);
+        tick(file.type, false, false);
       });
   });
 }
@@ -10852,18 +11085,281 @@ function exportAdSpendCSV(){
 }
 
 
+
+// ═══════════════════════════════════════════════════════
+// US RETAILERS DATA SYSTEM
+// ═══════════════════════════════════════════════════════
+var rawRetailers = {
+  sales: [],    // [{retailer, month, year, sku, productName, type, unitsSold, revenueAUD, returnUnits, returnRevenueAUD}]
+  margins: {}   // {retailer: {sku: marginPct}}
+};
+var lRetailers = false;
+
+function parseRetailersXlsx(buffer){
+  if(typeof XLSX === 'undefined'){ console.warn('SheetJS not loaded'); return; }
+  var wb = XLSX.read(buffer, {type:'array'});
+  var retailers = ['Amazon','TikTok','Walmart','Rainbow Resources'];
+  var salesRows = [];
+
+  retailers.forEach(function(retailer){
+    var sheetName = wb.SheetNames.find(function(n){ return n.includes(retailer); });
+    if(!sheetName) return;
+    var ws = wb.Sheets[sheetName];
+    var data = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    if(data.length < 3) return;
+
+    // Row 1 = title, Row 2 = headers (Product Name | SKU | Type | [month Units | month Rev]...)
+    // Find month headers from row 2
+    var headerRow = data[1] || [];
+    var months = [];
+    for(var c=3; c<headerRow.length; c+=2){
+      if(headerRow[c]) months.push({label: String(headerRow[c]), unitsCol: c, revCol: c+1});
+    }
+
+    // Rows 3+ = product data
+    for(var r=2; r<data.length; r++){
+      var row = data[r];
+      var productName = row[0]; var sku = row[1]; var type = row[2];
+      if(!productName && !sku) continue;
+
+      months.forEach(function(m){
+        var units = parseFloat(row[m.unitsCol]) || 0;
+        var rev   = parseFloat(row[m.revCol])   || 0;
+        if(units === 0 && rev === 0) return; // skip empty months
+
+        // Parse month label e.g. "Jan 2025"
+        var parts = m.label.trim().split(' ');
+        var monthNames = {Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
+        var monthNum = monthNames[parts[0]] || 0;
+        var year = parseInt(parts[1]) || 0;
+
+        salesRows.push({
+          retailer: retailer,
+          month: monthNum,
+          year: year,
+          sku: String(sku),
+          productName: String(productName),
+          type: String(type),
+          unitsSold: units,
+          revenueAUD: rev,
+          returnUnits: 0,
+          returnRevenueAUD: 0
+        });
+      });
+    }
+  });
+
+  // Parse margins sheet
+  var marginSheet = wb.SheetNames.find(function(n){ return n.includes('Margin'); });
+  if(marginSheet){
+    var mws = wb.Sheets[marginSheet];
+    var mdata = XLSX.utils.sheet_to_json(mws, {header:1, defval:''});
+    for(var mr=2; mr<mdata.length; mr++){
+      var mrow = mdata[mr];
+      var ret=String(mrow[0]), msku=String(mrow[2]), pct=parseFloat(mrow[4])||0;
+      if(!ret||!msku) continue;
+      if(!rawRetailers.margins[ret]) rawRetailers.margins[ret]={};
+      rawRetailers.margins[ret][msku] = pct;
+    }
+  }
+
+  rawRetailers.sales = salesRows;
+  lRetailers = true;
+  console.log('Retailers loaded:', salesRows.length, 'rows');
+}
+
+function getRetailerMargin(retailer, sku){
+  return ((rawRetailers.margins[retailer]||{})[sku]) || 0;
+}
+
+function fRetailerSales(retailerFilter, dateFrom, dateTo){
+  return rawRetailers.sales.filter(function(r){
+    if(retailerFilter && retailerFilter !== 'all' && r.retailer !== retailerFilter) return false;
+    if(dateFrom || dateTo){
+      var d = new Date(r.year, r.month-1, 1);
+      if(dateFrom && d < dateFrom) return false;
+      if(dateTo && d > dateTo) return false;
+    }
+    return true;
+  });
+}
+
+function rRetailers(){
+  if(!lRetailers){
+    var el = document.getElementById('retailerProductTable');
+    if(el) el.innerHTML = '<div class="nd" style="padding:40px;text-align:center"><div class="ndic">🛍️</div><div style="font-size:14px;color:var(--muted);margin-top:12px">No retailer data loaded.<br>Upload <strong>us_retailers.xlsx</strong> to your GitHub repo and click Refresh.</div></div>';
+    return;
+  }
+
+  var filt = (document.getElementById('retailerFilter')||{}).value||'all';
+  var sales = fRetailerSales(filt);
+
+  var retailers = ['Amazon','TikTok','Walmart','Rainbow Resources'];
+  var COLORS = {Amazon:'#EA580C',TikTok:'#16A34A',Walmart:'#2563EB','Rainbow Resources':'#7C3AED'};
+
+  // ── Aggregate ────────────────────────────────────────────────────────────
+  var byRetailer = {};
+  retailers.forEach(function(r){ byRetailer[r]={rev:0,gp:0,units:0,rows:[]}; });
+  var byProduct  = {};
+  var byMonth    = {};
+
+  sales.forEach(function(s){
+    var net_rev   = s.revenueAUD - (s.returnRevenueAUD||0);
+    var net_units = s.unitsSold  - (s.returnUnits||0);
+    var margin    = getRetailerMargin(s.retailer, s.sku);
+    var gp        = net_rev * margin;
+
+    if(!byRetailer[s.retailer]) byRetailer[s.retailer]={rev:0,gp:0,units:0};
+    byRetailer[s.retailer].rev   += net_rev;
+    byRetailer[s.retailer].gp    += gp;
+    byRetailer[s.retailer].units += net_units;
+
+    var pkey = s.sku+'|'+s.productName;
+    if(!byProduct[pkey]) byProduct[pkey]={name:s.productName,sku:s.sku,type:s.type,rev:0,gp:0,units:0,byRetailer:{}};
+    byProduct[pkey].rev   += net_rev;
+    byProduct[pkey].gp    += gp;
+    byProduct[pkey].units += net_units;
+    if(!byProduct[pkey].byRetailer[s.retailer]) byProduct[pkey].byRetailer[s.retailer]={rev:0,units:0};
+    byProduct[pkey].byRetailer[s.retailer].rev   += net_rev;
+    byProduct[pkey].byRetailer[s.retailer].units += net_units;
+
+    var mkey = s.year+'-'+String(s.month).padStart(2,'0');
+    if(!byMonth[mkey]) byMonth[mkey]={};
+    if(!byMonth[mkey][s.retailer]) byMonth[mkey][s.retailer]=0;
+    byMonth[mkey][s.retailer] += net_rev;
+  });
+
+  var totalRev   = Object.values(byRetailer).reduce(function(s,r){return s+r.rev;},0);
+  var totalGP    = Object.values(byRetailer).reduce(function(s,r){return s+r.gp;},0);
+  var totalUnits = Object.values(byRetailer).reduce(function(s,r){return s+r.units;},0);
+  var avgMargin  = totalRev>0 ? (totalGP/totalRev*100) : 0;
+
+  // ── KPI Cards ──────────────────────────────────────────────────────────────
+  var kpiEl = document.getElementById('retailerKpis');
+  if(kpiEl) kpiEl.innerHTML =
+    '<div class="kpi b"><div class="kpi-accent"></div><div class="kl">Total Revenue</div><div class="kv">'+fmd(totalRev)+'</div><div class="ks2">All US retailers</div></div>'+
+    '<div class="kpi g"><div class="kpi-accent"></div><div class="kl">Gross Profit</div><div class="kv">'+fmd(totalGP)+'</div><div class="ks2">Avg margin '+avgMargin.toFixed(1)+'%</div></div>'+
+    '<div class="kpi"><div class="kpi-accent"></div><div class="kl">Units Sold</div><div class="kv">'+totalUnits.toLocaleString()+'</div><div class="ks2">Net of returns</div></div>'+
+    '<div class="kpi"><div class="kpi-accent"></div><div class="kl">Best Retailer</div><div class="kv" style="font-size:18px">'+(Object.entries(byRetailer).sort(function(a,b){return b[1].rev-a[1].rev;})[0]||['—'])[0]+'</div><div class="ks2">By revenue</div></div>'+
+    '<div class="kpi"><div class="kpi-accent"></div><div class="kl">Products Active</div><div class="kv">'+Object.keys(byProduct).length+'</div><div class="ks2">With any sales</div></div>';
+
+  // ── Charts ─────────────────────────────────────────────────────────────────
+  var retLabels = retailers.filter(function(r){return byRetailer[r]&&byRetailer[r].rev>0;});
+  var retRevs   = retLabels.map(function(r){return byRetailer[r].rev;});
+  var retGPs    = retLabels.map(function(r){return byRetailer[r].gp;});
+  var retUnits  = retLabels.map(function(r){return byRetailer[r].units;});
+  var retColors = retLabels.map(function(r){return COLORS[r]||'#64748b';});
+
+  mkC('chartRetailerRev','bar',retLabels,[{label:'Revenue AUD',data:retRevs,backgroundColor:retColors}],
+    {plugins:{legend:{display:false}},scales:{y:{ticks:{callback:function(v){return'A$'+v.toLocaleString();}}}}});
+
+  mkC('chartRetailerGP','bar',retLabels,[{label:'Gross Profit',data:retGPs,backgroundColor:retColors.map(function(c){return c+'88';})}],
+    {plugins:{legend:{display:false}},scales:{y:{ticks:{callback:function(v){return'A$'+v.toLocaleString();}}}}});
+
+  mkC('chartRetailerUnits','bar',retLabels,[{label:'Units',data:retUnits,backgroundColor:retColors}],
+    {plugins:{legend:{display:false}}});
+
+  // Monthly trend
+  var sortedMonths = Object.keys(byMonth).sort();
+  var trendDatasets = retailers.filter(function(r){return byRetailer[r]&&byRetailer[r].rev>0;}).map(function(r){
+    return {label:r,data:sortedMonths.map(function(m){return(byMonth[m]||{})[r]||0;}),
+      borderColor:COLORS[r],backgroundColor:COLORS[r]+'22',fill:false,tension:.3,pointRadius:3};
+  });
+  mkC('chartRetailerTrend','line',sortedMonths,trendDatasets,
+    {plugins:{legend:{position:'bottom'}},scales:{y:{ticks:{callback:function(v){return'A$'+v.toLocaleString();}}}}});
+
+  // ── Product Table ──────────────────────────────────────────────────────────
+  var sortedProds = Object.values(byProduct).sort(function(a,b){return b.rev-a.rev;});
+  var thead='<table><thead><tr>'+
+    '<th class="stk-th">#</th>'+
+    '<th class="stk-th">Product</th>'+
+    '<th class="stk-th">SKU</th>'+
+    '<th class="stk-th">Type</th>'+
+    '<th class="stk-th" style="text-align:right">Units</th>'+
+    '<th class="stk-th" style="text-align:right">Revenue</th>'+
+    '<th class="stk-th" style="text-align:right">GP</th>'+
+    '<th class="stk-th" style="text-align:right">Margin</th>'+
+    '</tr></thead><tbody>';
+
+  var tbody = sortedProds.map(function(p,i){
+    var margin = p.rev>0?p.gp/p.rev*100:0;
+    return '<tr>'+
+      '<td class="stk-num-cell">'+(i+1)+'</td>'+
+      '<td style="font-size:12px;font-weight:600;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.name+'</td>'+
+      '<td style="font-size:11px;color:var(--muted2);font-family:monospace">'+p.sku+'</td>'+
+      '<td><span style="font-size:10px;padding:2px 6px;border-radius:999px;background:var(--grn-bg);color:var(--grn);font-weight:700">'+p.type+'</span></td>'+
+      '<td style="text-align:right;font-size:13px;font-weight:700">'+p.units.toLocaleString()+'</td>'+
+      '<td style="text-align:right;font-size:13px;font-weight:700">'+fmd(p.rev)+'</td>'+
+      '<td style="text-align:right;font-size:13px;color:var(--grn)">'+fmd(p.gp)+'</td>'+
+      '<td style="text-align:right;font-size:12px;color:var(--muted2)">'+margin.toFixed(1)+'%</td>'+
+    '</tr>';
+  }).join('');
+
+  var tEl=document.getElementById('retailerProductTable');
+  if(tEl) tEl.innerHTML=thead+tbody+'</tbody></table>';
+
+  // ── Matrix ─────────────────────────────────────────────────────────────────
+  var top15 = sortedProds.slice(0,15);
+  var activeRetailers = retailers.filter(function(r){return byRetailer[r]&&byRetailer[r].rev>0;});
+  var mHead='<table><thead><tr><th class="stk-th">Product</th>'+
+    activeRetailers.map(function(r){return '<th class="stk-th" style="text-align:right;color:'+COLORS[r]+'">'+r+'</th>';}).join('')+
+    '<th class="stk-th" style="text-align:right">Total</th></tr></thead><tbody>';
+  var mBody=top15.map(function(p){
+    return '<tr><td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+p.name+'">'+p.name+'</td>'+
+      activeRetailers.map(function(r){
+        var rv=(p.byRetailer[r]||{}).rev||0;
+        return '<td style="text-align:right;font-size:12px">'+(rv?fmd(rv):'—')+'</td>';
+      }).join('')+
+      '<td style="text-align:right;font-size:12px;font-weight:700">'+fmd(p.rev)+'</td></tr>';
+  }).join('');
+  var mEl=document.getElementById('retailerMatrix');
+  if(mEl) mEl.innerHTML=mHead+mBody+'</tbody></table>';
+}
+
+function exportRetailersCSV(){
+  var filt=(document.getElementById('retailerFilter')||{}).value||'all';
+  var sales=fRetailerSales(filt);
+  var rows=[['Retailer','Month','Year','Product','SKU','Type','Units Sold','Revenue AUD','Return Units','Return Rev AUD','Net Units','Net Revenue AUD','Gross Profit AUD','Margin %']];
+  sales.forEach(function(s){
+    var netRev=s.revenueAUD-(s.returnRevenueAUD||0);
+    var netU=s.unitsSold-(s.returnUnits||0);
+    var m=getRetailerMargin(s.retailer,s.sku);
+    var gp=netRev*m;
+    rows.push([s.retailer,s.month,s.year,s.productName,s.sku,s.type,s.unitsSold,s.revenueAUD,s.returnUnits||0,s.returnRevenueAUD||0,netU,netRev.toFixed(2),gp.toFixed(2),(m*100).toFixed(1)+'%']);
+  });
+  var csv=rows.map(function(r){return r.map(function(v){v=String(v);return(v.includes(','))?'"'+v+'"':v;}).join(',');}).join('\n');
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='us_retailers_export.csv';a.click();
+}
+
+
 window.addEventListener('load',function(){
-  applyChartDefaults();
-  loadSavedSettings();
-  // Skip landing page entirely — go straight to dashboard
-  showDash();
+  try{applyChartDefaults();}catch(e){}
+  try{loadSavedSettings();}catch(e){}
+  try{showDash();}catch(e){console.error('showDash error:',e);}
   loadSettingsFromCloud(function(){
     fetchFromGithub(function(){
-      // Re-render with fetched data
-      if(typeof rAll==='function') rAll();
+      var mls=document.getElementById('mob-loading-screen');
+      if(mls){mls.classList.add('hidden');mls.classList.remove('visible');}
+      var land=document.getElementById('land');
+      if(land) land.style.display='none';
+      try{if(typeof rAll==='function') rAll();}catch(e){console.error('rAll:',e);}
     });
   });
+  // Safety: force hide after 12s if still stuck
+  setTimeout(function(){
+    var land=document.getElementById('land');
+    if(land&&land.style.display!=='none'){
+      land.style.display='none';
+      var mls=document.getElementById('mob-loading-screen');
+      if(mls){mls.classList.add('hidden');mls.classList.remove('visible');}
+      try{if(typeof rAll==='function') rAll();}catch(e){}
+    }
+  }, 12000);
 });
+
+
+
 
 </script>
 
@@ -11003,209 +11499,149 @@ window.addEventListener('load',function(){
 <!-- SETTINGS MODAL -->
 <div class="settings-panel" id="settingsPanel">
 
-  <!-- Top bar with tabs -->
-  <div class="set-modal-topbar">
-    <div class="set-modal-title">⚙ Settings</div>
-    <button class="set-tab-btn active" id="setTab-spend"    onclick="showSetTab('spend',this)">📢 Ad Spend</button>
-    <button class="set-tab-btn"        id="setTab-margin"   onclick="showSetTab('margin',this)">💰 Margins</button>
-    <button class="set-tab-btn"        id="setTab-regions"  onclick="showSetTab('regions',this)">🗺 Region Mapping</button>
-    <button class="set-tab-btn"        id="setTab-bundles"  onclick="showSetTab('bundles',this)">🎁 Bundle Mapping</button>
-    <button class="set-tab-btn"        id="setTab-visitors" onclick="showSetTab('visitors',this)">📅 Visitors</button>
-    <button class="set-tab-btn"        id="setTab-prefs"    onclick="showSetTab('prefs',this)">🎛 Preferences</button>
-    <button class="set-tab-btn"        id="setTab-upload"   onclick="showSetTab('upload',this)">📂 Upload Status</button>
-    <div class="set-topbar-actions">
-      <button class="abtn" style="padding:7px 20px;font-size:13px" onclick="applySettings()">✓ Apply &amp; Close</button>
-      <button class="fp-close" onclick="closeSettings()">✕</button>
-    </div>
-  </div>
+  <!-- Settings Layout: left nav + right content -->
+  <div class="set-layout">
 
-  <!-- Modal body -->
-  <div class="set-modal-body">
-
-    <!-- AD SPEND TAB -->
-    <div class="set-tab-content active" id="setContent-spend">
-      <div class="set-block-title">Ad Spend — Monthly</div>
-      <div class="set-block-sub">Enter total ad spend per platform per month. Used to calculate ROAS and CAC.</div>
-      <div class="set-region-tabs">
-        <button class="set-rtab active" onclick="showSpendRegion('au',this)">🇦🇺 AU</button>
-        <button class="set-rtab" onclick="showSpendRegion('uk',this)">🇬🇧 UK</button>
-        <button class="set-rtab" onclick="showSpendRegion('us',this)">🇺🇸 USA</button>
-      </div>
-      <div class="set-region-panel" id="spend-au"><div class="set-platform-grid" id="spendGrid-au"></div></div>
-      <div class="set-region-panel" id="spend-uk" style="display:none"><div class="set-platform-grid" id="spendGrid-uk"></div></div>
-      <div class="set-region-panel" id="spend-us" style="display:none"><div class="set-platform-grid" id="spendGrid-us"></div></div>
-      <button class="set-add-btn" id="addPlatformBtn" onclick="addPlatformRow()">+ Add platform</button>
-    </div>
-
-    <!-- MARGINS TAB -->
-    <div class="set-tab-content" id="setContent-margin">
-      <div class="set-block-title">Gross Margin by Region &amp; Product Type</div>
-      <div class="set-block-sub">Enter margin % after COGS. Used to calculate gross profit and contribution margin.</div>
-      <table class="set-margin-table" style="max-width:500px">
-        <thead><tr><th>Region</th><th>Digital %</th><th>Physical %</th><th>Bundle %</th></tr></thead>
-        <tbody>
-          <tr>
-            <td><span class="set-region-badge au">AU</span></td>
-            <td><input type="number" class="set-inp" id="mg-au-digital" min="0" max="100" step="0.1" placeholder="e.g. 85" onchange="saveSettings()"></td>
-            <td><input type="number" class="set-inp" id="mg-au-physical" min="0" max="100" step="0.1" placeholder="e.g. 40" onchange="saveSettings()"></td>
-            <td><input type="number" class="set-inp" id="mg-au-bundle" min="0" max="100" step="0.1" placeholder="e.g. 55" onchange="saveSettings()"></td>
-          </tr>
-          <tr>
-            <td><span class="set-region-badge uk">UK</span></td>
-            <td><input type="number" class="set-inp" id="mg-uk-digital" min="0" max="100" step="0.1" placeholder="e.g. 85" onchange="saveSettings()"></td>
-            <td><input type="number" class="set-inp" id="mg-uk-physical" min="0" max="100" step="0.1" placeholder="e.g. 38" onchange="saveSettings()"></td>
-            <td><input type="number" class="set-inp" id="mg-uk-bundle" min="0" max="100" step="0.1" placeholder="e.g. 52" onchange="saveSettings()"></td>
-          </tr>
-          <tr>
-            <td><span class="set-region-badge us">USA</span></td>
-            <td><input type="number" class="set-inp" id="mg-us-digital" min="0" max="100" step="0.1" placeholder="e.g. 85" onchange="saveSettings()"></td>
-            <td><input type="number" class="set-inp" id="mg-us-physical" min="0" max="100" step="0.1" placeholder="e.g. 42" onchange="saveSettings()"></td>
-            <td><input type="number" class="set-inp" id="mg-us-bundle" min="0" max="100" step="0.1" placeholder="e.g. 58" onchange="saveSettings()"></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- REGION MAPPING TAB -->
-    <div class="set-tab-content" id="setContent-regions">
-      <div class="set-block-title">Product Region Mapping</div>
-      <div class="set-block-sub">Check which regions each product is actually active in. Unchecked regions are hidden from the Stock tab and charts. Pre-filled from your stock data.</div>
-
-      <div class="rm-toolbar">
-        <input class="set-inp" id="regionMapSearch" placeholder="Search by name, SKU or ID…" oninput="filterRegionMap()">
-        <button class="cbtn" onclick="regionMapSelectAll('au')">✓ All AU</button>
-        <button class="cbtn" onclick="regionMapSelectAll('uk')">✓ All UK</button>
-        <button class="cbtn" onclick="regionMapSelectAll('us')">✓ All USA</button>
-        <button class="cbtn" onclick="regionMapClearAll()" style="color:var(--red)">✕ Clear all</button>
-        <span class="rm-count" id="regionMapCount"></span>
-      </div>
-      <div class="rm-header">
-        <span>#</span><span>Product</span><span>SKU</span>
-        <span>AU</span><span>UK</span><span>USA</span>
-      </div>
-      <div id="regionMapList"></div>
-    </div>
-
-    <!-- BUNDLE MAPPING TAB -->
-    <div class="set-tab-content" id="setContent-bundles">
-      <div class="set-block-title">Bundle → ISBN Mapping</div>
-      <div class="set-block-sub">Map each bundle to its component ISBNs per region. Drag ISBNs from the left panel into bundles on the right. Bundle sales will be allocated to component ISBNs for velocity and ordering calculations.</div>
-
-      <!-- Region sub-tabs -->
-      <div class="set-region-tabs" style="margin-bottom:16px">
-        <button class="set-rtab active" id="bmap-tab-au" onclick="showBmapRegion('au',this)">🇦🇺 AU</button>
-        <button class="set-rtab" id="bmap-tab-uk" onclick="showBmapRegion('uk',this)">🇬🇧 UK</button>
-        <button class="set-rtab" id="bmap-tab-us" onclick="showBmapRegion('us',this)">🇺🇸 USA</button>
+    <!-- LEFT NAV SIDEBAR -->
+    <div class="set-nav">
+      <div class="set-nav-header">
+        <div class="set-nav-title">⚙ Settings</div>
+        <button class="fp-close" onclick="closeSettings()" style="margin-left:auto">✕</button>
       </div>
 
-      <!-- Two-panel layout -->
-      <div class="bmap-layout">
+      <!-- Nav groups -->
+      <div class="set-nav-group">
+        <div class="set-nav-label">DATA</div>
+        <button class="set-nav-item active" id="snav-upload" onclick="sNavTab('upload',this)">
+          <span class="set-nav-icon">📊</span> Upload Status
+        </button>
+      </div>
 
-        <!-- Left: ISBN list -->
-        <div class="bmap-left">
-          <div class="bmap-panel-title">ISBN Products</div>
-          <input class="set-inp" id="bmapIsbnSearch" placeholder="Search ISBNs…" oninput="filterBmapIsbns()" style="margin-bottom:10px;font-size:12px">
-          <div class="bmap-isbn-list" id="bmapIsbnList"></div>
-        </div>
+      <div class="set-nav-group">
+        <div class="set-nav-label">FINANCIALS</div>
+        <button class="set-nav-item" id="snav-spend" onclick="sNavTab('spend',this)">
+          <span class="set-nav-icon">💸</span> Ad Spend
+        </button>
+        <button class="set-nav-item" id="snav-margin" onclick="sNavTab('margin',this)">
+          <span class="set-nav-icon">💰</span> Margins
+        </button>
+      </div>
 
-        <!-- Right: Bundle list -->
-        <div class="bmap-right">
-          <div class="bmap-panel-title">Bundles <span id="bmapRegionLabel" style="color:var(--muted);font-weight:400;font-size:12px"></span></div>
-          <div class="bmap-bundle-list" id="bmapBundleList"></div>
-        </div>
+      <div class="set-nav-group">
+        <div class="set-nav-label">PRODUCTS</div>
+        <button class="set-nav-item" id="snav-bundle" onclick="sNavTab('bundle',this)">
+          <span class="set-nav-icon">📦</span> Bundle Mapping
+        </button>
+        <button class="set-nav-item" id="snav-region" onclick="sNavTab('region',this)">
+          <span class="set-nav-icon">🌏</span> Region Mapping
+        </button>
+      </div>
 
+      <div class="set-nav-group">
+        <div class="set-nav-label">GENERAL</div>
+        <button class="set-nav-item" id="snav-prefs" onclick="sNavTab('prefs',this)">
+          <span class="set-nav-icon">🎛️</span> Preferences
+        </button>
+        <button class="set-nav-item" id="snav-visitors" onclick="sNavTab('visitors',this)">
+          <span class="set-nav-icon">👥</span> Visitors
+        </button>
+      </div>
+
+      <!-- Dark mode toggle at bottom of nav -->
+      <div class="set-nav-bottom">
+        <button class="thbtn set-nav-dark" onclick="toggleTheme()" style="width:100%;justify-content:center;border-radius:8px;height:38px">
+          <span id="tic">🌙</span>&nbsp;<span id="tlbl">Dark</span>
+        </button>
+        <div style="font-size:10px;color:var(--muted2);text-align:center;margin-top:6px" id="settingsSaved" style="display:none">✓ Saved</div>
       </div>
     </div>
 
-    <!-- VISITORS TAB -->
-    <div class="set-tab-content" id="setContent-visitors">
-      <div class="set-block-title">Monthly Visitors</div>
-      <div class="set-block-sub">Enter your monthly unique visitors by region. Used to calculate conversion rate across the dashboard. Changes apply immediately.</div>
+    <!-- RIGHT CONTENT -->
+    <div class="set-content">
 
-      <div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px;margin-bottom:16px">
-        <table class="set-margin-table" style="max-width:100%;min-width:500px">
-          <thead>
-            <tr>
-              <th style="text-align:left;min-width:110px">Month</th>
-              <th style="text-align:right">All</th>
-              <th style="text-align:right">APAC</th>
-              <th style="text-align:right">EMEA</th>
-              <th style="text-align:right">AMER</th>
-              <th style="width:32px"></th>
-            </tr>
-          </thead>
-          <tbody id="visitorsTableBody"></tbody>
-        </table>
-      </div>
-      <button class="set-add-btn" onclick="addVisitorRow()">+ Add month</button>
-    </div>
-
-    <!-- PREFERENCES TAB -->
-    <div class="set-tab-content" id="setContent-prefs">
-      <div class="set-block-title">Dashboard Preferences</div>
-      <div class="set-block-sub">Set your default date range, comparison mode and currency.</div>
-      <div style="max-width:420px">
-        <div class="set-pref-row">
-          <label class="set-pref-label">Default date range</label>
-          <select class="set-sel" id="pref-range" onchange="saveSettings()">
-            <option value="mtd">Month to date</option>
-            <option value="lm">Last month</option>
-            <option value="30">Last 30 days</option>
-            <option value="90">Last 90 days</option>
-            <option value="fytd">FY to date</option>
-          </select>
-        </div>
-        <div class="set-pref-row">
-          <label class="set-pref-label">Default comparison</label>
-          <select class="set-sel" id="pref-comp" onchange="saveSettings()">
-            <option value="prior">Prior period</option>
-            <option value="ly">Same time LY</option>
-            <option value="none">None</option>
-          </select>
-        </div>
-        <div class="set-pref-row">
-          <label class="set-pref-label">Currency display</label>
-          <select class="set-sel" id="pref-currency" onchange="saveSettings()">
-            <option value="aud">AUD (A$)</option>
-            <option value="usd">USD ($)</option>
-            <option value="gbp">GBP (£)</option>
-          </select>
+      <!-- Header with apply button -->
+      <div class="set-content-header">
+        <div class="set-content-title" id="setContentTitle">Upload Status</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="abtn" id="snapshotBtn" onclick="saveSnapshot()" style="padding:6px 14px;font-size:12px;background:#16a34a;border-color:#16a34a">💾 Save Snapshot</button>
+          <button class="abtn" onclick="applySettings()" style="padding:6px 16px;font-size:13px">✓ Apply &amp; Close</button>
         </div>
       </div>
-      <div id="settingsSaved" style="font-size:12px;color:var(--grn);margin-top:16px;display:none">✓ Settings saved</div>
-    </div>
 
+      <!-- UPLOAD STATUS -->
+      <div class="set-panel active" id="setPanel-upload">
+        <div class="set-block-sub" style="margin-bottom:16px">Data auto-loads from GitHub on startup. Use the button below to pull the latest CSVs.</div>
+        <button class="abtn" id="githubRefreshBtn" onclick="refreshGithubData()" style="margin-bottom:20px;background:#1e40af;border-color:#1e40af">↻ Refresh Data from GitHub</button>
+        <div id="uploadStatusList" class="upload-status-grid"></div>
 
-    <!-- UPLOAD STATUS TAB -->
-    <div class="set-tab-content" id="setContent-upload">
-      <div class="set-block-title">Upload Status</div>
-      <div class="set-block-sub">Current data loaded into the dashboard. Upload new files via the bar at the bottom of the screen.</div>
-
-      <div id="uploadStatusList" class="upload-status-grid"></div>
-      <div style="margin-top:16px">
-        <button class="abtn" id="githubRefreshBtn" onclick="refreshGithubData()" style="padding:7px 18px;font-size:13px;background:#1e40af;border-color:#1e40af;color:#fff">&#8635; Refresh Data from GitHub</button>
-      </div>
-      <div style="margin-top:24px">
-        <div class="set-block-title" style="margin-bottom:6px">Export Configuration Files</div>
-        <div class="set-block-sub" style="margin-bottom:12px">Download, fill in, upload to GitHub repo.</div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
-            <div><div style="font-size:13px;font-weight:600">bundles.csv</div><div style="font-size:11px;color:var(--muted2)">Bundle SKUs with component ISBNs</div></div>
-            <button class="abtn" onclick="exportBundlesCSV()" style="padding:5px 12px;font-size:12px">&#8595; Export</button>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
-            <div><div style="font-size:13px;font-weight:600">regionmap.csv</div><div style="font-size:11px;color:var(--muted2)">Products with AU/UK/USA flags</div></div>
-            <button class="abtn" onclick="exportRegionMapCSV()" style="padding:5px 12px;font-size:12px">&#8595; Export</button>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
-            <div><div style="font-size:13px;font-weight:600">adspend.csv</div><div style="font-size:11px;color:var(--muted2)">Monthly ad spend by region/platform</div></div>
-            <button class="abtn" onclick="exportAdSpendCSV()" style="padding:5px 12px;font-size:12px">&#8595; Export</button>
+        <div style="margin-top:28px">
+          <div class="set-block-title" style="margin-bottom:6px">Export Configuration Files</div>
+          <div class="set-block-sub" style="margin-bottom:14px">Download, fill in, upload to GitHub repo. Dashboard auto-loads on next refresh.</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div class="set-export-row">
+              <div><div style="font-size:13px;font-weight:600">bundles.csv</div><div style="font-size:11px;color:var(--muted2)">Bundle SKUs with component ISBNs</div></div>
+              <button class="cbtn" onclick="exportBundlesCSV()" style="padding:5px 12px;font-size:12px">↓ Export</button>
+            </div>
+            <div class="set-export-row">
+              <div><div style="font-size:13px;font-weight:600">regionmap.csv</div><div style="font-size:11px;color:var(--muted2)">Products with AU/UK/USA active flags</div></div>
+              <button class="cbtn" onclick="exportRegionMapCSV()" style="padding:5px 12px;font-size:12px">↓ Export</button>
+            </div>
+            <div class="set-export-row">
+              <div><div style="font-size:13px;font-weight:600">adspend.csv</div><div style="font-size:11px;color:var(--muted2)">Monthly ad spend by region/platform</div></div>
+              <button class="cbtn" onclick="exportAdSpendCSV()" style="padding:5px 12px;font-size:12px">↓ Export</button>
+            </div>
+            <div class="set-export-row">
+              <div><div style="font-size:13px;font-weight:600">Month-End Report</div><div style="font-size:11px;color:var(--muted2)">Executive Word document for CEO/CRO</div></div>
+              <button class="cbtn" onclick="generateMonthEndReport();closeSettings();" style="padding:5px 12px;font-size:12px">📄 Generate</button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-  </div><!-- /set-modal-body -->
+      <!-- AD SPEND -->
+      <div class="set-panel" id="setPanel-spend">
+        <div class="set-block-title">Ad Spend — Monthly</div>
+        <div class="set-block-sub">Enter total ad spend per platform per month. Used to calculate ROAS and CAC.</div>
+        <div id="spendContent"></div>
+      </div>
+
+      <!-- MARGINS -->
+      <div class="set-panel" id="setPanel-margin">
+        <div class="set-block-title">Margins</div>
+        <div class="set-block-sub">Set gross margin percentages by region and product type.</div>
+        <div id="marginContent"></div>
+      </div>
+
+      <!-- BUNDLE MAPPING -->
+      <div class="set-panel" id="setPanel-bundle">
+        <div class="set-block-title">Bundle Mapping</div>
+        <div class="set-block-sub">Map bundle SKUs to their component ISBNs. Used to attribute bundle sales back to individual books for stock and velocity tracking.</div>
+        <div id="bundleContent"></div>
+      </div>
+
+      <!-- REGION MAPPING -->
+      <div class="set-panel" id="setPanel-region">
+        <div class="set-block-title">Region Mapping</div>
+        <div class="set-block-sub">Control which regions each product is active in. By default this is derived from stock data.</div>
+        <div id="regionContent"></div>
+      </div>
+
+      <!-- PREFERENCES -->
+      <div class="set-panel" id="setPanel-prefs">
+        <div class="set-block-title">Preferences</div>
+        <div id="prefsContent"></div>
+      </div>
+
+      <!-- VISITORS -->
+      <div class="set-panel" id="setPanel-visitors">
+        <div class="set-block-title">Visitor Data</div>
+        <div class="set-block-sub">Monthly session data used for conversion rate calculations.</div>
+        <div id="visitorsContent"></div>
+      </div>
+
+    </div><!-- /set-content -->
+  </div><!-- /set-layout -->
+
 </div><!-- /settings-panel -->
 <div class="footer">
   Created by <strong>Asvine Ganeshan</strong> &nbsp;|&nbsp; <strong>3P Learning</strong>
@@ -11400,7 +11836,7 @@ function injectDarkModeIntoSettings(){
 // ── Init all mobile features ─────────────────────────────────────────────────
 function initMobile(){
   if(!isMobile()) return;
-  showMobLoading();
+  // Mobile loading screen is shown by main load handler to avoid race conditions
   initMobProgressHook();
   initStockMobDropdown();
   injectDarkModeIntoSettings();
@@ -11422,26 +11858,8 @@ function initMobile(){
   }
 }
 
-// Hook into data load completion to hide loading screen
-var _origFetchFromGithub = window.fetchFromGithub;
-window.fetchFromGithub = function(cb){
-  if(_origFetchFromGithub){
-    _origFetchFromGithub(function(){
-      hideMobLoading();
-      if(cb) cb();
-    });
-  } else {
-    hideMobLoading();
-    if(cb) cb();
-  }
-};
-
-// Hide mobile loading screen when rAll completes
-var _origRAll = window.rAll;
-window.rAll = function(){
-  hideMobLoading();
-  if(_origRAll) _origRAll();
-};
+// hideMobLoading is called directly from the main load handler
+// No wrapping needed — avoids race condition with load event ordering
 
 window.addEventListener('load', function(){
   initMobile();
