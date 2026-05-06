@@ -10347,14 +10347,14 @@ window.addEventListener('load',function(){
   try{applyChartDefaults();}catch(e){}
   try{loadSavedSettings();}catch(e){}
   try{showDash();}catch(e){console.error('showDash error:',e);}
-  loadSettingsFromCloud(function(){
-    fetchFromGithub(function(){
+  // Load settings from localStorage (cloud sync removed)
+  try{ loadSavedSettings(); }catch(e){}
+  fetchFromGithub(function(){
       var mls=document.getElementById('mob-loading-screen');
       if(mls){mls.classList.add('hidden');mls.classList.remove('visible');}
       var land=document.getElementById('land');
       if(land) land.style.display='none';
       try{if(typeof rAll==='function') rAll();}catch(e){console.error('rAll:',e);}
-    });
   });
   // Safety: force hide after 12s if still stuck
   setTimeout(function(){
