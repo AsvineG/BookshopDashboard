@@ -3315,19 +3315,21 @@ var dk=function(){return document.documentElement.getAttribute('data-theme')==='
 // ═══════════════════════════════════════════════════════
 // LOADING UI
 // ═══════════════════════════════════════════════════════
-  // Sync sidebar dark toggle label
+function syncDarkLabels(){
+  var tic=document.getElementById('tic'), tlbl=document.getElementById('tlbl');
   var ticSb=document.getElementById('ticSb'), tlblSb=document.getElementById('tlblSb');
-  if(ticSb) ticSb.textContent=document.getElementById('tic').textContent;
-  if(tlblSb) tlblSb.textContent=document.getElementById('tlbl').textContent;
+  if(tic&&ticSb) ticSb.textContent=tic.textContent;
+  if(tlbl&&tlblSb) tlblSb.textContent=tlbl.textContent;
+}
 
 function showLoader(msg){
-  var l=document.getElementById('lod');
+  var l=document.getElementById('lod'); if(!l) return;
   l.style.display='flex';
-  document.getElementById('lodtx').textContent=msg||'Processing…';
-  var _lf=document.getElementById('lodBar')||document.getElementById('lodBar');if(_lf)_lf.style.width='0%';
+  var tx=document.getElementById('lodtx'); if(tx) tx.textContent=msg||'Processing…';
+  var bar=document.getElementById('lodBar'); if(bar) bar.style.width='0%';
 }
-function setProgress(pct){var el=document.getElementById('lodBar')||document.getElementById('lodBar');if(el)el.style.width=pct+'%';}
-function hideLoader(){document.getElementById('lod').style.display='none';}
+function setProgress(pct){ var el=document.getElementById('lodBar'); if(el) el.style.width=pct+'%'; }
+function hideLoader(){ var l=document.getElementById('lod'); if(l) l.style.display='none'; }
 
 // ═══════════════════════════════════════════════════════
 // FILE LOADING — async with progress
@@ -3598,6 +3600,12 @@ function preProcess(cb){
     row._name='';
     row._id=String(row['Order ID']||'');
     row._zero=row._aud<0.01||row._excluded;
+    // Ensure all filter fields are defined strings
+    if(!row._ch) row._ch='Unknown';
+    if(!row._co) row._co='Unknown';
+    if(!row._status) row._status='Unknown';
+    if(!row._pay) row._pay='Unknown';
+    if(!row._email) row._email='';
     row._coupon=String(row['Coupon Details']||'').trim();
     row._hasCoupon=!!row._coupon;
     row._couponCode=(function(){
@@ -3739,17 +3747,18 @@ function fOrders(){
   }
 
   return rawO.filter(function(r){
+    if(!r||!r._date===undefined) return false; // skip unprocessed rows
     var d=r._date;
     if(from&&d&&d<from)return false;
     if(to&&d&&d>to)return false;
-    if(chs.length&&!chs.includes(r._ch))return false;
-    if(sts.length&&!sts.includes(r._status))return false;
-    var py=r._pay;
+    if(chs.length&&!chs.includes(r._ch||'Unknown'))return false;
+    if(sts.length&&!sts.includes(r._status||'Unknown'))return false;
+    var py=r._pay||'Unknown';
     if(py!=='Unknown'&&pays.length&&!pays.includes(py))return false;
     if(!incESA&&r._esa)return false;
-    if(co&&r._co!==co)return false;
-    if(stQ&&!r._st.toLowerCase().includes(stQ))return false;
-    if(cyQ&&!r._cy.toLowerCase().includes(cyQ))return false;
+    if(co&&(r._co||'')!==co)return false;
+    if(stQ&&!(r._st||'').toLowerCase().includes(stQ))return false;
+    if(cyQ&&!(r._cy||'').toLowerCase().includes(cyQ))return false;
     var t=r._aud;
     if(t<mn||t>mx)return false;
     // Product type filter — order has at least one item of that type
@@ -3797,6 +3806,7 @@ function showDash(){
   try{document.getElementById('sidebar').style.display='flex';}catch(e){}
   try{var db=document.getElementById('dataBar');if(db)db.style.display='flex';}catch(e){}
   try{var aiFab=document.getElementById('aiFab');if(aiFab)aiFab.classList.add('show');}catch(e){}
+  try{syncDarkLabels();}catch(e){}
   try{buildFilters();}catch(e){console.warn('buildFilters:',e);}
   try{updateRangeLabel();}catch(e){console.warn('updateRangeLabel:',e);}
   // Show insights tab shell immediately — render deferred
@@ -4241,7 +4251,7 @@ function rAll(){
   try{updateFilterBadge();}catch(e){}
   try{updateTbKpis();}catch(e){}
   if(aTab==='overview')try{updateTargetBar();}catch(e){}
-  if(lO||lP)try{rTab(aTab);}catch(e){console.error('rAll rTab:',e);}
+  try{rTab(aTab);}catch(e){console.error('rAll rTab:',e);}
 }
 function rTab(t){
   var o=fOrders();
@@ -6113,6 +6123,7 @@ function targetSummaryBar(actual, budget, ly, label){
 // OVERVIEW
 // ═══════════════════════════════════════════════════════
 function rOv(orders){
+  orders = orders||[];
   // Separate revenue orders from cancelled/refunded/declined
   var paidOrders=orders.filter(function(r){return!r._zero;});
   var badOrders=orders.filter(function(r){return r._excluded;});
