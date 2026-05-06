@@ -3131,7 +3131,7 @@ function sNavTo(tab, btn){
   if(tab==='bundles') showBmapRegion(bmapActiveRegion, document.getElementById('bmap-tab-'+bmapActiveRegion));
   if(tab==='regions') renderRegionMapList();
   if(tab==='visitors') renderVisitorsTable();
-  if(tab==='upload')  renderUploadStatus();
+  if(tab==='upload')  { renderUploadStatus(); renderGithubPatStatus(); }
 }
 
 
@@ -10040,79 +10040,138 @@ function applyVisitorsToRawV(){
 
 var bmapActiveRegion = 'au';
 
-// Fix mojibake in product names (â€" → –, â€™ → ', etc.)
+// ── fixName: decode mojibake in product names ─────────────────────────────────
 function fixName(s){
   if(!s) return s;
   return s
-    .replace(/â/g, '–')   // â€" → –
-    .replace(/â/g, '—')   // â€" → —
-    .replace(/â/g, '’')   // â€™ → '
-    .replace(/â/g, '“')   // â€œ → "
-    .replace(/â/g, '”')   // â€ → "
-    .replace(/â¦/g, '…')   // â€¦ → …
-    .replace(/Ã¢â¬â¢/g, '’') // extra variant
-    .replace(/Ã©/g, 'é')
-    .replace(/Ã /g, 'à');
+    .replace(/â/g,'–')
+    .replace(/â/g,'—')
+    .replace(/â/g,'’')
+    .replace(/â/g,'“')
+    .replace(/â/g,'”')
+    .replace(/â¦/g,'…');
 }
 
+// ── GitHub PAT UI helpers ──────────────────────────────────────────────────────
+function saveGithubPAT(){
+  var inp = document.getElementById('githubPatInput');
+  var st  = document.getElementById('githubPatStatus');
+  if(!inp) return;
+  var token = inp.value.trim();
+  if(!token){
+    if(st){ st.textContent = '⚠️ Please paste your token first.'; st.style.color='var(--amb)'; }
+    return;
+  }
+  setGithubPAT(token);
+  inp.value = '';
+  // Show masked confirmation
+  var masked = token.slice(0,12) + '••••••••••••' + token.slice(-4);
+  if(st){ st.textContent = '✅ Token saved: ' + masked; st.style.color='var(--grn)'; }
+  // Pre-fetch SHA now that we have a token
+  fetch(GITHUB_API + 'bundles.json', {
+    headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}
+  })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){ if(d && d.sha){ _bundlesJsonSha = d.sha; console.log('SHA fetched'); } })
+    .catch(function(){});
+}
+
+function clearGithubPAT(){
+  try{ localStorage.removeItem('re_github_pat'); }catch(e){}
+  var inp = document.getElementById('githubPatInput');
+  var st  = document.getElementById('githubPatStatus');
+  if(inp) inp.value = '';
+  if(st){ st.textContent = 'Token removed.'; st.style.color='var(--muted)'; }
+}
+
+function renderGithubPatStatus(){
+  var st = document.getElementById('githubPatStatus');
+  if(!st) return;
+  var tok = getGithubPAT();
+  if(tok){
+    var masked = tok.slice(0,12) + '••••••••••••' + tok.slice(-4);
+    st.textContent = '✅ Token saved: ' + masked + ' — ready to save bundles.';
+    st.style.color = 'var(--grn)';
+  } else {
+    st.textContent = '⚠️ No token saved. Paste your GitHub PAT above to enable saving.';
+    st.style.color = 'var(--muted)';
+  }
+}
+
+// ── saveBundleMapToGithub ──────────────────────────────────────────────────────
 function saveBundleMapToGithub(){
   var btn    = document.getElementById('bundleSaveBtn');
   var status = document.getElementById('bundleSaveStatus');
-  if(btn){ btn.disabled = true; btn.textContent = '⏳ Saving…'; }
-  if(status){ status.textContent = ''; status.style.color = 'var(--muted)'; }
 
-  // Clean bundleMap — strip internal __excluded/__extra keys before saving
+  var pat = getGithubPAT();
+  if(!pat){
+    if(status){
+      status.textContent = '⚠️ No GitHub token — add it in Settings → Upload Status';
+      status.style.color = 'var(--amb)';
+    }
+    return;
+  }
+
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+  if(status){ status.textContent = ''; }
+
+  // Clean bundleMap — strip internal __excluded/__extra keys
   var clean = {};
   ['au','uk','us'].forEach(function(reg){
     clean[reg] = {};
     var src = (SETTINGS.bundleMap && SETTINGS.bundleMap[reg]) || {};
     Object.keys(src).forEach(function(sku){
-      if(sku.startsWith('__')) return; // skip internal meta keys
+      if(sku === '__excluded' || sku === '__extra') return;
       var isbns = src[sku];
       if(Array.isArray(isbns) && isbns.length > 0) clean[reg][sku] = isbns;
     });
   });
 
-  var jsonStr  = JSON.stringify(clean, null, 2);
-  var b64      = btoa(unescape(encodeURIComponent(jsonStr)));
-  var payload  = {
-    message: 'Update bundles.json — ' + new Date().toISOString().slice(0,10),
+  var jsonStr = JSON.stringify(clean, null, 2);
+  var b64     = btoa(unescape(encodeURIComponent(jsonStr)));
+  var payload = {
+    message: 'Update bundle mapping — ' + new Date().toISOString().slice(0,10),
     content: b64
   };
-  if(_bundlesJsonSha) payload.sha = _bundlesJsonSha; // required for updates, omit for first create
+  if(_bundlesJsonSha) payload.sha = _bundlesJsonSha;
 
   fetch(GITHUB_API + 'bundles.json', {
     method: 'PUT',
-    headers: {
-      'Authorization': 'token ' + GITHUB_PAT,
-      'Accept':        'application/vnd.github.v3+json',
-      'Content-Type':  'application/json'
+    headers:{
+      'Authorization':'token ' + pat,
+      'Accept':'application/vnd.github.v3+json',
+      'Content-Type':'application/json'
     },
     body: JSON.stringify(payload)
   })
   .then(function(r){
-    if(!r.ok) return r.json().then(function(e){ throw new Error(e.message || r.status); });
+    if(!r.ok) return r.json().then(function(e){
+      throw new Error(e.message || ('HTTP ' + r.status));
+    });
     return r.json();
   })
   .then(function(data){
-    // Store new SHA so next save is an update not a create
     if(data && data.content && data.content.sha) _bundlesJsonSha = data.content.sha;
-    if(btn){ btn.disabled = false; btn.innerHTML = '<span>☁️</span> Save to GitHub'; }
+    if(btn){ btn.disabled = false; btn.innerHTML = '☁️ Save to GitHub'; }
     if(status){
-      status.textContent = '✅ Saved ' + new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
+      var t = new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
+      status.textContent = '✅ Saved at ' + t;
       status.style.color = 'var(--grn)';
     }
-    // Also persist locally
     try{ localStorage.setItem('re_settings', JSON.stringify(SETTINGS)); }catch(e){}
     console.log('✅ bundles.json saved to GitHub');
   })
   .catch(function(err){
-    console.error('GitHub save failed:', err);
-    if(btn){ btn.disabled = false; btn.innerHTML = '<span>☁️</span> Save to GitHub'; }
+    if(btn){ btn.disabled = false; btn.innerHTML = '☁️ Save to GitHub'; }
     if(status){
-      status.textContent = '❌ Save failed: ' + err.message;
+      status.textContent = '❌ ' + err.message;
       status.style.color = 'var(--red)';
     }
+    // If bad credentials, prompt user to refresh token
+    if(err.message && err.message.toLowerCase().includes('bad credentials')){
+      if(status) status.textContent += ' — go to Settings → Upload Status to update your token';
+    }
+    console.error('GitHub save failed:', err);
   });
 }
 
@@ -10427,10 +10486,17 @@ function closeSettings(){
 // ═══════════════════════════════════════════════════════
 // GITHUB DATA LOADING
 // ═══════════════════════════════════════════════════════
-var GITHUB_BASE  = 'https://raw.githubusercontent.com/AsvineG/BookshopDashboard/main/';
-var GITHUB_API   = 'https://api.github.com/repos/AsvineG/BookshopDashboard/contents/';
-var GITHUB_PAT   = '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';
-var _bundlesJsonSha = null; // tracks SHA so updates don't create duplicate files
+var GITHUB_BASE = 'https://raw.githubusercontent.com/AsvineG/BookshopDashboard/main/';
+var GITHUB_API  = 'https://api.github.com/repos/AsvineG/BookshopDashboard/contents/';
+var _bundlesJsonSha = null;
+
+function getGithubPAT(){
+  try{ return localStorage.getItem('re_github_pat')||''; }catch(e){ return ''; }
+}
+function setGithubPAT(t){
+  try{ localStorage.setItem('re_github_pat', t.trim()); }catch(e){}
+}
+
 var GITHUB_FILES = [
   { url: GITHUB_BASE + 'orders.csv',        type: 'orders'    },
   { url: GITHUB_BASE + 'products.csv',      type: 'products'  },
@@ -10507,30 +10573,53 @@ function fetchFromGithub(onComplete){
       .catch(function(e){ console.warn('xlsx fetch failed:',e); });
   });
 
-  // Fetch bundles.json in background — non-blocking, GitHub always wins over localStorage
+  // Fetch bundles.json — non-blocking, GitHub is source of truth
   fetch(GITHUB_BASE + 'bundles.json?t=' + Date.now())
-    .then(function(r){
-      if(!r.ok) return null;  // file doesn't exist yet — that's fine
-      return r.json();
-    })
+    .then(function(r){ return r.ok ? r.json() : null; })
     .then(function(data){
-      if(!data) return;
-      // Merge GitHub bundleMap over localStorage — GitHub is source of truth
-      if(data && typeof data === 'object'){
-        SETTINGS.bundleMap = data;
-        try{ localStorage.setItem('re_settings', JSON.stringify(SETTINGS)); }catch(e){}
-        console.log('✅ bundles.json loaded from GitHub');
+      if(!data || typeof data !== 'object') return;
+      SETTINGS.bundleMap = data;
+      try{ localStorage.setItem('re_settings', JSON.stringify(SETTINGS)); }catch(e){}
+      console.log('bundles.json loaded from GitHub');
+    })
+    .catch(function(){ console.log('bundles.json not on GitHub yet'); });
+
+  // Pre-fetch bundles.json SHA if PAT available (needed for in-place updates)
+  if(getGithubPAT()){
+    fetch(GITHUB_API + 'bundles.json', {
+      headers:{'Authorization':'token '+getGithubPAT(),'Accept':'application/vnd.github.v3+json'}
+    })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){ if(d && d.sha) _bundlesJsonSha = d.sha; })
+      .catch(function(){});
+  }
+
+  // Fetch bundles.json from GitHub — non-blocking, GitHub is source of truth
+  fetch(GITHUB_BASE + 'bundles.json?t=' + Date.now())
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(data){
+      if(!data || typeof data !== 'object') return;
+      SETTINGS.bundleMap = data;
+      try{ localStorage.setItem('re_settings', JSON.stringify(SETTINGS)); }catch(e){}
+      console.log('✅ bundles.json loaded from GitHub');
+      // Refresh bundle mapping panel if open
+      if(document.getElementById('setContent-bundles') &&
+         document.getElementById('setContent-bundles').classList.contains('active')){
+        showBmapRegion(bmapActiveRegion,
+          document.getElementById('bmap-tab-'+bmapActiveRegion));
       }
     })
-    .catch(function(e){ console.log('bundles.json not on GitHub yet — using localStorage'); });
+    .catch(function(){ console.log('bundles.json not on GitHub yet'); });
 
-  // Also fetch SHA for bundles.json (needed for future updates via GitHub API)
-  fetch(GITHUB_API + 'bundles.json', {
-    headers: { 'Authorization': 'token ' + GITHUB_PAT, 'Accept': 'application/vnd.github.v3+json' }
-  })
-    .then(function(r){ return r.ok ? r.json() : null; })
-    .then(function(d){ if(d && d.sha) _bundlesJsonSha = d.sha; })
-    .catch(function(){});
+  // Pre-fetch SHA for bundles.json (needed for in-place updates) — only if PAT is set
+  if(getGithubPAT()){
+    fetch(GITHUB_API + 'bundles.json', {
+      headers:{'Authorization':'token '+getGithubPAT(),'Accept':'application/vnd.github.v3+json'}
+    })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){ if(d && d.sha) _bundlesJsonSha = d.sha; })
+      .catch(function(){});
+  }
 
   if(total === 0){ finish(); return; }
 
@@ -10802,6 +10891,24 @@ window.addEventListener('load',function(){
           <button class="abtn" onclick="generateMonthEndReport()" style="background:#16a34a;border-color:#16a34a">📄 Month-End Report</button>
           <button class="cbtn" onclick="if(confirm('Clear all saved data?'))confirmClear()" style="color:var(--red)">✕ Clear all data</button>
         </div>
+
+        <!-- GitHub PAT — stored in localStorage only, never in the file -->
+        <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--border)">
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">🔑 GitHub Personal Access Token</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+            Required to save bundle mappings back to GitHub. Stored only in your browser — never in the HTML file.
+            Generate at <strong>github.com → Settings → Developer settings → Fine-grained tokens</strong> with Contents: Read &amp; Write on BookshopDashboard.
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <input type="password" id="githubPatInput" placeholder="github_pat_…"
+              style="font-family:monospace;font-size:12px;flex:1;min-width:260px;max-width:480px;padding:7px 10px;border:1px solid var(--border2);border-radius:7px;background:var(--inp);color:var(--text);outline:none"
+              onfocus="this.style.borderColor='var(--blu)'" onblur="this.style.borderColor='var(--border2)'"
+              onkeydown="if(event.key==='Enter') saveGithubPAT()">
+            <button class="abtn" onclick="saveGithubPAT()" style="padding:7px 16px">Save Token</button>
+            <button class="cbtn" onclick="clearGithubPAT()" style="color:var(--red);font-size:12px">Remove</button>
+          </div>
+          <div id="githubPatStatus" style="font-size:11px;margin-top:8px;color:var(--muted)"></div>
+        </div>
       </div>
 
       <!-- AD SPEND -->
@@ -10848,12 +10955,13 @@ window.addEventListener('load',function(){
 
       <!-- BUNDLE MAPPING -->
       <div class="set-panel" id="setContent-bundles">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap">
           <div class="set-section-sub" style="margin:0">Map each bundle to its component ISBNs per region. Drag ISBNs from the left into bundles on the right.</div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
             <span id="bundleSaveStatus" style="font-size:11px;color:var(--muted)"></span>
-            <button class="abtn" id="bundleSaveBtn" onclick="saveBundleMapToGithub()" style="font-size:12px;padding:5px 14px;background:var(--grn);border-color:var(--grn);color:#fff;display:flex;align-items:center;gap:5px">
-              <span>☁️</span> Save to GitHub
+            <button class="abtn" id="bundleSaveBtn" onclick="saveBundleMapToGithub()"
+              style="font-size:12px;padding:5px 14px;background:var(--grn);border-color:var(--grn);color:#fff;display:flex;align-items:center;gap:5px">
+              ☁️ Save to GitHub
             </button>
           </div>
         </div>
