@@ -2169,11 +2169,16 @@ table td:first-child, table th:first-child {
     <button class="esa-toggle" id="esaToggleBtn" onclick="toggleESA()" title="Toggle ESA / Funded orders">
       🔥 <span id="esaToggleLbl">ESA On</span>
     </button>
+    <button class="filter-btn mob-hide" id="filterBtn" onclick="toggleFilters()" title="Filters">
+      ⚡ <span>Filters</span><span class="fbadge" id="filterBadge" style="display:none;background:var(--grn);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;margin-left:4px">0</span>
+    </button>
     <button class="thbtn" id="settingsBtn" onclick="toggleSettings()" title="Settings" style="padding:0 14px;gap:5px">
       ⚙<span class="mob-hide"> Settings</span>
     </button>
   </div>
 </div>
+
+
 
 <!-- APP SHELL -->
 <div class="customize-banner" id="custBanner">
@@ -3962,7 +3967,6 @@ function clf(){
 // ═══════════════════════════════════════════════════════
 function showDash(){
   try{document.getElementById('sidebar').style.display='flex';}catch(e){}
-  try{var db=document.getElementById('dataBar');if(db)db.style.display='flex';}catch(e){}
   try{var aiFab=document.getElementById('aiFab');if(aiFab)aiFab.classList.add('show');}catch(e){}
   try{syncDarkLabels();}catch(e){}
   try{buildFilters();}catch(e){console.warn('buildFilters:',e);}
