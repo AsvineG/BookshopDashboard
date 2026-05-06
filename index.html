@@ -10040,6 +10040,82 @@ function applyVisitorsToRawV(){
 
 var bmapActiveRegion = 'au';
 
+// Fix mojibake in product names (â€" → –, â€™ → ', etc.)
+function fixName(s){
+  if(!s) return s;
+  return s
+    .replace(/â/g, '–')   // â€" → –
+    .replace(/â/g, '—')   // â€" → —
+    .replace(/â/g, '’')   // â€™ → '
+    .replace(/â/g, '“')   // â€œ → "
+    .replace(/â/g, '”')   // â€ → "
+    .replace(/â¦/g, '…')   // â€¦ → …
+    .replace(/Ã¢â¬â¢/g, '’') // extra variant
+    .replace(/Ã©/g, 'é')
+    .replace(/Ã /g, 'à');
+}
+
+function saveBundleMapToGithub(){
+  var btn    = document.getElementById('bundleSaveBtn');
+  var status = document.getElementById('bundleSaveStatus');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+  if(status){ status.textContent = ''; status.style.color = 'var(--muted)'; }
+
+  // Clean bundleMap — strip internal __excluded/__extra keys before saving
+  var clean = {};
+  ['au','uk','us'].forEach(function(reg){
+    clean[reg] = {};
+    var src = (SETTINGS.bundleMap && SETTINGS.bundleMap[reg]) || {};
+    Object.keys(src).forEach(function(sku){
+      if(sku.startsWith('__')) return; // skip internal meta keys
+      var isbns = src[sku];
+      if(Array.isArray(isbns) && isbns.length > 0) clean[reg][sku] = isbns;
+    });
+  });
+
+  var jsonStr  = JSON.stringify(clean, null, 2);
+  var b64      = btoa(unescape(encodeURIComponent(jsonStr)));
+  var payload  = {
+    message: 'Update bundles.json — ' + new Date().toISOString().slice(0,10),
+    content: b64
+  };
+  if(_bundlesJsonSha) payload.sha = _bundlesJsonSha; // required for updates, omit for first create
+
+  fetch(GITHUB_API + 'bundles.json', {
+    method: 'PUT',
+    headers: {
+      'Authorization': 'token ' + GITHUB_PAT,
+      'Accept':        'application/vnd.github.v3+json',
+      'Content-Type':  'application/json'
+    },
+    body: JSON.stringify(payload)
+  })
+  .then(function(r){
+    if(!r.ok) return r.json().then(function(e){ throw new Error(e.message || r.status); });
+    return r.json();
+  })
+  .then(function(data){
+    // Store new SHA so next save is an update not a create
+    if(data && data.content && data.content.sha) _bundlesJsonSha = data.content.sha;
+    if(btn){ btn.disabled = false; btn.innerHTML = '<span>☁️</span> Save to GitHub'; }
+    if(status){
+      status.textContent = '✅ Saved ' + new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
+      status.style.color = 'var(--grn)';
+    }
+    // Also persist locally
+    try{ localStorage.setItem('re_settings', JSON.stringify(SETTINGS)); }catch(e){}
+    console.log('✅ bundles.json saved to GitHub');
+  })
+  .catch(function(err){
+    console.error('GitHub save failed:', err);
+    if(btn){ btn.disabled = false; btn.innerHTML = '<span>☁️</span> Save to GitHub'; }
+    if(status){
+      status.textContent = '❌ Save failed: ' + err.message;
+      status.style.color = 'var(--red)';
+    }
+  });
+}
+
 function showBmapRegion(region, btn){
   bmapActiveRegion = region;
   document.querySelectorAll('#setContent-bundles .set-rtab').forEach(function(b){ b.classList.remove('active'); });
@@ -10076,9 +10152,9 @@ function renderBmapIsbns(){
     return '<div class="bmap-isbn-item'+(isUsed?' used':'')+'" draggable="true"'+
       ' data-isbn="'+p.sku+'" data-name="'+p.name.replace(/"/g,'&quot;')+'"'+
       ' ondragstart="bmapDragStart(event)"'+
-      ' title="'+p.name+'">'+
+      ' title="'+fixName(p.name)+'">'+
       '<span class="bmap-isbn-drag">⠿</span>'+
-      '<span class="bmap-isbn-name">'+p.name+'</span>'+
+      '<span class="bmap-isbn-name">'+fixName(p.name)+'</span>'+
       '<span class="bmap-isbn-code">'+p.sku+'</span>'+
     '</div>';
   }).join('') || '<div style="padding:16px;font-size:12px;color:var(--muted)">No ISBN products found</div>';
@@ -10117,7 +10193,7 @@ function renderBmapBundles(){
   if(!SETTINGS.bundleMap[region]) SETTINGS.bundleMap[region]={};
   var map=SETTINGS.bundleMap[region], bundles=bmapGetActiveBundles(region);
   var isbnLookup={};
-  (RAW_PRODUCTS||[]).forEach(function(p){isbnLookup[p.sku]=p.name;});
+  (RAW_PRODUCTS||[]).forEach(function(p){isbnLookup[p.sku]=fixName(p.name);});
 
   var html=bundles.map(function(b){
     var components=map[b.sku]||[];
@@ -10125,7 +10201,7 @@ function renderBmapBundles(){
       ?'<span class="bmap-bundle-count">'+components.length+' ISBNs</span>'
       :'<span class="bmap-bundle-count empty">No ISBNs</span>';
     var componentRows=components.map(function(isbn){
-      var name=isbnLookup[isbn]||isbn;
+      var name=fixName(isbnLookup[isbn]||isbn);
       return '<div class="bmap-component">'+
         '<span class="bmap-component-isbn">'+isbn+'</span>'+
         '<span class="bmap-component-name" title="'+name+'">'+name+'</span>'+
@@ -10134,11 +10210,11 @@ function renderBmapBundles(){
     }).join('');
 
     var copyOptions=bundles.filter(function(ob){return ob.sku!==b.sku&&(map[ob.sku]||[]).length>0;})
-      .map(function(ob){return '<option value="'+ob.sku+'">'+ob.sku+' \u2014 '+ob.name.slice(0,30)+'</option>';}).join('');
+      .map(function(ob){return '<option value="'+ob.sku+'">'+ob.sku+' \u2014 '+fixName(ob.name||'').slice(0,30)+'</option>';}).join('');
 
     return '<div class="bmap-bundle" id="bmap-bundle-'+b.sku+'">'+
       '<div class="bmap-bundle-header">'+
-        '<span class="bmap-bundle-name" data-sku="'+b.sku+'" onclick="bmapToggle(this.dataset.sku)" style="cursor:pointer;flex:1">'+b.name+'</span>'+
+        '<span class="bmap-bundle-name" data-sku="'+b.sku+'" onclick="bmapToggle(this.dataset.sku)" style="cursor:pointer;flex:1">'+fixName(b.name)+'</span>'+
         '<span class="bmap-bundle-sku">'+b.sku+'</span>'+countLabel+
         '<select class="bmap-copy-select" data-target="'+b.sku+'" onchange="bmapCopyFromSel(this)">'+
           '<option value="">\u2398 Copy from\u2026</option>'+copyOptions+
@@ -10351,7 +10427,10 @@ function closeSettings(){
 // ═══════════════════════════════════════════════════════
 // GITHUB DATA LOADING
 // ═══════════════════════════════════════════════════════
-var GITHUB_BASE = 'https://raw.githubusercontent.com/AsvineG/BookshopDashboard/main/';
+var GITHUB_BASE  = 'https://raw.githubusercontent.com/AsvineG/BookshopDashboard/main/';
+var GITHUB_API   = 'https://api.github.com/repos/AsvineG/BookshopDashboard/contents/';
+var GITHUB_PAT   = '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';
+var _bundlesJsonSha = null; // tracks SHA so updates don't create duplicate files
 var GITHUB_FILES = [
   { url: GITHUB_BASE + 'orders.csv',        type: 'orders'    },
   { url: GITHUB_BASE + 'products.csv',      type: 'products'  },
@@ -10427,6 +10506,31 @@ function fetchFromGithub(onComplete){
       .then(function(buf){ try{ parseRetailersXlsx(buf); }catch(e){ console.warn('xlsx parse:',e); } })
       .catch(function(e){ console.warn('xlsx fetch failed:',e); });
   });
+
+  // Fetch bundles.json in background — non-blocking, GitHub always wins over localStorage
+  fetch(GITHUB_BASE + 'bundles.json?t=' + Date.now())
+    .then(function(r){
+      if(!r.ok) return null;  // file doesn't exist yet — that's fine
+      return r.json();
+    })
+    .then(function(data){
+      if(!data) return;
+      // Merge GitHub bundleMap over localStorage — GitHub is source of truth
+      if(data && typeof data === 'object'){
+        SETTINGS.bundleMap = data;
+        try{ localStorage.setItem('re_settings', JSON.stringify(SETTINGS)); }catch(e){}
+        console.log('✅ bundles.json loaded from GitHub');
+      }
+    })
+    .catch(function(e){ console.log('bundles.json not on GitHub yet — using localStorage'); });
+
+  // Also fetch SHA for bundles.json (needed for future updates via GitHub API)
+  fetch(GITHUB_API + 'bundles.json', {
+    headers: { 'Authorization': 'token ' + GITHUB_PAT, 'Accept': 'application/vnd.github.v3+json' }
+  })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){ if(d && d.sha) _bundlesJsonSha = d.sha; })
+    .catch(function(){});
 
   if(total === 0){ finish(); return; }
 
@@ -10744,7 +10848,15 @@ window.addEventListener('load',function(){
 
       <!-- BUNDLE MAPPING -->
       <div class="set-panel" id="setContent-bundles">
-        <div class="set-section-sub">Map each bundle to its component ISBNs per region. Drag ISBNs from the left into bundles on the right.</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+          <div class="set-section-sub" style="margin:0">Map each bundle to its component ISBNs per region. Drag ISBNs from the left into bundles on the right.</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <span id="bundleSaveStatus" style="font-size:11px;color:var(--muted)"></span>
+            <button class="abtn" id="bundleSaveBtn" onclick="saveBundleMapToGithub()" style="font-size:12px;padding:5px 14px;background:var(--grn);border-color:var(--grn);color:#fff;display:flex;align-items:center;gap:5px">
+              <span>☁️</span> Save to GitHub
+            </button>
+          </div>
+        </div>
         <div class="set-region-tabs" style="margin-bottom:16px">
           <button class="set-rtab active" id="bmap-tab-au" onclick="showBmapRegion('au',this)">🇦🇺 AU</button>
           <button class="set-rtab" id="bmap-tab-uk" onclick="showBmapRegion('uk',this)">🇬🇧 UK</button>
