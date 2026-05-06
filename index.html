@@ -1831,113 +1831,252 @@ table td:first-child, table th:first-child {
 }
 
 
-/* ── Settings redesign — Option B left sidebar ─────────────────────────── */
-.set-layout {
-  display: flex;
-  height: 100%;
-  overflow: hidden;
+
+
+/* ══════════════════════════════════════════════════════
+   SETTINGS — Left sidebar layout (like Image 2)
+══════════════════════════════════════════════════════ */
+.settings-panel{
+  position:fixed;inset:0;z-index:700;
+  background:var(--bg);display:none;flex-direction:column;
 }
-.set-nav {
-  width: 210px;
-  flex-shrink: 0;
-  background: var(--sbar);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-}
-.set-nav-header {
-  display: flex;
-  align-items: center;
-  padding: 16px 16px 12px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.set-nav-title {
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--text);
-  letter-spacing: -.01em;
-}
-.set-nav-group {
-  padding: 12px 8px 4px;
-}
-.set-nav-label {
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--muted2);
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  padding: 0 8px;
-  margin-bottom: 4px;
-}
-.set-nav-item {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  width: 100%;
-  padding: 9px 10px;
-  border: none;
-  border-radius: 8px;
-  background: none;
-  color: var(--text);
-  font-size: 13px;
-  font-family: inherit;
-  cursor: pointer;
-  text-align: left;
-  transition: background .12s;
-  margin-bottom: 2px;
-}
-.set-nav-item:hover { background: var(--surface2); }
-.set-nav-item.active { background: var(--blu); color: #fff; font-weight: 600; }
-.set-nav-icon { font-size: 14px; }
-.set-nav-bottom {
-  margin-top: auto;
-  padding: 12px;
-  border-top: 1px solid var(--border);
-}
-.set-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.set-content-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border);
-  background: var(--card);
-  flex-shrink: 0;
-}
-.set-content-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text);
-}
-.set-panel {
-  display: none;
-  padding: 20px;
-  overflow-y: auto;
-  flex: 1;
-}
-.set-panel.active { display: block; }
-.set-export-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  background: var(--surface2);
-  border-radius: 8px;
-  border: 1px solid var(--border);
+.settings-panel.open{display:flex;}
+
+.set-layout{
+  display:flex;height:100%;overflow:hidden;
 }
 
-/* Mobile settings override */
-@media (max-width: 768px) {
-  .set-nav { width: 100%; border-right: none; border-bottom: 1px solid var(--border); max-height: 50vh; }
-  .set-layout { flex-direction: column; }
-  .set-nav-bottom { display: none; }
+/* Left nav */
+.set-nav{
+  width:220px;flex-shrink:0;
+  background:var(--card);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow-y:auto;
+}
+.set-nav-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 16px 14px;border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.set-nav-title{
+  font-size:14px;font-weight:800;color:var(--text);letter-spacing:-.01em;
+}
+.set-nav-close{
+  width:28px;height:28px;border-radius:6px;
+  border:1px solid var(--border);background:none;
+  color:var(--muted);cursor:pointer;font-size:15px;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .12s;
+}
+.set-nav-close:hover{background:var(--surface2);color:var(--text);}
+.set-nav-section{
+  font-size:10px;font-weight:700;color:var(--muted2);
+  letter-spacing:.1em;text-transform:uppercase;
+  padding:14px 16px 5px;
+}
+.set-nav-item{
+  display:flex;align-items:center;gap:10px;
+  width:100%;padding:9px 14px;
+  border:none;border-radius:8px;
+  background:none;color:var(--text);
+  font-family:inherit;font-size:13px;font-weight:500;
+  cursor:pointer;text-align:left;
+  margin:1px 6px;width:calc(100% - 12px);
+  transition:all .12s;
+}
+.set-nav-item:hover{background:var(--surface2);}
+.set-nav-item.active{
+  background:var(--blu);color:#fff;font-weight:600;
+}
+.set-nav-icon{font-size:15px;flex-shrink:0;}
+.set-nav-bottom{
+  margin-top:auto;padding:12px;
+  border-top:1px solid var(--border);flex-shrink:0;
+}
+.set-nav-dark{
+  width:100%;justify-content:center;
+  border-radius:8px;height:38px;font-size:13px;
+}
+
+/* Right content */
+.set-content{
+  flex:1;display:flex;flex-direction:column;overflow:hidden;
+}
+.set-content-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 24px;border-bottom:1px solid var(--border);
+  background:var(--card);flex-shrink:0;
+}
+.set-content-title{
+  font-size:16px;font-weight:800;color:var(--text);letter-spacing:-.02em;
+}
+.set-panel{
+  display:none;flex:1;overflow-y:auto;
+  padding:28px 32px;
+}
+.set-panel.active{display:block;}
+
+/* Shared settings styles */
+.set-section-sub{
+  font-size:13px;color:var(--muted);line-height:1.6;
+  margin-bottom:20px;max-width:580px;
+}
+.set-region-tabs{
+  display:flex;gap:0;border-bottom:2px solid var(--border);
+  margin-bottom:20px;
+}
+.set-rtab{
+  font-family:inherit;font-size:12px;font-weight:700;
+  padding:8px 18px;border:none;border-bottom:3px solid transparent;
+  background:transparent;color:var(--muted);cursor:pointer;
+  margin-bottom:-2px;transition:all .12s;
+}
+.set-rtab:hover{color:var(--text);}
+.set-rtab.active{color:var(--blu);border-bottom-color:var(--blu);}
+.set-add-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:inherit;font-size:12px;font-weight:600;
+  padding:8px 16px;border-radius:8px;
+  border:1.5px dashed var(--border2);
+  background:transparent;color:var(--muted);cursor:pointer;
+  transition:all .15s;margin-top:14px;
+}
+.set-add-btn:hover{background:var(--surface2);color:var(--text);}
+.set-del-btn{
+  width:26px;height:26px;border-radius:6px;
+  border:1px solid var(--border2);background:transparent;
+  color:var(--muted2);cursor:pointer;font-size:14px;
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:all .12s;flex-shrink:0;
+}
+.set-del-btn:hover{background:#fee2e2;color:var(--red);border-color:var(--red);}
+.set-margin-table{
+  border-collapse:separate;border-spacing:0;
+  width:100%;max-width:560px;
+  border:1px solid var(--border);border-radius:10px;
+  overflow:hidden;font-size:13px;box-shadow:var(--shadow-xs);
+}
+.set-margin-table th{
+  font-size:11px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.06em;
+  padding:10px 14px;background:var(--surface2);
+  border-bottom:1px solid var(--border);text-align:center;
+}
+.set-margin-table th:first-child{text-align:left;}
+.set-margin-table td{
+  padding:10px 14px;text-align:center;
+  border-bottom:1px solid var(--border);
+}
+.set-margin-table tr:last-child td{border-bottom:none;}
+.set-margin-table td:first-child{text-align:left;}
+.set-region-badge{
+  display:inline-flex;align-items:center;
+  padding:4px 11px;border-radius:999px;
+  font-size:12px;font-weight:700;letter-spacing:.03em;
+}
+.set-region-badge.au{background:#e0f2fe;color:#0369a1;}
+.set-region-badge.uk{background:#ede9fe;color:#7c3aed;}
+.set-region-badge.us{background:#fef9c3;color:#a16207;}
+.set-pref-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 0;border-bottom:1px solid var(--border);
+}
+.set-pref-row:last-child{border-bottom:none;}
+.set-pref-label{font-size:14px;font-weight:600;color:var(--text);}
+.set-pref-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+.rm-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.rm-count{font-size:12px;color:var(--muted);margin-left:auto;}
+.rm-header{
+  display:grid;grid-template-columns:40px 1fr 140px 72px 72px 72px;
+  font-size:10px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.06em;
+  padding:10px 14px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:10px 10px 0 0;border-bottom:none;
+}
+.rm-row{
+  display:grid;grid-template-columns:40px 1fr 140px 72px 72px 72px;
+  align-items:center;padding:10px 14px;
+  border-bottom:1px solid var(--border);
+  font-size:13px;transition:background .1s;
+}
+.rm-row:hover{background:var(--surface2);}
+#regionMapList{border:1px solid var(--border);border-radius:0 0 10px 10px;overflow:hidden;max-height:440px;overflow-y:auto;}
+.rm-num{color:var(--muted2);font-size:11px;}
+.rm-name{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:12px;}
+.rm-sku{font-family:monospace;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;}
+.rm-chk-cell{display:flex;align-items:center;justify-content:center;}
+.rm-check{width:16px;height:16px;cursor:pointer;accent-color:var(--blu);}
+.bmap-layout{
+  display:grid;grid-template-columns:1fr 1.5fr;gap:14px;
+  height:calc(100vh - 250px);min-height:400px;
+}
+.bmap-left,.bmap-right{
+  display:flex;flex-direction:column;
+  border:1px solid var(--border);border-radius:10px;
+  overflow:hidden;background:var(--card);box-shadow:var(--shadow-xs);
+}
+.bmap-panel-title{
+  font-size:11px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.06em;
+  padding:11px 14px 9px;border-bottom:1px solid var(--border);
+  background:var(--surface2);flex-shrink:0;
+}
+.bmap-isbn-list,.bmap-bundle-list{overflow-y:auto;flex:1;padding:6px;}
+.bmap-isbn-item{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 10px;border-radius:7px;margin-bottom:2px;
+  font-size:12px;cursor:grab;border:1px solid transparent;
+  transition:all .12s;user-select:none;
+}
+.bmap-isbn-item:hover{background:var(--surface2);border-color:var(--border);}
+.bmap-isbn-item.used{opacity:.4;}
+.bmap-isbn-drag{font-size:13px;color:var(--muted2);flex-shrink:0;}
+.bmap-isbn-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bmap-isbn-code{font-family:monospace;font-size:10px;color:var(--muted2);flex-shrink:0;}
+.bmap-bundle{border:1px solid var(--border);border-radius:8px;margin-bottom:6px;overflow:hidden;transition:border-color .12s;}
+.bmap-bundle.drag-over{border-color:var(--blu);box-shadow:0 0 0 2px rgba(37,99,235,.15);}
+.bmap-bundle-header{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--surface2);font-size:12px;cursor:pointer;}
+.bmap-bundle-name{flex:1;font-weight:600;color:var(--text);}
+.bmap-bundle-sku{font-family:monospace;font-size:10px;color:var(--muted2);}
+.bmap-bundle-count{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--grn-bg);color:var(--grn);}
+.bmap-bundle-count.empty{background:var(--surface2);color:var(--muted2);}
+.bmap-bundle-body{padding:8px;min-height:34px;}
+.bmap-drop-hint{font-size:11px;color:var(--muted2);text-align:center;padding:10px;border:1.5px dashed var(--border2);border-radius:6px;}
+.bmap-component{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:5px;margin-bottom:2px;font-size:11px;background:var(--surface2);border:1px solid var(--border);}
+.bmap-component-isbn{font-family:monospace;font-size:10px;color:var(--muted2);flex-shrink:0;}
+.bmap-component-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bmap-copy-select{font-family:inherit;font-size:11px;padding:3px 6px;border-radius:5px;border:1px solid var(--border2);background:var(--surface);color:var(--muted);cursor:pointer;max-width:130px;outline:none;}
+.spend-month-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);box-shadow:var(--shadow-xs);}
+.spend-month-table{border-collapse:collapse;width:100%;min-width:680px;font-size:12px;}
+.spend-month-table th,.spend-month-table td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;}
+.spend-month-table th{background:var(--surface2);font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+.platform-col{text-align:left!important;min-width:140px;}
+.spend-platform-inp{font-family:inherit;font-size:12px;font-weight:600;width:100%;padding:5px 8px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--text);outline:none;}
+.spend-platform-inp:focus{background:var(--surface2);border-color:var(--border);}
+.spend-month-input{font-family:inherit;font-size:12px;width:70px;padding:5px 6px;text-align:right;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--text);outline:none;}
+.spend-month-input:focus{background:var(--surface2);border-color:var(--border);}
+.spend-total-val{text-align:right;padding:6px 10px;color:var(--grn);font-weight:700;font-size:12px;}
+.spend-total-row td{background:var(--surface2);font-weight:700;}
+.us-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow-xs);}
+.us-card-header{display:flex;align-items:center;gap:10px;}
+.us-card-icon{font-size:20px;}
+.us-card-label{font-size:14px;font-weight:700;color:var(--text);flex:1;}
+.us-card-status{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;}
+.us-card-status.loaded{background:var(--grn-bg);color:var(--grn);}
+.us-card-status.empty{background:var(--surface2);color:var(--muted2);}
+.us-card-count{font-size:22px;font-weight:800;color:var(--text);}
+.us-card-count-label{font-size:12px;color:var(--muted2);margin-left:4px;}
+.us-card-meta{font-size:11px;color:var(--muted2);display:flex;gap:12px;flex-wrap:wrap;}
+.us-card-upload label{font-size:12px;color:var(--blu);cursor:pointer;font-weight:600;}
+.us-card-upload input[type=file]{display:none;}
+/* compat stubs */
+.set-modal-topbar,.set-modal-body,.set-tab-btn,.set-tab-content,.set-topbar,.set-topbar-brand,.set-body{display:none;}
+@media(max-width:768px){
+  .set-nav{width:100%;border-right:none;border-bottom:1px solid var(--border);max-height:40vh;}
+  .set-layout{flex-direction:column;}
+  .set-nav-bottom{display:none;}
+  .set-panel{padding:16px;}
+  .bmap-layout{grid-template-columns:1fr;height:auto;}
+  .rm-header,.rm-row{grid-template-columns:32px 1fr 80px 50px 50px 50px;font-size:11px;}
 }
 </style>
 
@@ -2049,7 +2188,7 @@ table td:first-child, table th:first-child {
     <div class="sb-scroll">
 
       <!-- LOGO -->
-      <div class="sb-logo">
+      <div class="sb-logo" onclick="sTab('overview',null)" style="cursor:pointer" title="Back to Overview">
         <img src="data:image/png;base64,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" alt="Reading Eggs Bookshop">
       </div>
 
@@ -2905,8 +3044,7 @@ table td:first-child, table th:first-child {
       </div>
     </div>
   </div>
-</div><!-- /main -->
-</div><!-- /app -->
+
 
     <!-- RETAILERS TAB -->
     <div class="tp" id="tp-retailers" style="display:none">
@@ -2961,10 +3099,37 @@ table td:first-child, table th:first-child {
         <div class="ct">Product &times; Retailer Revenue Matrix</div>
         <div style="overflow-x:auto" id="retailerMatrix"></div>
       </div>
+</div><!-- /main -->
+</div><!-- /app -->
 
     </div><!-- /tp-retailers -->
 
 <script>
+function sNavTo(tab, btn){
+  // Update nav items
+  document.querySelectorAll('.set-nav-item').forEach(function(b){b.classList.remove('active');});
+  if(btn) btn.classList.add('active');
+  // Update panels
+  document.querySelectorAll('.set-panel').forEach(function(p){p.classList.remove('active');});
+  var panel = document.getElementById('setContent-'+tab);
+  if(panel) panel.classList.add('active');
+  // Update header title
+  var titles = {
+    upload:'Upload Status', spend:'Ad Spend', margin:'Margins',
+    bundles:'Bundle Mapping', regions:'Region Mapping',
+    prefs:'Preferences', visitors:'Visitors'
+  };
+  var t = document.getElementById('setContentTitle');
+  if(t) t.textContent = titles[tab] || tab;
+  // Lazy render
+  if(tab==='spend')   renderSpendGrids();
+  if(tab==='bundles') showBmapRegion(bmapActiveRegion, document.getElementById('bmap-tab-'+bmapActiveRegion));
+  if(tab==='regions') renderRegionMapList();
+  if(tab==='visitors') renderVisitorsTable();
+  if(tab==='upload')  renderUploadStatus();
+}
+
+
 // ═══════════════════════════════════════════════════════
 // INDEXEDDB PERSISTENCE
 // Storage strategy:
@@ -3315,13 +3480,6 @@ var dk=function(){return document.documentElement.getAttribute('data-theme')==='
 // ═══════════════════════════════════════════════════════
 // LOADING UI
 // ═══════════════════════════════════════════════════════
-function syncDarkLabels(){
-  var tic=document.getElementById('tic'), tlbl=document.getElementById('tlbl');
-  var ticSb=document.getElementById('ticSb'), tlblSb=document.getElementById('tlblSb');
-  if(tic&&ticSb) ticSb.textContent=tic.textContent;
-  if(tlbl&&tlblSb) tlblSb.textContent=tlbl.textContent;
-}
-
 function showLoader(msg){
   var l=document.getElementById('lod'); if(!l) return;
   l.style.display='flex';
@@ -3830,6 +3988,9 @@ function showDash(){
   }
 }
 function sTab(t,el){
+  // Always keep sidebar visible
+  var sb=document.getElementById('sidebar');
+  if(sb && sb.style.display==='none') sb.style.display='flex';
   // Clear all sidebar active states
   document.querySelectorAll('.sb-item').forEach(function(e){e.classList.remove('active');});
   var ai=document.querySelector('.sb-item[data-tab="'+t+'"]');
@@ -3860,6 +4021,9 @@ function sTab(t,el){
   } else {
     try{rTab(t);}catch(e){console.error('rTab '+t+':',e);}
   }
+  // Ensure sidebar item stays active even after rTab runs
+  var ai2=document.querySelector('.sb-item[data-tab="'+t+'"]');
+  if(ai2) ai2.classList.add('active');
   closeMobMenu();
 }
 
@@ -8064,98 +8228,13 @@ function renderUploadStatus(){
 }
 
 function showSetTab(tab, btn){
-  document.querySelectorAll('.set-tab-btn').forEach(function(b){ b.classList.remove('active'); });
-  document.querySelectorAll('.set-tab-content').forEach(function(c){ c.classList.remove('active'); });
-  if(btn) btn.classList.add('active');
-  var content = document.getElementById('setContent-'+tab);
-  if(content) content.classList.add('active');
-  if(tab === 'regions') renderRegionMapList();
-  if(tab === 'upload') renderUploadStatus();
-  if(tab === 'visitors'){ renderVisitorsTable(); }
-  if(tab === 'bundles'){ showBmapRegion(bmapActiveRegion, document.getElementById('bmap-tab-'+bmapActiveRegion)); }
+  // Map old tab names to new
+  var nameMap = {spend:'spend',margin:'margin',regions:'regions',bundles:'bundles',visitors:'visitors',prefs:'prefs',upload:'upload'};
+  var navId = 'snav-' + (nameMap[tab]||tab);
+  var navBtn = document.getElementById(navId) || btn;
+  sNavTo(nameMap[tab]||tab, navBtn);
 }
 
-
-function sNavTab(tab, btn){
-  // Update nav items
-  document.querySelectorAll('.set-nav-item').forEach(function(b){ b.classList.remove('active'); });
-  if(btn) btn.classList.add('active');
-  // Update panels
-  document.querySelectorAll('.set-panel').forEach(function(p){ p.classList.remove('active'); });
-  var panel = document.getElementById('setPanel-'+tab);
-  if(panel) panel.classList.add('active');
-  // Update header title
-  var titles = {upload:'Upload Status',spend:'Ad Spend',margin:'Margins',bundle:'Bundle Mapping',region:'Region Mapping',prefs:'Preferences',visitors:'Visitors'};
-  var titleEl = document.getElementById('setContentTitle');
-  if(titleEl) titleEl.textContent = titles[tab] || tab;
-  // Lazy-render content
-  if(tab==='spend')    renderSpendInSettings();
-  if(tab==='margin')   renderMarginsInSettings();
-  if(tab==='bundle')   renderBundleInSettings();
-  if(tab==='region')   renderRegionInSettings();
-  if(tab==='prefs')    renderPrefsInSettings();
-  if(tab==='visitors') renderVisitorsInSettings();
-}
-
-function renderSpendInSettings(){
-  var el=document.getElementById('spendContent');
-  if(!el||el.innerHTML.trim()) return; // already rendered
-  // Move existing spend content here
-  var orig=document.getElementById('setContent-spend');
-  if(orig) el.innerHTML=orig.innerHTML;
-}
-function renderMarginsInSettings(){
-  var el=document.getElementById('marginContent');
-  if(!el||el.innerHTML.trim()) return;
-  var orig=document.getElementById('setContent-margin');
-  if(orig) el.innerHTML=orig.innerHTML;
-}
-function renderBundleInSettings(){
-  var el=document.getElementById('bundleContent');
-  if(!el||el.innerHTML.trim()) return;
-  var orig=document.getElementById('setContent-bundle');
-  if(orig) el.innerHTML=orig.innerHTML;
-}
-function renderRegionInSettings(){
-  var el=document.getElementById('regionContent');
-  if(!el||el.innerHTML.trim()) return;
-  var orig=document.getElementById('setContent-region');
-  if(orig) el.innerHTML=orig.innerHTML;
-}
-function renderPrefsInSettings(){
-  var el=document.getElementById('prefsContent');
-  if(!el||el.innerHTML.trim()) return;
-  var orig=document.getElementById('setContent-prefs');
-  if(orig) el.innerHTML=orig.innerHTML;
-}
-function renderVisitorsInSettings(){
-  var el=document.getElementById('visitorsContent');
-  if(!el||el.innerHTML.trim()) return;
-  var orig=document.getElementById('setContent-visitors');
-  if(orig) el.innerHTML=orig.innerHTML;
-}
-
-function toggleSettings(){
-  var panel = document.getElementById('settingsPanel');
-  var overlay = document.getElementById('settingsOverlay');
-  var btn = document.getElementById('settingsBtn');
-  var isOpen = panel.classList.contains('open');
-  if(isOpen){ closeSettings(); }
-  else {
-    panel.classList.add('open');
-    overlay.classList.add('show');
-    btn.classList.add('active');
-    renderSpendGrids();
-    loadSettingsUI();
-    renderRegionMapList();
-  }
-}
-
-function closeSettings(){
-  document.getElementById('settingsPanel').classList.remove('open');
-  document.getElementById('settingsOverlay').classList.remove('show');
-  document.getElementById('settingsBtn').classList.remove('active');
-}
 
 function showSpendRegion(region, btn){
   activeSpendRegion = region;
@@ -8309,6 +8388,10 @@ function addPlatformRow(){
   if(!SETTINGS.spend[region]) SETTINGS.spend[region] = [];
   SETTINGS.spend[region].push({platform:'', months:{}});
   renderSpendGrids();
+}
+
+function removePlatformRowBtn(btn){
+  removePlatformRow(btn.dataset.region, parseInt(btn.dataset.row));
 }
 
 function removePlatformRow(region, idx){
@@ -9919,14 +10002,6 @@ function updateVisitorCell(inp){
   applyVisitorsToRawV();
 }
 
-function addVisitorRow(){
-  var now=new Date();
-  var m=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  SETTINGS.visitors.push({month:m,all:0,apac:0,emea:0,amer:0});
-  saveSettings();
-  renderVisitorsTable();
-}
-
 function removeVisitorRow(i){
   SETTINGS.visitors.splice(i,1);
   saveSettings();
@@ -10033,1289 +10108,240 @@ function bmapGetActiveBundles(region){
 }
 
 function renderBmapBundles(){
-  var el = document.getElementById('bmapBundleList');
-  if(!el) return;
-  var region = bmapActiveRegion;
-  if(!SETTINGS.bundleMap[region]) SETTINGS.bundleMap[region] = {};
-  var map = SETTINGS.bundleMap[region];
-  var bundles = bmapGetActiveBundles(region);
+  var el=document.getElementById('bmapBundleList'); if(!el) return;
+  var region=bmapActiveRegion;
+  if(!SETTINGS.bundleMap[region]) SETTINGS.bundleMap[region]={};
+  var map=SETTINGS.bundleMap[region], bundles=bmapGetActiveBundles(region);
+  var isbnLookup={};
+  (RAW_PRODUCTS||[]).forEach(function(p){isbnLookup[p.sku]=p.name;});
 
-  // Build ISBN lookup
-  var isbnLookup = {};
-  (RAW_PRODUCTS||[]).forEach(function(p){ isbnLookup[p.sku] = p.name; });
-
-  var bundleHtml = bundles.map(function(b){
-    var components = map[b.sku] || [];
-    var countLabel = components.length > 0
-      ? '<span class="bmap-bundle-count">'+components.length+' ISBNs</span>'
-      : '<span class="bmap-bundle-count empty">No ISBNs</span>';
-    var componentRows = components.map(function(isbn){
-      var name = isbnLookup[isbn] || isbn;
+  var html=bundles.map(function(b){
+    var components=map[b.sku]||[];
+    var countLabel=components.length>0
+      ?'<span class="bmap-bundle-count">'+components.length+' ISBNs</span>'
+      :'<span class="bmap-bundle-count empty">No ISBNs</span>';
+    var componentRows=components.map(function(isbn){
+      var name=isbnLookup[isbn]||isbn;
       return '<div class="bmap-component">'+
         '<span class="bmap-component-isbn">'+isbn+'</span>'+
         '<span class="bmap-component-name" title="'+name+'">'+name+'</span>'+
-        '<button class="bmap-component-del" onclick="bmapRemoveIsbn(\''+b.sku+'\',\''+isbn+'\')" title="Remove ISBN">×</button>'+
+        '<button class="set-del-btn" data-bundle="'+b.sku+'" data-isbn="'+isbn+'" onclick="bmapRemoveIsbnBtn(this)" title="Remove">\u00d7</button>'+
       '</div>';
     }).join('');
 
+    var copyOptions=bundles.filter(function(ob){return ob.sku!==b.sku&&(map[ob.sku]||[]).length>0;})
+      .map(function(ob){return '<option value="'+ob.sku+'">'+ob.sku+' \u2014 '+ob.name.slice(0,30)+'</option>';}).join('');
+
     return '<div class="bmap-bundle" id="bmap-bundle-'+b.sku+'">'+
       '<div class="bmap-bundle-header">'+
-        '<span class="bmap-bundle-name" onclick="bmapToggle(\''+b.sku+'\')" style="cursor:pointer;flex:1">'+b.name+'</span>'+
-        '<span class="bmap-bundle-sku">'+b.sku+'</span>'+
-        countLabel+
-        '<span onclick="bmapToggle(\''+b.sku+'\')" style="font-size:10px;color:var(--muted);margin-left:4px;cursor:pointer">▾</span>'+
-        '<select class="bmap-copy-select" onchange="bmapCopyFrom(\''+b.sku+'\',this)" title="Copy ISBNs from another bundle">'+
-          '<option value="">⎘ Copy from…</option>'+
-          bundles.filter(function(ob){return ob.sku!==b.sku&&(map[ob.sku]||[]).length>0;})
-            .map(function(ob){return '<option value="'+ob.sku+'">'+ob.sku+' — '+ob.name.slice(0,35)+'</option>';}).join('')+
+        '<span class="bmap-bundle-name" data-sku="'+b.sku+'" onclick="bmapToggle(this.dataset.sku)" style="cursor:pointer;flex:1">'+b.name+'</span>'+
+        '<span class="bmap-bundle-sku">'+b.sku+'</span>'+countLabel+
+        '<select class="bmap-copy-select" data-target="'+b.sku+'" onchange="bmapCopyFromSel(this)">'+
+          '<option value="">\u2398 Copy from\u2026</option>'+copyOptions+
         '</select>'+
-        '<button class="bmap-component-del" onclick="bmapRemoveBundle(\''+b.sku+'\')" title="Remove this bundle from '+region.toUpperCase()+'" style="margin-left:8px;width:22px;height:22px;color:var(--red)">🗑</button>'+
+        '<button class="set-del-btn" data-sku="'+b.sku+'" onclick="bmapRemoveBundle(this.dataset.sku)" title="Remove bundle" style="margin-left:6px;color:var(--red)">\ud83d\uddd1</button>'+
       '</div>'+
-      '<div class="bmap-bundle-body" id="bmap-body-'+b.sku+'"'+
-        ' ondragover="bmapDragOver(event)" ondrop="bmapDrop(event,\''+b.sku+'\')"'+
-        ' ondragleave="bmapDragLeave(event)">'+
-        (componentRows || '<div class="bmap-drop-hint">Drop ISBNs here to map them</div>')+
+      '<div class="bmap-bundle-body" id="bmap-body-'+b.sku+'" '+
+        'ondragover="bmapDragOver(event)" ondrop="bmapDropEvt(event,\''+b.sku+'\')" ondragleave="bmapDragLeave(event)">'+
+        (componentRows||'<div class="bmap-drop-hint">Drop ISBNs here to map them</div>')+
       '</div>'+
     '</div>';
   }).join('');
 
-  // Add bundle picker at bottom
-  var allBundles = (RAW_PRODUCTS||[]).filter(function(p){
-    var nm=(p.name||'').toLowerCase(), sk=(p.sku||'');
-    var skuAlpha=sk.length>0&&!/^\d+(-\d+)?$/.test(sk);
-    var isBun=p.bundle||/bundle|book pack|working/i.test(nm)||skuAlpha;
-    var isDig=/12.?month|24.?month|program access/i.test(nm);
-    return isBun && !isDig;
-  });
-  var activeSKUs = bundles.map(function(b){ return b.sku; });
-  var removedBundles = allBundles.filter(function(p){ return activeSKUs.indexOf(p.sku) === -1; });
-
-  var addSection = '<div class="bmap-add-bundle">'+
-    '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Add bundle to '+{au:'AU',uk:'UK',us:'USA'}[region]+'</div>'+
-    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
-    (removedBundles.length
-      ? '<select class="set-sel" id="bmapAddSelect" style="flex:1;font-size:12px;min-width:0">'+
-          '<option value="">Select a bundle to add…</option>'+
-          removedBundles.map(function(b){ return '<option value="'+b.sku+'">'+b.name+' ('+b.sku+')</option>'; }).join('')+
-        '</select>'+
-        '<button class="abtn" onclick="bmapAddFromSelect()" style="padding:6px 14px;font-size:12px;white-space:nowrap">+ Add</button>'
-      : '<span style="font-size:12px;color:var(--muted)">All catalog bundles are active for this region</span>'
-    )+
-    '</div>'+
-    '<div style="margin-top:8px;font-size:11px;color:var(--muted)">Or add a custom bundle not in catalog:</div>'+
-    '<div style="display:flex;gap:8px;margin-top:4px">'+
-      '<input class="set-inp" id="bmapCustomName" placeholder="Bundle name" style="flex:1;font-size:12px">'+
-      '<input class="set-inp" id="bmapCustomSku" placeholder="SKU" style="width:130px;font-size:12px">'+
-      '<button class="abtn" onclick="bmapAddCustom()" style="padding:6px 14px;font-size:12px;white-space:nowrap">+ Add</button>'+
-    '</div>'+
-  '</div>';
-
-  el.innerHTML = (bundleHtml || '<div style="padding:16px;font-size:13px;color:var(--muted);text-align:center">No bundles active for this region. Add one below.</div>') + addSection;
-}
-
-function bmapCopyFrom(targetSku, sel){
-  if(!sel.value) return;
-  var sourceSku = sel.value;
-  var region = bmapActiveRegion;
-  if(!SETTINGS.bundleMap[region]) SETTINGS.bundleMap[region] = {};
-  var sourceISBNs = SETTINGS.bundleMap[region][sourceSku] || [];
-  if(!sourceISBNs.length){ alert('Source bundle has no ISBNs mapped yet.'); sel.value=''; return; }
-  if(!SETTINGS.bundleMap[region][targetSku]) SETTINGS.bundleMap[region][targetSku] = [];
-  var existing = SETTINGS.bundleMap[region][targetSku];
-  var added = 0;
-  sourceISBNs.forEach(function(isbn){
-    if(existing.indexOf(isbn) === -1){ existing.push(isbn); added++; }
-  });
-  sel.value = '';
-  saveSettings();
-  renderBmapIsbns();
-  renderBmapBundles();
-  if(added === 0) alert('All ISBNs from that bundle are already in this bundle.');
-}
-
-function bmapRemoveBundle(sku){
-  var region = bmapActiveRegion;
-  if(!SETTINGS.bundleMap[region]) SETTINGS.bundleMap[region] = {};
-  if(!SETTINGS.bundleMap[region].__excluded) SETTINGS.bundleMap[region].__excluded = [];
-  if(SETTINGS.bundleMap[region].__excluded.indexOf(sku) === -1){
-    SETTINGS.bundleMap[region].__excluded.push(sku);
-  }
-  saveSettings();
-  renderBmapIsbns();
-  renderBmapBundles();
-}
-
-function bmapAddFromSelect(){
-  var sel = document.getElementById('bmapAddSelect');
-  if(!sel || !sel.value) return;
-  var region = bmapActiveRegion;
-  if(!SETTINGS.bundleMap[region]) SETTINGS.bundleMap[region] = {};
-  var excluded = SETTINGS.bundleMap[region].__excluded || [];
-  var idx = excluded.indexOf(sel.value);
-  if(idx > -1) excluded.splice(idx, 1);
-  SETTINGS.bundleMap[region].__excluded = excluded;
-  saveSettings();
-  renderBmapIsbns();
-  renderBmapBundles();
-}
-
-function bmapAddCustom(){
-  var nameEl = document.getElementById('bmapCustomName');
-  var skuEl  = document.getElementById('bmapCustomSku');
-  var name = (nameEl.value||'').trim();
-  var sku  = (skuEl.value||'').trim();
-  if(!name || !sku){ alert('Please enter both a bundle name and SKU.'); return; }
-  var region = bmapActiveRegion;
-  if(!SETTINGS.bundleMap[region]) SETTINGS.bundleMap[region] = {};
-  if(!SETTINGS.bundleMap[region].__extra) SETTINGS.bundleMap[region].__extra = [];
-  // Don't add duplicates
-  var exists = SETTINGS.bundleMap[region].__extra.some(function(e){ return e.sku === sku; });
-  if(!exists) SETTINGS.bundleMap[region].__extra.push({name:name, sku:sku});
-  nameEl.value = '';
-  skuEl.value  = '';
-  saveSettings();
-  renderBmapIsbns();
-  renderBmapBundles();
-}
-
-function bmapToggle(sku){
-  var body = document.getElementById('bmap-body-'+sku);
-  if(body) body.style.display = body.style.display === 'none' ? '' : 'none';
-}
-
-// Drag handlers
-var _bmapDragIsbn = null;
-var _bmapDragName = null;
-
-function bmapDragStart(e){
-  _bmapDragIsbn = e.currentTarget.dataset.isbn;
-  _bmapDragName = e.currentTarget.dataset.name;
-  e.currentTarget.classList.add('dragging');
-  setTimeout(function(){ e.currentTarget.classList.remove('dragging'); }, 0);
-}
-
-function bmapDragOver(e){
-  e.preventDefault();
-  var body = e.currentTarget;
-  var bundle = body.closest('.bmap-bundle');
-  if(bundle) bundle.classList.add('drag-over');
-}
-
-function bmapDragLeave(e){
-  var bundle = e.currentTarget.closest('.bmap-bundle');
-  if(bundle) bundle.classList.remove('drag-over');
-}
-
-function bmapDrop(e, bundleSku){
-  e.preventDefault();
-  var bundle = e.currentTarget.closest('.bmap-bundle');
-  if(bundle) bundle.classList.remove('drag-over');
-  if(!_bmapDragIsbn) return;
-
-  var region = bmapActiveRegion;
-  if(!SETTINGS.bundleMap[region]) SETTINGS.bundleMap[region] = {};
-  if(!SETTINGS.bundleMap[region][bundleSku]) SETTINGS.bundleMap[region][bundleSku] = [];
-
-  // Don't add duplicates
-  if(!SETTINGS.bundleMap[region][bundleSku].includes(_bmapDragIsbn)){
-    SETTINGS.bundleMap[region][bundleSku].push(_bmapDragIsbn);
-    saveSettings();
-  }
-  renderBmapIsbns();
-  renderBmapBundles();
-  _bmapDragIsbn = null;
-}
-
-function bmapClearBundle(bundleSku){
-  var region = bmapActiveRegion;
-  if(SETTINGS.bundleMap[region]) SETTINGS.bundleMap[region][bundleSku] = [];
-  saveSettings();
-  renderBmapIsbns();
-  renderBmapBundles();
-}
-
-function bmapRemoveIsbn(bundleSku, isbn){
-  var region = bmapActiveRegion;
-  if(!SETTINGS.bundleMap[region] || !SETTINGS.bundleMap[region][bundleSku]) return;
-  var arr = SETTINGS.bundleMap[region][bundleSku];
-  var idx = arr.indexOf(isbn);
-  if(idx > -1) arr.splice(idx, 1);
-  saveSettings();
-  renderBmapIsbns();
-  renderBmapBundles();
-}
-
-
-
-
-function generateReportProse(d, period){
-  var fmt  = function(n){ return 'A$'+parseFloat(n||0).toLocaleString('en-AU',{minimumFractionDigits:0,maximumFractionDigits:0}); };
-  var pct  = function(a,b){ if(!b||b===0) return 'N/A'; var v=((a-b)/b*100); return (v>0?'+':'')+v.toFixed(1)+'%'; };
-  var dir  = function(a,b){ return a>=b?'above':'below'; };
-  var vsly = function(a,b){ return 'versus '+fmt(b)+' in the prior year period ('+pct(a,b)+')'; };
-
-  var rev=d.revenue.total, lyRev=d.revenue.ly||0, tgt=d.revenue.target||0;
-  var ords=d.orders.total, lyOrds=d.orders.ly||0;
-  var aovV=parseFloat(d.aov.value||0), lyAov=parseFloat(d.aov.ly||0);
-  var stk=d.stockHealth;
-  var carts=d.abandonedCarts||{};
-  var cr=d.conversion;
-
-  // Executive Summary
-  var execSummary = 'The Reading Eggs Bookshop recorded total revenue of '+fmt(rev)+' for '+period+', '+
-    (lyRev?'representing a '+pct(rev,lyRev)+' movement '+dir(rev,lyRev)+' on the prior year period ('+fmt(lyRev)+').':'')+
-    (tgt?' Performance against the FY26 revenue target of '+fmt(tgt)+' shows the business is '+dir(rev,tgt)+' by '+pct(rev,tgt)+'.':'')+
-    ' A total of '+ords.toLocaleString()+' orders were processed across AU, UK, and USA channels, '+
-    (lyOrds?'compared to '+lyOrds.toLocaleString()+' in the same period last year.':'');
-
-  // Revenue
-  var revText = 'Total revenue for '+period+' was '+fmt(rev)+
-    (lyRev?', '+vsly(rev,lyRev)+'.':'. No prior year data is available for comparison.')+
-    ' Average Order Value was '+fmt(aovV)+
-    (lyAov?' compared to '+fmt(lyAov)+' in the prior year ('+pct(aovV,lyAov)+').':'.')+
-    (tgt?' The business is currently tracking '+dir(rev,tgt)+' the annual revenue target of '+fmt(tgt)+'.':'');
-
-  // Regional
-  var regLines = ['Regional performance for '+period+' is summarised below.'];
-  ['au','uk','us'].forEach(function(r){
-    var rd=d.regions[r]; if(!rd) return;
-    var flags={au:'Australia',uk:'United Kingdom',us:'United States'};
-    if(rd.rev){
-      regLines.push(flags[r]+' generated '+fmt(rd.rev)+' from '+rd.ords+' orders'+
-        (rd.lyRev?' ('+dir(rd.rev,rd.lyRev)+' '+pct(rd.rev,rd.lyRev)+' on prior year).':'.'));
-    }
-  });
-  var regText = regLines.join(' ');
-
-  // Orders & AOV
-  var ordText = period+' saw '+ords.toLocaleString()+' orders processed'+
-    (lyOrds?', a '+pct(ords,lyOrds)+' change versus the '+lyOrds.toLocaleString()+' orders recorded in the prior year.':'.')+
-    ' Average Order Value stood at '+fmt(aovV)+
-    (lyAov?', '+dir(aovV,lyAov)+' on the prior year AOV of '+fmt(lyAov)+'.':'.')+
-    ' AOV performance reflects the mix of individual titles versus bundle purchases across all regions.';
-
-  // Conversion
-  var crText = cr ?
-    'The overall conversion rate for '+period+' was '+cr.rate+' based on '+parseInt(cr.sessions).toLocaleString()+' sessions recorded across the bookshop. '+
-    'Conversion performance should be reviewed in conjunction with any active promotions, email campaigns, or paid media activity during the period.' :
-    'Visitor session data was not available for this period. Conversion rate analysis requires visitor data to be loaded into the dashboard via the Settings panel.';
-
-  // Top products
-  var topProds=d.topProducts||[];
-  var prodText = topProds.length ?
-    'The top performing product by revenue in '+period+' was '+topProds[0].name+' with '+fmt(topProds[0].rev)+' in revenue across '+topProds[0].qty+' units sold. '+
-    (topProds[1]?'This was followed by '+topProds[1].name+' ('+fmt(topProds[1].rev)+') and '+
-    (topProds[2]?topProds[2].name+' ('+fmt(topProds[2].rev)+')':'')+'.' :'')+
-    ' The top 10 products collectively represent a significant proportion of total bookshop revenue and should inform forthcoming stock reorder decisions.' :
-    'Product-level data was not available for this period.';
-
-  // Delivery
-  var delText = 'A total of '+d.awaitingFulfilment+' orders were recorded as awaiting fulfilment at the end of the reporting period. '+
-    'Orders pending fulfilment should be monitored closely to maintain service levels and customer satisfaction. '+
-    'Any orders outstanding beyond standard processing windows should be escalated to the warehouse and logistics team for review.';
-
-  // Stock
-  var stkText = 'Physical ISBN stock across all warehouse regions totals '+stk.totalUnits.toLocaleString()+' units. '+
-    stk.zero+' SKU-region combinations are currently recorded as out of stock, requiring urgent reorder consideration given the 100-120 day print lead time. '+
-    stk.ok+' SKU-region combinations have healthy stock levels exceeding 120 days of cover. '+
-    'Stock reorder decisions should be prioritised based on current velocity and lead time requirements.';
-
-  // Abandoned carts
-  var cartText = (carts.count||0) > 0 ?
-    'The bookshop recorded '+(carts.count||0).toLocaleString()+' abandoned carts during '+period+', representing an estimated '+fmt(carts.value||0)+' in potential lost revenue. '+
-    'Cart abandonment should be reviewed in the context of checkout experience, shipping thresholds, and any active recovery email campaigns. '+
-    'Opportunities to improve cart recovery rates through automated follow-up sequences should be explored.' :
-    'Abandoned cart data was not available for this reporting period.';
-
-  // Areas for Focus — data-backed
-  var focus = [];
-  if(stk.zero > 0) focus.push('1. Stock replenishment: '+stk.zero+' SKU-region combinations are out of stock. Given 100-120 day print lead times, reorder decisions should be made immediately to avoid extended stockouts affecting revenue.');
-  if(d.awaitingFulfilment > 50) focus.push((focus.length+1)+'. Fulfilment backlog: '+d.awaitingFulfilment+' orders are awaiting fulfilment. This should be investigated with the warehouse team to ensure service levels are maintained.');
-  if(carts.count > 100) focus.push((focus.length+1)+'. Cart recovery: '+(carts.count||0).toLocaleString()+' abandoned carts represent '+fmt(carts.value||0)+' in potential revenue. A targeted cart recovery email sequence should be reviewed and optimised.');
-  if(lyRev && rev < lyRev) focus.push((focus.length+1)+'. Revenue recovery: Revenue is tracking '+pct(rev,lyRev)+' below the prior year. A review of traffic, conversion, and AOV drivers is recommended to identify corrective actions.');
-  if(!focus.length) focus.push('1. Continue to monitor stock velocity against lead times to avoid out-of-stock positions across key titles.\n2. Review AOV optimisation opportunities including bundle promotions and free shipping thresholds.\n3. Analyse conversion rate data against campaign activity to identify high-performing acquisition channels.');
-  var focusText = focus.join('\n');
-
-  return {
-    executiveSummary: execSummary,
-    revenuePerformance: revText,
-    regionalBreakdown: regText,
-    ordersAOV: ordText,
-    conversionRate: crText,
-    topProducts: prodText,
-    deliveryFulfilment: delText,
-    stockHealth: stkText,
-    abandonedCarts: cartText,
-    areasForFocus: focusText
-  };
-}
-
-async function generateMonthEndReport(){
-  var modal = document.getElementById('reportModal');
-  var statusEl = document.getElementById('reportStatus');
-  var progressBar = document.getElementById('reportProgressBar');
-  var sectionsEl = document.getElementById('reportSections');
-  var downloadEl = document.getElementById('reportDownload');
-  var errorEl = document.getElementById('reportError');
-
-  // Reset modal
-  modal.style.display = 'flex';
-  downloadEl.style.display = 'none';
-  errorEl.style.display = 'none';
-  sectionsEl.innerHTML = '';
-  progressBar.style.width = '0%';
-
-  function setProgress(pct, msg){
-    progressBar.style.width = pct + '%';
-    statusEl.textContent = msg;
-  }
-  function addSection(icon, name, done){
-    var id = 'rpt-sec-' + name.replace(/\s/g,'_');
-    var existing = document.getElementById(id);
-    if(existing){ existing.innerHTML = (done ? '✅' : '⏳') + ' ' + name; return; }
-    var d = document.createElement('div');
-    d.id = id;
-    d.textContent = '⏳ ' + name;
-    sectionsEl.appendChild(d);
-  }
-
-  try {
-    setProgress(5, 'Collecting dashboard data…');
-
-    // ── Determine report period ──────────────────────────────────────────────
-    var rangeEl = document.getElementById('dateRange');
-    var rangeVal = rangeEl ? rangeEl.value : 'mtd';
-    var now = new Date();
-    var reportLabel, periodFrom, periodTo;
-    if(rangeVal === 'custom'){
-      var f = document.getElementById('dateFrom'), t = document.getElementById('dateTo');
-      periodFrom = f ? new Date(f.value) : new Date(now.getFullYear(), now.getMonth()-1, 1);
-      periodTo   = t ? new Date(t.value) : new Date(now.getFullYear(), now.getMonth(), 0);
-      reportLabel = f.value + ' to ' + t.value;
-    } else {
-      // Default: last calendar month
-      periodFrom = new Date(now.getFullYear(), now.getMonth()-1, 1);
-      periodTo   = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-      var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-      reportLabel = monthNames[now.getMonth()-1 < 0 ? 11 : now.getMonth()-1] + ' ' + (now.getMonth()-1 < 0 ? now.getFullYear()-1 : now.getFullYear());
-    }
-
-    // ── Gather metrics from dashboard data ───────────────────────────────────
-    var orders = (window._rawO || rawO || []);
-    var regs = ['au','uk','us'];
-    var regNames = {au:'Australia',uk:'United Kingdom',us:'United States'};
-    var currencies = {au:'AUD',uk:'GBP',us:'USD'};
-
-    function inPeriod(r){ return r._date && r._date >= periodFrom && r._date <= periodTo; }
-    function prevPeriod(r){
-      var ms = periodTo - periodFrom;
-      var ps = new Date(periodFrom.getTime() - ms - 86400000);
-      var pe = new Date(periodFrom.getTime() - 86400001);
-      return r._date && r._date >= ps && r._date <= pe;
-    }
-    function lyPeriod(r){
-      var lf = new Date(periodFrom); lf.setFullYear(lf.getFullYear()-1);
-      var lt = new Date(periodTo);   lt.setFullYear(lt.getFullYear()-1);
-      return r._date && r._date >= lf && r._date <= lt;
-    }
-
-    var cur = orders.filter(inPeriod);
-    var ly  = orders.filter(lyPeriod);
-
-    function rev(arr){ return arr.reduce(function(s,r){return s+(r._rev||0);},0); }
-    function ords(arr){ return arr.length; }
-    function aov(arr){ return arr.length ? rev(arr)/arr.length : 0; }
-    function byReg(arr, reg){
-      return arr.filter(function(r){
-        var ch=(r._ch||'').toLowerCase();
-        return reg==='us'?(ch.includes('us')&&!ch.includes('aus')):ch.includes(reg);
-      });
-    }
-
-    var totalRev = rev(cur), lyRev = rev(ly);
-    var totalOrds = ords(cur), lyOrds = ords(ly);
-    var totalAOV  = aov(cur),  lyAOV  = aov(ly);
-    var pct = function(a,b){ return b ? (((a-b)/b)*100).toFixed(1)+'%' : 'N/A'; };
-    var fmt = function(n){ return 'A$'+n.toLocaleString('en-AU',{minimumFractionDigits:0,maximumFractionDigits:0}); };
-
-    // Regional revenue
-    var regData = {};
-    regs.forEach(function(r){
-      var rc = byReg(cur, r), rl = byReg(ly, r);
-      regData[r] = {
-        rev: rev(rc), lyRev: rev(rl),
-        ords: ords(rc), lyOrds: ords(rl),
-        aov: aov(rc),
-        name: regNames[r]
-      };
-    });
-
-    // Targets from SETTINGS
-    var targets = (SETTINGS && SETTINGS.targets) || {};
-
-    // Top products
-    var prodMap = {};
-    cur.forEach(function(r){
-      if(!r._items) return;
-      r._items.forEach(function(it){
-        var nm = it.name||it.sku||'Unknown';
-        if(!prodMap[nm]) prodMap[nm] = {name:nm, qty:0, rev:0};
-        prodMap[nm].qty += (it.qty||1);
-        prodMap[nm].rev += (it.price||0)*(it.qty||1);
-      });
-    });
-    var topProds = Object.values(prodMap).sort(function(a,b){return b.rev-a.rev;}).slice(0,10);
-
-    // Delivery metrics
-    var shipped = cur.filter(function(r){ return r._status && r._status.toLowerCase().includes('ship'); });
-    var awaitingFulfil = cur.filter(function(r){ return r._status && (r._status.toLowerCase().includes('awaiting') || r._status.toLowerCase().includes('pending')); });
-
-    // Stock health from _stkProducts
-    var stk = window._stkProducts || [];
-    var stkHealth = {zero:0, critical:0, low:0, ok:0, totalUnits:0};
-    stk.forEach(function(p){
-      var nm=(p.name||'').toLowerCase();
-      if(/12.?month|24.?month|program access|bundle/i.test(nm)) return;
-      regs.forEach(function(r){
-        if(!(r in p.stock)) return;
-        var s = p.stock[r]||0;
-        stkHealth.totalUnits += s;
-        if(s===0) stkHealth.zero++;
-        else stkHealth.ok++;
-      });
-    });
-
-    // Abandoned carts
-    var carts = window.rawCarts || [];
-    var cartsPeriod = carts.filter(inPeriod);
-    var cartRev = cartsPeriod.reduce(function(s,c){return s+(c._val||0);},0);
-
-    // Visitors / conversion
-    var visitors = (SETTINGS && SETTINGS.visitors) || [];
-    var curMonthVis = 0;
-    if(visitors.length){
-      var m = periodFrom.getMonth(), y = periodFrom.getFullYear();
-      var vrow = visitors.find(function(v){ return v.month===m+1 && v.year===y; });
-      if(vrow) curMonthVis = vrow.sessions || 0;
-    }
-    var cr = curMonthVis > 0 ? ((totalOrds/curMonthVis)*100).toFixed(2) : null;
-
-    setProgress(20, 'Data collected. Calling Claude AI to write report…');
-
-    // ── Build data payload for Claude ────────────────────────────────────────
-    var payload = {
-      period: reportLabel,
-      revenue: { total: totalRev, ly: lyRev, vsLY: pct(totalRev,lyRev), target: targets.revenue || null },
-      orders: { total: totalOrds, ly: lyOrds, vsLY: pct(totalOrds,lyOrds) },
-      aov: { value: totalAOV.toFixed(2), ly: lyAOV.toFixed(2), vsLY: pct(totalAOV,lyAOV) },
-      conversion: cr ? { rate: cr+'%', sessions: curMonthVis } : null,
-      regions: regData,
-      topProducts: topProds.slice(0,10),
-      stockHealth: stkHealth,
-      awaitingFulfilment: awaitingFulfil.length,
-      abandonedCarts: { count: cartsPeriod.length, value: cartRev },
-      targets: targets
-    };
-
-    var sections = [
-      'Executive Summary',
-      'Revenue Performance',
-      'Regional Breakdown',
-      'Orders & AOV',
-      'Conversion Rate',
-      'Top Products',
-      'Delivery & Fulfilment',
-      'Stock Health',
-      'Abandoned Carts',
-      'Areas for Focus'
-    ];
-    sections.forEach(function(s){ addSection('⏳', s, false); });
-    setProgress(25, 'Writing Executive Summary…');
-
-    var systemPrompt = `You are an experienced ecommerce manager writing a month-end executive report for the CEO, CRO, and Senior Leadership of Reading Eggs Bookshop (3P Learning). 
-Write in a factual, professional, neutral tone. Be concise but thorough. 
-Use specific numbers from the data provided. Compare vs last year and targets where available.
-Format the report with clear sections. Each section should be 2-4 sentences of prose.
-Return ONLY a JSON object with these exact keys (all string values, use \\n for line breaks within values):
-{
-  "executiveSummary": "...",
-  "revenuePerformance": "...",
-  "regionalBreakdown": "...",
-  "ordersAOV": "...",
-  "conversionRate": "...",
-  "topProducts": "...",
-  "deliveryFulfilment": "...",
-  "stockHealth": "...",
-  "abandonedCarts": "...",
-  "areasForFocus": "..."
-}`;
-
-    var userPrompt = `Write the ${reportLabel} month-end report for Reading Eggs Bookshop using this data:\n\n${JSON.stringify(payload, null, 2)}\n\nKey context: Books have ~100-120 day print lead time. Target markets: AU (primary), UK, USA. Physical books only (not digital subscriptions). Return only the JSON object.`;
-
-    // Generate report prose inline (no API needed)
-    var rpt = generateReportProse(payload, reportLabel);
-
-    setProgress(75, 'Report written. Generating Word document…');
-    sections.forEach(function(s){ addSection('✅', s, true); });
-
-    // ── Generate Word doc via docx-js in a worker approach ───────────────────
-    // We'll do this by calling a local node script via fetch to /generate-report
-    // Since we can't run node from browser, we build the doc server-side
-    // Instead: build the doc content as a structured blob and trigger download
-
-    // Build the Word doc using docx library loaded from CDN
-    // docx-js is not available in browser - we'll create a rich HTML report instead
-    // and convert via the dashboard's existing infrastructure
-
-    // Actually - generate the docx on the backend node process via a hidden iframe trick
-    // The cleanest approach: build the report data, POST to a data URI, trigger download
-
-    // Since we're in a static HTML file, we'll use a pre-built Node script approach:
-    // Store report data in sessionStorage and open a generation page
-    // OR: use the Blob approach with a basic OOXML structure
-
-    var wordHtml = buildReportWordHtml(rpt, reportLabel, payload);
-    var wordBlob = new Blob([wordHtml], {type:'application/msword'});
-    var url = URL.createObjectURL(wordBlob);
-
-    var link = document.getElementById('reportDownloadLink');
-    link.href = url;
-    link.download = 'Reading_Eggs_Bookshop_' + reportLabel.replace(/\s/g,'_') + '_Report.doc';
-
-    setProgress(100, 'Report ready!');
-    downloadEl.style.display = 'block';
-    statusEl.textContent = 'Your report has been generated successfully.';
-
-  } catch(err) {
-    errorEl.textContent = 'Error: ' + err.message;
-    errorEl.style.display = 'block';
-    statusEl.textContent = 'Something went wrong.';
-    console.error(err);
-  }
-}
-
-function buildReportWordHtml(rpt, period, data){
-  var fmt = function(n){ return 'A$' + parseFloat(n).toLocaleString('en-AU', {minimumFractionDigits:0,maximumFractionDigits:0}); };
-  var pct = function(a,b){ return b ? (((a-b)/b)*100).toFixed(1)+'%' : 'N/A'; };
-
-  var regRows = '';
-  ['au','uk','us'].forEach(function(r){
-    var d = data.regions[r];
-    if(!d) return;
-    var flags = {au:'🇦🇺',uk:'🇬🇧',us:'🇺🇸'};
-    var curr = {au:'AUD',uk:'GBP',us:'USD'};
-    regRows += '<tr><td style="padding:6pt 10pt;border:1pt solid #ddd">' + flags[r] + ' ' + d.name + '</td>' +
-      '<td style="padding:6pt 10pt;border:1pt solid #ddd;text-align:right">' + (d.rev?fmt(d.rev):'—') + '</td>' +
-      '<td style="padding:6pt 10pt;border:1pt solid #ddd;text-align:right">' + (d.lyRev?fmt(d.lyRev):'—') + '</td>' +
-      '<td style="padding:6pt 10pt;border:1pt solid #ddd;text-align:right">' + (d.lyRev?pct(d.rev,d.lyRev):'—') + '</td>' +
-      '<td style="padding:6pt 10pt;border:1pt solid #ddd;text-align:right">' + d.ords + '</td>' +
-      '<td style="padding:6pt 10pt;border:1pt solid #ddd;text-align:right">' + (d.aov?fmt(d.aov):'—') + '</td>' +
-    '</tr>';
-  });
-
-  var prodRows = '';
-  (data.topProducts||[]).forEach(function(p,i){
-    prodRows += '<tr style="background:' + (i%2?'#f9fafb':'#fff') + '">' +
-      '<td style="padding:5pt 8pt;border:1pt solid #ddd">' + (i+1) + '</td>' +
-      '<td style="padding:5pt 8pt;border:1pt solid #ddd">' + (p.name||'').substring(0,60) + '</td>' +
-      '<td style="padding:5pt 8pt;border:1pt solid #ddd;text-align:right">' + (p.qty||0) + '</td>' +
-      '<td style="padding:5pt 8pt;border:1pt solid #ddd;text-align:right">' + fmt(p.rev||0) + '</td>' +
-    '</tr>';
-  });
-
-  var today = new Date().toLocaleDateString('en-AU', {day:'numeric',month:'long',year:'numeric'});
-
-  return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
-<head>
-<meta charset="UTF-8">
-<style>
-  @page { size: A4; margin: 2cm 2.5cm; }
-  body { font-family: Arial, sans-serif; font-size: 11pt; color: #1a1a1a; line-height: 1.5; }
-  h1 { font-size: 22pt; font-weight: bold; color: #1e3a5f; margin-bottom: 2pt; margin-top: 0; }
-  h2 { font-size: 14pt; font-weight: bold; color: #1e3a5f; border-bottom: 2pt solid #e5e7eb; padding-bottom: 4pt; margin-top: 20pt; margin-bottom: 8pt; }
-  h3 { font-size: 11pt; font-weight: bold; color: #374151; margin-bottom: 4pt; margin-top: 12pt; }
-  p { margin: 6pt 0; }
-  table { border-collapse: collapse; width: 100%; margin: 10pt 0; font-size: 10pt; }
-  th { background: #1e3a5f; color: #fff; padding: 6pt 10pt; text-align: left; border: 1pt solid #1e3a5f; font-weight: bold; }
-  td { padding: 6pt 10pt; border: 1pt solid #ddd; }
-  tr:nth-child(even) { background: #f9fafb; }
-  .header-block { border-bottom: 3pt solid #1e3a5f; padding-bottom: 12pt; margin-bottom: 20pt; }
-  .brand { font-size: 10pt; color: #6b7280; font-style: italic; }
-  .meta { font-size: 10pt; color: #6b7280; margin-top: 4pt; }
-  .kpi-table td { text-align: center; padding: 10pt; }
-  .kpi-val { font-size: 18pt; font-weight: bold; color: #1e3a5f; }
-  .kpi-lbl { font-size: 9pt; color: #6b7280; }
-  .kpi-delta { font-size: 9pt; font-weight: bold; }
-  .positive { color: #16a34a; }
-  .negative { color: #dc2626; }
-  .section-note { background: #eff6ff; border-left: 3pt solid #2563eb; padding: 6pt 10pt; margin: 8pt 0; font-size: 10pt; }
-  .focus-item { margin: 8pt 0; padding: 8pt 12pt; background: #fafafa; border-left: 3pt solid #d97706; }
-</style>
-</head>
-<body>
-
-<div class="header-block">
-  <div class="brand">READING EGGS BOOKSHOP &nbsp;|&nbsp; 3P Learning</div>
-  <h1>Monthly Performance Report</h1>
-  <div style="font-size:16pt;font-weight:bold;color:#374151;margin-top:2pt">${period}</div>
-  <div class="meta">Prepared for: CEO, CRO &amp; Senior Leadership Team &nbsp;|&nbsp; Date: ${today}</div>
-  <div class="meta">Classification: Internal &mdash; Confidential</div>
-</div>
-
-<h2>1. Executive Summary</h2>
-<p>${(rpt.executiveSummary||'').replace(/\n/g,'</p><p>')}</p>
-
-<h2>2. Revenue Performance</h2>
-<p>${(rpt.revenuePerformance||'').replace(/\n/g,'</p><p>')}</p>
-
-<table>
-  <thead><tr>
-    <th>Metric</th><th>This Period</th><th>Last Year</th><th>vs LY</th><th>Target</th>
-  </tr></thead>
-  <tbody>
-    <tr><td>Total Revenue</td>
-      <td class="kpi-val" style="font-weight:bold;text-align:right">${fmt(data.revenue.total)}</td>
-      <td style="text-align:right">${data.revenue.ly?fmt(data.revenue.ly):'—'}</td>
-      <td style="text-align:right;font-weight:bold;color:${data.revenue.total>=data.revenue.ly?'#16a34a':'#dc2626'}">${data.revenue.vsLY}</td>
-      <td style="text-align:right">${data.revenue.target?fmt(data.revenue.target):'—'}</td>
-    </tr>
-    <tr><td>Total Orders</td>
-      <td style="text-align:right;font-weight:bold">${data.orders.total.toLocaleString()}</td>
-      <td style="text-align:right">${data.orders.ly?data.orders.ly.toLocaleString():'—'}</td>
-      <td style="text-align:right;font-weight:bold;color:${data.orders.total>=data.orders.ly?'#16a34a':'#dc2626'}">${data.orders.vsLY}</td>
-      <td style="text-align:right">—</td>
-    </tr>
-    <tr><td>Average Order Value</td>
-      <td style="text-align:right;font-weight:bold">${fmt(data.aov.value)}</td>
-      <td style="text-align:right">${data.aov.ly?fmt(data.aov.ly):'—'}</td>
-      <td style="text-align:right;font-weight:bold;color:${parseFloat(data.aov.value)>=parseFloat(data.aov.ly)?'#16a34a':'#dc2626'}">${data.aov.vsLY}</td>
-      <td style="text-align:right">—</td>
-    </tr>
-  </tbody>
-</table>
-
-<h2>3. Regional Breakdown</h2>
-<p>${(rpt.regionalBreakdown||'').replace(/\n/g,'</p><p>')}</p>
-
-<table>
-  <thead><tr>
-    <th>Region</th><th style="text-align:right">Revenue</th><th style="text-align:right">LY Revenue</th><th style="text-align:right">vs LY</th><th style="text-align:right">Orders</th><th style="text-align:right">AOV</th>
-  </tr></thead>
-  <tbody>${regRows}</tbody>
-</table>
-
-<h2>4. Orders &amp; Average Order Value</h2>
-<p>${(rpt.ordersAOV||'').replace(/\n/g,'</p><p>')}</p>
-
-<h2>5. Conversion Rate</h2>
-<p>${(rpt.conversionRate||'').replace(/\n/g,'</p><p>')}</p>
-${data.conversion ? '<div class="section-note">Conversion rate: <strong>' + data.conversion.rate + '</strong> based on ' + parseInt(data.conversion.sessions).toLocaleString() + ' sessions.</div>' : ''}
-
-<h2>6. Top Products</h2>
-<p>${(rpt.topProducts||'').replace(/\n/g,'</p><p>')}</p>
-
-<table>
-  <thead><tr>
-    <th>#</th><th>Product</th><th style="text-align:right">Units Sold</th><th style="text-align:right">Revenue</th>
-  </tr></thead>
-  <tbody>${prodRows}</tbody>
-</table>
-
-<h2>7. Delivery &amp; Fulfilment</h2>
-<p>${(rpt.deliveryFulfilment||'').replace(/\n/g,'</p><p>')}</p>
-<div class="section-note">Orders awaiting fulfilment: <strong>${data.awaitingFulfilment}</strong></div>
-
-<h2>8. Stock Health</h2>
-<p>${(rpt.stockHealth||'').replace(/\n/g,'</p><p>')}</p>
-
-<table>
-  <thead><tr><th>Status</th><th style="text-align:right">SKU-Region Count</th></tr></thead>
-  <tbody>
-    <tr><td>&#9888; Out of Stock</td><td style="text-align:right;color:#dc2626;font-weight:bold">${data.stockHealth.zero}</td></tr>
-    <tr><td>&#9679; Healthy Stock (&gt;120d)</td><td style="text-align:right;color:#16a34a;font-weight:bold">${data.stockHealth.ok}</td></tr>
-    <tr><td><strong>Total ISBN Units</strong></td><td style="text-align:right;font-weight:bold">${data.stockHealth.totalUnits.toLocaleString()}</td></tr>
-  </tbody>
-</table>
-
-<h2>9. Abandoned Carts</h2>
-<p>${(rpt.abandonedCarts||'').replace(/\n/g,'</p><p>')}</p>
-<div class="section-note">Abandoned carts this period: <strong>${(data.abandonedCarts.count||0).toLocaleString()}</strong> &nbsp;|&nbsp; Estimated lost revenue: <strong>${fmt(data.abandonedCarts.value||0)}</strong></div>
-
-<h2>10. Areas for Focus</h2>
-<p>${(rpt.areasForFocus||'').replace(/\n/g,'</p><p>')}</p>
-
-<p style="margin-top:40pt;font-size:9pt;color:#9ca3af;border-top:1pt solid #e5e7eb;padding-top:8pt">
-  This report was generated automatically from the CRO Intelligence Hub &mdash; Reading Eggs Bookshop &mdash; ${today}
-</p>
-
-
-</body></html>`;
-}
-
-
-
-// ═══════════════════════════════════════════════════════
-// GITHUB AUTO-FETCH
-// ═══════════════════════════════════════════════════════
-var GITHUB_BASE = 'https://raw.githubusercontent.com/AsvineG/BookshopDashboard/main/';
-var GITHUB_FILES = [
-  { url: GITHUB_BASE + 'orders.csv',       type: 'orders'    },
-  { url: GITHUB_BASE + 'products.csv',     type: 'products'  },
-  { url: GITHUB_BASE + 'carts.csv',        type: 'carts'     },
-  { url: GITHUB_BASE + 'customers.csv',    type: 'customers' },
-  { url: GITHUB_BASE + 'sources.csv',      type: 'source'    },
-  { url: GITHUB_BASE + 'us_retailers.xlsx', type: 'retailers', isXlsx: true }
-];
-
-function setStartupStep(msg, pct){
-  // Desktop startup card
-  var step = document.getElementById('startupStep');
-  var bar  = document.getElementById('startupBar');
-  if(step) step.textContent = msg;
-  if(bar)  bar.style.width  = pct + '%';
-  // Loader overlay
-  var lodtx = document.getElementById('lodtx');
-  var lodBar = document.getElementById('lodBar');
-  if(lodtx) lodtx.textContent = msg;
-  if(lodBar) lodBar.style.width = pct + '%';
-  // Mobile progress card — update directly, no patching needed
-  var mobStep = document.getElementById('mobStartupStep');
-  var mobBar  = document.getElementById('mobStartupBar');
-  if(mobStep) mobStep.textContent = msg;
-  if(mobBar)  mobBar.style.width  = pct + '%';
-}
-
-function addStartupLog(icon, msg, ok){
-  var color = ok===false?'var(--red)':ok===true?'var(--grn)':'var(--muted2)';
-  var rowHtml = '<div style="display:flex;align-items:center;gap:8px">'+
-    '<span style="font-size:13px">'+icon+'</span>'+
-    '<span style="color:'+color+'">'+msg+'</span></div>';
-  // Desktop log
-  var log = document.getElementById('startupLog');
-  if(log){ var el=document.createElement('div'); el.innerHTML=rowHtml; log.appendChild(el.firstChild); }
-  // Mobile log — update directly
-  var mobLog = document.getElementById('mobStartupLog');
-  if(mobLog){ var el2=document.createElement('div'); el2.innerHTML=rowHtml; mobLog.appendChild(el2.firstChild); }
-}
-
-var CSV_CACHE_TTL = 4 * 60 * 60 * 1000; // 4 hours in ms
-
-function getCachedCSV(key){
-  try{
-    var raw = localStorage.getItem('csv_cache_' + key);
-    if(!raw) return null;
-    var obj = JSON.parse(raw);
-    if(Date.now() - obj.ts > CSV_CACHE_TTL) return null; // expired
-    return obj.text;
-  }catch(e){ return null; }
-}
-
-function setCachedCSV(key, text){
-  try{
-    localStorage.setItem('csv_cache_' + key, JSON.stringify({ts: Date.now(), text: text}));
-  }catch(e){
-    // localStorage full — clear CSV caches and try again
-    try{
-      Object.keys(localStorage).forEach(function(k){ if(k.indexOf('csv_cache_')===0) localStorage.removeItem(k); });
-      localStorage.setItem('csv_cache_' + key, JSON.stringify({ts: Date.now(), text: text}));
-    }catch(e2){}
-  }
-}
-
-function fetchFromGithub(onComplete){
-  var csvFiles = GITHUB_FILES.filter(function(f){ return !f.isXlsx; });
-  var xlsxFiles = GITHUB_FILES.filter(function(f){ return f.isXlsx; });
-  var total = csvFiles.length;
-  var done  = 0;
-  var finished = false;
-
-  function finish(){
-    if(finished) return;
-    finished = true;
-    setStartupStep('Dashboard ready \u2014 opening now\u2026', 100);
-    setTimeout(function(){
-      var mls=document.getElementById('mob-loading-screen');
-      if(mls){mls.classList.add('hidden');mls.classList.remove('visible');}
-      var land=document.getElementById('land');
-      if(land) land.style.display='none';
-      try{ if(onComplete) onComplete(); }catch(e){ console.error('onComplete error:',e); }
-    }, 500);
-  }
-
-  function tick(type, ok, fromCache){
-    var statusMap={orders:'O',products:'P',carts:'Carts',customers:'Custs',source:'S'};
-    var el=statusMap[type]?document.getElementById('upl'+statusMap[type]+'Status'):null;
-    if(el){el.textContent=ok?(fromCache?'\u2713 Cached':'\u2713 Loaded'):'Not found';el.style.color=ok?'var(--grn)':'var(--red)';}
-    try{ addStartupLog(ok?'\u2705':'\u26a0\ufe0f', type+(ok?(fromCache?' from cache':' loaded'):' not found'), ok); }catch(e){}
-    done++;
-    var pct = Math.round(10 + (done/total)*80);
-    setStartupStep((done<total?'Loading data\u2026':'Processing\u2026'), pct);
-    if(done >= total) finish();
-  }
-
-  setStartupStep('Connecting to repository\u2026', 5);
-  var log=document.getElementById('startupLog');
-  if(log) log.innerHTML='';
-  var mobLog=document.getElementById('mobStartupLog');
-  if(mobLog) mobLog.innerHTML='';
-
-  // Fetch xlsx in background - non-blocking
-  xlsxFiles.forEach(function(file){
-    fetch(file.url)
-      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
-      .then(function(buf){ try{parseRetailersXlsx(buf);}catch(e){console.warn('xlsx parse error:',e);} })
-      .catch(function(e){ console.warn('xlsx fetch failed:',e); });
-  });
-
-  // Fetch CSVs - these control the loading screen
-  if(total === 0){ finish(); return; }
-
-  csvFiles.forEach(function(file){
-    // Try cache first
-    var cached = null;
-    try{ cached = getCachedCSV(file.type); }catch(e){}
-
-    if(cached){
-      try{ handleNewData(file.type, parseCSVFast(cached)); }catch(e){ console.warn('cache parse error',file.type,e); }
-      tick(file.type, true, true);
-      return;
-    }
-
-    // Fetch from GitHub
-    fetch(file.url)
-      .then(function(r){
-        if(!r.ok) throw new Error('HTTP '+r.status);
-        return r.text();
-      })
-      .then(function(text){
-        try{
-          handleNewData(file.type, parseCSVFast(text));
-          try{ setCachedCSV(file.type, text); }catch(e){}
-          tick(file.type, true, false);
-        }catch(e){
-          console.error('parse error',file.type,e);
-          tick(file.type, false, false);
-        }
-      })
-      .catch(function(err){
-        console.warn('fetch failed:', file.url, err);
-        tick(file.type, false, false);
-      });
-  });
-}
-
-function refreshGithubData(){
-  var btn=document.getElementById('githubRefreshBtn');
-  if(btn){btn.disabled=true;btn.textContent='Refreshing…';}
-  try{ Object.keys(localStorage).forEach(function(k){ if(k.indexOf('csv_cache_')===0) localStorage.removeItem(k); }); }catch(e){}
-  rawO=[];rawS=[];rawCarts=[];rawCusts=[];rawP=[];
-  lO=false;lP=false;lS=false;lCarts=false;lCusts=false;
-  fetchFromGithub(function(){
-    if(btn){btn.disabled=false;btn.textContent='↻ Refresh Data from GitHub';}
-    if(typeof rAll==='function')rAll();
-  });
-}
-
-// ═══════════════════════════════════════════════════════
-// JSONBIN — shared settings sync
-// ═══════════════════════════════════════════════════════
-var JBIN_KEY='$2a$10$P9i12M.E2QJWAmROLLXYEO8zAVg2x9/l7QQA4lVKeVSKGEfdF/bqG';
-var JBIN_BASE='https://api.jsonbin.io/v3';
-var JBIN_BIN_ID='69f80c3aaaba8821976a869d';
-
-function getJBinId(){return JBIN_BIN_ID||localStorage.getItem('re_jbin_id')||null;}
-function setJBinId(id){JBIN_BIN_ID=id;try{localStorage.setItem('re_jbin_id',id);}catch(e){}}
-
-function syncSettingsToCloud(cb){
-  var id=getJBinId();
-  var url=id?JBIN_BASE+'/b/'+id:JBIN_BASE+'/b';
-  var method=id?'PUT':'POST';
-  var headers={'Content-Type':'application/json','X-Master-Key':JBIN_KEY};
-  if(!id){headers['X-Bin-Name']='BookshopDashboardSettings';headers['X-Bin-Private']='false';}
-  fetch(url,{method:method,headers:headers,body:JSON.stringify(SETTINGS)})
-    .then(function(r){return r.json();})
-    .then(function(d){if(d.metadata&&d.metadata.id)setJBinId(d.metadata.id);if(cb)cb(true);})
-    .catch(function(){if(cb)cb(false);});
-}
-
-function loadSettingsFromCloud(cb){
-  var id=getJBinId();
-  if(!id){if(cb)cb(false);return;}
-  fetch(JBIN_BASE+'/b/'+id+'/latest',{headers:{'X-Master-Key':JBIN_KEY}})
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if(d&&d.record){
-        applyParsedSettings(d.record);
-        try{localStorage.setItem('re_settings',JSON.stringify(d.record));}catch(e){}
-        if(cb)cb(true);
-      }else{if(cb)cb(false);}
-    })
-    .catch(function(){if(cb)cb(false);});
-}
-
-function applyParsedSettings(parsed){
-  if(!parsed)return;
-  if(parsed.spend)     SETTINGS.spend=parsed.spend;
-  if(parsed.margin)    SETTINGS.margin=parsed.margin;
-  if(parsed.prefs)     SETTINGS.prefs=parsed.prefs;
-  if(parsed.regionMap) SETTINGS.regionMap=parsed.regionMap;
-  if(parsed.visitors)  SETTINGS.visitors=parsed.visitors;
-  if(parsed.bundleMap) SETTINGS.bundleMap=parsed.bundleMap;
-  else if(!SETTINGS.bundleMap) SETTINGS.bundleMap={au:{},uk:{},us:{}};
-  if(!SETTINGS.regionMap||!Object.keys(SETTINGS.regionMap).length){
-    if(typeof buildDefaultRegionMap==='function') SETTINGS.regionMap=buildDefaultRegionMap();
-  }
-  if(SETTINGS.visitors&&SETTINGS.visitors.length&&typeof applyVisitorsToRawV==='function') applyVisitorsToRawV();
-}
-
-// ═══════════════════════════════════════════════════════
-// SETTINGS SAVE — password gate for cloud sync
-// ═══════════════════════════════════════════════════════
-var _origSaveSettings = window.saveSettings;
-window.saveSettings = function(){
-  if(_origSaveSettings) _origSaveSettings();
-  try{localStorage.setItem('re_settings',JSON.stringify(SETTINGS));}catch(e){}
-  var _pwd=prompt('Enter admin password to sync settings to cloud for all users:\n(Cancel to save locally only)');
-  if(!_pwd)return;
-  crypto.subtle.digest('SHA-256',new TextEncoder().encode(_pwd)).then(function(buf){
-    var hash=Array.from(new Uint8Array(buf)).map(function(b){return('0'+b.toString(16)).slice(-2);}).join('');
-    if(hash!=='ef9a8bd2fae60b5602309ac6ee35ef74ebd379a28025e60f1c155c07e40ef6d8'){
-      alert('Incorrect password. Settings saved locally only.');
-      return;
-    }
-    syncSettingsToCloud(function(ok){
-      var el=document.getElementById('settingsSaved');
-      if(el){el.textContent=ok?'✓ Synced to cloud':'✓ Saved locally';el.style.display='block';setTimeout(function(){el.style.display='none';},3000);}
-    });
-  }).catch(function(){alert('Sync not supported in this browser.');});
-};
-
-// ═══════════════════════════════════════════════════════
-// EXPORT FUNCTIONS
-// ═══════════════════════════════════════════════════════
-function dlCSV(filename,content){
-  var blob=new Blob([content],{type:'text/csv'});
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);a.download=filename;
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-}
-
-function exportBundlesCSV(){
-  var bundles=(RAW_PRODUCTS||[]).filter(function(p){
+  var allBundles=(RAW_PRODUCTS||[]).filter(function(p){
     var nm=(p.name||'').toLowerCase(),sk=(p.sku||'');
-    return p.bundle||/bundle|book pack|working/i.test(nm)||(!sk.match(/^\d/));
+    var skuAlpha=sk.length>0&&!/^\d+(-\d+)?$/.test(sk);
+    return (p.bundle||/bundle|book pack|working/i.test(nm)||skuAlpha)&&!/12.?month|24.?month|program access/i.test(nm);
   });
-  var bm=SETTINGS.bundleMap||{au:{},uk:{},us:{}};
-  var maxIsbns=20;
-  ['au','uk','us'].forEach(function(r){Object.values(bm[r]||{}).forEach(function(isbns){maxIsbns=Math.max(maxIsbns,(isbns||[]).length);});});
-  var header=['bundle_sku','bundle_name','region'];
-  for(var i=1;i<=maxIsbns;i++) header.push('isbn_'+i);
-  var rows=[header.join(',')];
-  bundles.forEach(function(p){
-    var regs=[];
-    if(p.stock&&'au'in p.stock)regs.push('au');
-    if(p.stock&&'uk'in p.stock)regs.push('uk');
-    if(p.stock&&'us'in p.stock)regs.push('us');
-    if(!regs.length)regs=['au','uk','us'];
-    regs.forEach(function(reg){
-      var ex=(bm[reg]||{})[p.sku]||[];
-      var row=['"'+p.sku+'"','"'+(p.name||'').replace(/"/g,'""')+'"',reg];
-      for(var i=0;i<maxIsbns;i++)row.push(ex[i]||'');
-      rows.push(row.join(','));
-    });
-  });
-  dlCSV('bundles.csv',rows.join('\n'));
-}
-
-function exportRegionMapCSV(){
-  var rm=SETTINGS.regionMap||{};
-  var rows=[['product_id','sku','product_name','au','uk','us'].join(',')];
-  (RAW_PRODUCTS||[]).forEach(function(p){
-    var map=rm[p.id]||{au:'au'in(p.stock||{}),uk:'uk'in(p.stock||{}),us:'us'in(p.stock||{})};
-    rows.push([p.id||'','"'+(p.sku||'')+'"','"'+(p.name||'').replace(/"/g,'""')+'"',
-      map.au?'TRUE':'FALSE',map.uk?'TRUE':'FALSE',map.us?'TRUE':'FALSE'].join(','));
-  });
-  dlCSV('regionmap.csv',rows.join('\n'));
-}
-
-function exportAdSpendCSV(){
-  var spend=SETTINGS.spend||{au:[],uk:[],us:[]};
-  var rows=[['year','month','region','platform','spend_aud'].join(',')];
-  var hasData=false;
-  ['au','uk','us'].forEach(function(reg){
-    (spend[reg]||[]).forEach(function(entry){
-      if(!entry||!entry.month)return;
-      var parts=(entry.month||'').split('-');
-      (entry.platforms||[{platform:'Google',amount:entry.amount||0}]).forEach(function(plat){
-        rows.push([parts[0]||'',parts[1]||'',reg,'"'+(plat.platform||'Google')+'"',plat.amount||0].join(','));
-        hasData=true;
-      });
-    });
-  });
-  if(!hasData){
-    var now=new Date(),fyStart=now.getMonth()>=6?now.getFullYear():now.getFullYear()-1;
-    var plats={au:['Google','Meta'],uk:['Google','Meta'],us:['Google','Meta','Amazon']};
-    for(var m=0;m<12;m++){
-      var d=new Date(fyStart,6+m,1);
-      var yr=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0');
-      ['au','uk','us'].forEach(function(reg){
-        (plats[reg]||['Google']).forEach(function(plat){
-          rows.push([yr,mo,reg,'"'+plat+'"',0].join(','));
-        });
-      });
-    }
+  var activeSKUs=bundles.map(function(b){return b.sku;});
+  var remaining=allBundles.filter(function(p){return activeSKUs.indexOf(p.sku)===-1;});
+  if(remaining.length){
+    html+='<select class="set-sel" style="margin-top:8px;font-size:12px" onchange="bmapAddBundleSel(this)">'+
+      '<option value="">+ Add bundle to this region\u2026</option>'+
+      remaining.map(function(p){return '<option value="'+p.sku+'">'+p.name+'</option>';}).join('')+'</select>';
   }
-  dlCSV('adspend.csv',rows.join('\n'));
+  el.innerHTML=html||'<div style="padding:24px;font-size:12px;color:var(--muted);text-align:center">No bundles found. Upload products.csv first.</div>';
 }
 
+function bmapRemoveIsbnBtn(btn){ bmapRemoveIsbn(btn.dataset.bundle, btn.dataset.isbn); }
+function bmapCopyFromSel(sel){ bmapCopyFrom(sel.dataset.target, sel); }
+function bmapAddBundleSel(sel){ bmapAddBundle(bmapActiveRegion, sel); }
+function bmapDropEvt(e, sku){ bmapDrop(e, sku); }
 
 
-// ═══════════════════════════════════════════════════════
-// US RETAILERS DATA SYSTEM
-// ═══════════════════════════════════════════════════════
-var rawRetailers = {
-  sales: [],    // [{retailer, month, year, sku, productName, type, unitsSold, revenueAUD, returnUnits, returnRevenueAUD}]
-  margins: {}   // {retailer: {sku: marginPct}}
-};
-var lRetailers = false;
-
-function parseRetailersXlsx(buffer){
-  if(typeof XLSX === 'undefined'){ console.warn('SheetJS not loaded'); return; }
-  var wb = XLSX.read(buffer, {type:'array'});
-  var retailers = ['Amazon','TikTok','Walmart','Rainbow Resources'];
-  var salesRows = [];
-
-  retailers.forEach(function(retailer){
-    var sheetName = wb.SheetNames.find(function(n){ return n.includes(retailer); });
-    if(!sheetName) return;
-    var ws = wb.Sheets[sheetName];
-    var data = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
-    if(data.length < 3) return;
-
-    // Row 1 = title, Row 2 = headers (Product Name | SKU | Type | [month Units | month Rev]...)
-    // Find month headers from row 2
-    var headerRow = data[1] || [];
-    var months = [];
-    for(var c=3; c<headerRow.length; c+=2){
-      if(headerRow[c]) months.push({label: String(headerRow[c]), unitsCol: c, revCol: c+1});
-    }
-
-    // Rows 3+ = product data
-    for(var r=2; r<data.length; r++){
-      var row = data[r];
-      var productName = row[0]; var sku = row[1]; var type = row[2];
-      if(!productName && !sku) continue;
-
-      months.forEach(function(m){
-        var units = parseFloat(row[m.unitsCol]) || 0;
-        var rev   = parseFloat(row[m.revCol])   || 0;
-        if(units === 0 && rev === 0) return; // skip empty months
-
-        // Parse month label e.g. "Jan 2025"
-        var parts = m.label.trim().split(' ');
-        var monthNames = {Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
-        var monthNum = monthNames[parts[0]] || 0;
-        var year = parseInt(parts[1]) || 0;
-
-        salesRows.push({
-          retailer: retailer,
-          month: monthNum,
-          year: year,
-          sku: String(sku),
-          productName: String(productName),
-          type: String(type),
-          unitsSold: units,
-          revenueAUD: rev,
-          returnUnits: 0,
-          returnRevenueAUD: 0
-        });
-      });
-    }
+function bmapGetActiveBundles(region){
+  if(!SETTINGS.bundleMap[region]) SETTINGS.bundleMap[region]={};
+  var excluded=SETTINGS.bundleMap[region].__excluded||[];
+  var catalog=(RAW_PRODUCTS||[]).filter(function(p){
+    var nm=(p.name||'').toLowerCase(),sk=(p.sku||'');
+    var skuAlpha=sk.length>0&&!/^\d+(-\d+)?$/.test(sk);
+    return (p.bundle||/bundle|book pack|working/i.test(nm)||skuAlpha)&&!/12.?month|24.?month|program access/i.test(nm)&&excluded.indexOf(p.sku)===-1;
   });
+  return catalog;
+}
 
-  // Parse margins sheet
-  var marginSheet = wb.SheetNames.find(function(n){ return n.includes('Margin'); });
-  if(marginSheet){
-    var mws = wb.Sheets[marginSheet];
-    var mdata = XLSX.utils.sheet_to_json(mws, {header:1, defval:''});
-    for(var mr=2; mr<mdata.length; mr++){
-      var mrow = mdata[mr];
-      var ret=String(mrow[0]), msku=String(mrow[2]), pct=parseFloat(mrow[4])||0;
-      if(!ret||!msku) continue;
-      if(!rawRetailers.margins[ret]) rawRetailers.margins[ret]={};
-      rawRetailers.margins[ret][msku] = pct;
-    }
+function bmapAddBundle(region,sel){
+  if(!sel.value) return;
+  var sku=sel.value;
+  if(!SETTINGS.bundleMap[region]) SETTINGS.bundleMap[region]={};
+  if(!SETTINGS.bundleMap[region].__excluded) SETTINGS.bundleMap[region].__excluded=[];
+  var excIdx=SETTINGS.bundleMap[region].__excluded.indexOf(sku);
+  if(excIdx>-1) SETTINGS.bundleMap[region].__excluded.splice(excIdx,1);
+  if(!SETTINGS.bundleMap[region][sku]) SETTINGS.bundleMap[region][sku]=[];
+  sel.value=''; saveSettings(); renderBmapIsbns(); renderBmapBundles();
+}
+
+function bmapDragStart(e){ _bmapDragIsbn=e.currentTarget.dataset.isbn; _bmapDragName=e.currentTarget.dataset.name; }
+function bmapDragOver(e){ e.preventDefault(); var b=e.currentTarget.closest('.bmap-bundle'); if(b) b.classList.add('drag-over'); }
+function bmapDragLeave(e){ var b=e.currentTarget.closest('.bmap-bundle'); if(b) b.classList.remove('drag-over'); }
+function bmapDrop(e,bundleSku){
+  e.preventDefault();
+  var b=e.currentTarget.closest('.bmap-bundle'); if(b) b.classList.remove('drag-over');
+  if(!_bmapDragIsbn) return;
+  var region=bmapActiveRegion;
+  if(!SETTINGS.bundleMap[region]) SETTINGS.bundleMap[region]={};
+  if(!SETTINGS.bundleMap[region][bundleSku]) SETTINGS.bundleMap[region][bundleSku]=[];
+  if(!SETTINGS.bundleMap[region][bundleSku].includes(_bmapDragIsbn)){
+    SETTINGS.bundleMap[region][bundleSku].push(_bmapDragIsbn); saveSettings();
   }
-
-  rawRetailers.sales = salesRows;
-  lRetailers = true;
-  console.log('Retailers loaded:', salesRows.length, 'rows');
+  _bmapDragIsbn=null; renderBmapIsbns(); renderBmapBundles();
+}
+function bmapToggle(sku){ var b=document.getElementById('bmap-body-'+sku); if(b) b.style.display=b.style.display==='none'?'':'none'; }
+function bmapRemoveIsbn(bundleSku,isbn){
+  var region=bmapActiveRegion;
+  if(!SETTINGS.bundleMap[region]||!SETTINGS.bundleMap[region][bundleSku]) return;
+  var arr=SETTINGS.bundleMap[region][bundleSku], idx=arr.indexOf(isbn);
+  if(idx>-1) arr.splice(idx,1); saveSettings(); renderBmapIsbns(); renderBmapBundles();
+}
+function bmapCopyFrom(targetSku,sel){
+  if(!sel.value) return;
+  var region=bmapActiveRegion, sourceSku=sel.value;
+  var sourceISBNs=(SETTINGS.bundleMap[region]||{})[sourceSku]||[];
+  if(!SETTINGS.bundleMap[region][targetSku]) SETTINGS.bundleMap[region][targetSku]=[];
+  var existing=SETTINGS.bundleMap[region][targetSku], added=0;
+  sourceISBNs.forEach(function(isbn){ if(existing.indexOf(isbn)===-1){existing.push(isbn);added++;} });
+  sel.value=''; saveSettings(); renderBmapIsbns(); renderBmapBundles();
+}
+function bmapRemoveBundle(sku){
+  var region=bmapActiveRegion;
+  if(!SETTINGS.bundleMap[region]) SETTINGS.bundleMap[region]={};
+  if(!SETTINGS.bundleMap[region].__excluded) SETTINGS.bundleMap[region].__excluded=[];
+  if(SETTINGS.bundleMap[region].__excluded.indexOf(sku)===-1) SETTINGS.bundleMap[region].__excluded.push(sku);
+  saveSettings(); renderBmapIsbns(); renderBmapBundles();
 }
 
-function getRetailerMargin(retailer, sku){
-  return ((rawRetailers.margins[retailer]||{})[sku]) || 0;
-}
-
-function fRetailerSales(retailerFilter, dateFrom, dateTo){
-  return rawRetailers.sales.filter(function(r){
-    if(retailerFilter && retailerFilter !== 'all' && r.retailer !== retailerFilter) return false;
-    if(dateFrom || dateTo){
-      var d = new Date(r.year, r.month-1, 1);
-      if(dateFrom && d < dateFrom) return false;
-      if(dateTo && d > dateTo) return false;
+function renderRegionMapList(){
+  var el=document.getElementById('regionMapList'); if(!el) return;
+  var q=((document.getElementById('regionMapSearch')||{}).value||'').toLowerCase();
+  if(!SETTINGS.regionMap||Object.keys(SETTINGS.regionMap).length===0) SETTINGS.regionMap=buildDefaultRegionMap();
+  var all=(RAW_PRODUCTS||[]);
+  var prods=q?all.filter(function(p){return(p.name||'').toLowerCase().includes(q)||(p.sku||'').toLowerCase().includes(q);}):all;
+  var countEl=document.getElementById('regionMapCount');
+  if(countEl) countEl.textContent=prods.length+' of '+all.length+' products';
+  el.innerHTML=prods.map(function(p,i){
+    var rm=SETTINGS.regionMap[p.id]||{au:true,uk:true,us:true};
+    function chk(reg){
+      return '<div class="rm-chk-cell"><input type="checkbox" class="rm-check"'+(rm[reg]?' checked':'')+' data-id="'+p.id+'" data-reg="'+reg+'" onchange="toggleRegion(this)"></div>';
     }
-    return true;
-  });
+    return '<div class="rm-row" title="'+p.name+'">'+
+      '<span class="rm-num">'+(i+1)+'</span>'+
+      '<span class="rm-name">'+p.name+'</span>'+
+      '<span class="rm-sku">'+p.sku+'</span>'+
+      chk('au')+chk('uk')+chk('us')+'</div>';
+  }).join('')||'<div style="padding:24px;color:var(--muted);font-size:13px;text-align:center">No products found</div>';
 }
 
-function rRetailers(){
-  if(!lRetailers){
-    var el = document.getElementById('retailerProductTable');
-    if(el) el.innerHTML = '<div class="nd" style="padding:40px;text-align:center"><div class="ndic">🛍️</div><div style="font-size:14px;color:var(--muted);margin-top:12px">No retailer data loaded.<br>Upload <strong>us_retailers.xlsx</strong> to your GitHub repo and click Refresh.</div></div>';
-    return;
+function filterRegionMap(){ renderRegionMapList(); }
+function regionMapSelectAll(region){
+  (RAW_PRODUCTS||[]).forEach(function(p){ if(!SETTINGS.regionMap[p.id]) SETTINGS.regionMap[p.id]={au:true,uk:true,us:true}; SETTINGS.regionMap[p.id][region]=true; });
+  saveSettings(); renderRegionMapList();
+}
+function regionMapClearAll(){
+  (RAW_PRODUCTS||[]).forEach(function(p){ SETTINGS.regionMap[p.id]={au:false,uk:false,us:false}; });
+  saveSettings(); renderRegionMapList();
+}
+function toggleRegion(inp){
+  var id=inp.dataset.id, reg=inp.dataset.reg;
+  if(!SETTINGS.regionMap[id]) SETTINGS.regionMap[id]={au:true,uk:true,us:true};
+  SETTINGS.regionMap[id][reg]=inp.checked; saveSettings();
+}
+function buildDefaultRegionMap(){
+  var rm={};
+  (RAW_PRODUCTS||[]).forEach(function(p){ rm[p.id]={au:true,uk:true,us:true}; });
+  return rm;
+}
+
+function renderVisitorsTable(){
+  var tbody=document.getElementById('visitorsTableBody'); if(!tbody) return;
+  if(!SETTINGS.visitors||!SETTINGS.visitors.length){
+    SETTINGS.visitors=getLast24Months().map(function(m){return{month:m,all:0,apac:0,emea:0,amer:0};});
   }
-
-  var filt = (document.getElementById('retailerFilter')||{}).value||'all';
-  var sales = fRetailerSales(filt);
-
-  var retailers = ['Amazon','TikTok','Walmart','Rainbow Resources'];
-  var COLORS = {Amazon:'#EA580C',TikTok:'#16A34A',Walmart:'#2563EB','Rainbow Resources':'#7C3AED'};
-
-  // ── Aggregate ────────────────────────────────────────────────────────────
-  var byRetailer = {};
-  retailers.forEach(function(r){ byRetailer[r]={rev:0,gp:0,units:0,rows:[]}; });
-  var byProduct  = {};
-  var byMonth    = {};
-
-  sales.forEach(function(s){
-    var net_rev   = s.revenueAUD - (s.returnRevenueAUD||0);
-    var net_units = s.unitsSold  - (s.returnUnits||0);
-    var margin    = getRetailerMargin(s.retailer, s.sku);
-    var gp        = net_rev * margin;
-
-    if(!byRetailer[s.retailer]) byRetailer[s.retailer]={rev:0,gp:0,units:0};
-    byRetailer[s.retailer].rev   += net_rev;
-    byRetailer[s.retailer].gp    += gp;
-    byRetailer[s.retailer].units += net_units;
-
-    var pkey = s.sku+'|'+s.productName;
-    if(!byProduct[pkey]) byProduct[pkey]={name:s.productName,sku:s.sku,type:s.type,rev:0,gp:0,units:0,byRetailer:{}};
-    byProduct[pkey].rev   += net_rev;
-    byProduct[pkey].gp    += gp;
-    byProduct[pkey].units += net_units;
-    if(!byProduct[pkey].byRetailer[s.retailer]) byProduct[pkey].byRetailer[s.retailer]={rev:0,units:0};
-    byProduct[pkey].byRetailer[s.retailer].rev   += net_rev;
-    byProduct[pkey].byRetailer[s.retailer].units += net_units;
-
-    var mkey = s.year+'-'+String(s.month).padStart(2,'0');
-    if(!byMonth[mkey]) byMonth[mkey]={};
-    if(!byMonth[mkey][s.retailer]) byMonth[mkey][s.retailer]=0;
-    byMonth[mkey][s.retailer] += net_rev;
-  });
-
-  var totalRev   = Object.values(byRetailer).reduce(function(s,r){return s+r.rev;},0);
-  var totalGP    = Object.values(byRetailer).reduce(function(s,r){return s+r.gp;},0);
-  var totalUnits = Object.values(byRetailer).reduce(function(s,r){return s+r.units;},0);
-  var avgMargin  = totalRev>0 ? (totalGP/totalRev*100) : 0;
-
-  // ── KPI Cards ──────────────────────────────────────────────────────────────
-  var kpiEl = document.getElementById('retailerKpis');
-  if(kpiEl) kpiEl.innerHTML =
-    '<div class="kpi b"><div class="kpi-accent"></div><div class="kl">Total Revenue</div><div class="kv">'+fmd(totalRev)+'</div><div class="ks2">All US retailers</div></div>'+
-    '<div class="kpi g"><div class="kpi-accent"></div><div class="kl">Gross Profit</div><div class="kv">'+fmd(totalGP)+'</div><div class="ks2">Avg margin '+avgMargin.toFixed(1)+'%</div></div>'+
-    '<div class="kpi"><div class="kpi-accent"></div><div class="kl">Units Sold</div><div class="kv">'+totalUnits.toLocaleString()+'</div><div class="ks2">Net of returns</div></div>'+
-    '<div class="kpi"><div class="kpi-accent"></div><div class="kl">Best Retailer</div><div class="kv" style="font-size:18px">'+(Object.entries(byRetailer).sort(function(a,b){return b[1].rev-a[1].rev;})[0]||['—'])[0]+'</div><div class="ks2">By revenue</div></div>'+
-    '<div class="kpi"><div class="kpi-accent"></div><div class="kl">Products Active</div><div class="kv">'+Object.keys(byProduct).length+'</div><div class="ks2">With any sales</div></div>';
-
-  // ── Charts ─────────────────────────────────────────────────────────────────
-  var retLabels = retailers.filter(function(r){return byRetailer[r]&&byRetailer[r].rev>0;});
-  var retRevs   = retLabels.map(function(r){return byRetailer[r].rev;});
-  var retGPs    = retLabels.map(function(r){return byRetailer[r].gp;});
-  var retUnits  = retLabels.map(function(r){return byRetailer[r].units;});
-  var retColors = retLabels.map(function(r){return COLORS[r]||'#64748b';});
-
-  mkC('chartRetailerRev','bar',retLabels,[{label:'Revenue AUD',data:retRevs,backgroundColor:retColors}],
-    {plugins:{legend:{display:false}},scales:{y:{ticks:{callback:function(v){return'A$'+v.toLocaleString();}}}}});
-
-  mkC('chartRetailerGP','bar',retLabels,[{label:'Gross Profit',data:retGPs,backgroundColor:retColors.map(function(c){return c+'88';})}],
-    {plugins:{legend:{display:false}},scales:{y:{ticks:{callback:function(v){return'A$'+v.toLocaleString();}}}}});
-
-  mkC('chartRetailerUnits','bar',retLabels,[{label:'Units',data:retUnits,backgroundColor:retColors}],
-    {plugins:{legend:{display:false}}});
-
-  // Monthly trend
-  var sortedMonths = Object.keys(byMonth).sort();
-  var trendDatasets = retailers.filter(function(r){return byRetailer[r]&&byRetailer[r].rev>0;}).map(function(r){
-    return {label:r,data:sortedMonths.map(function(m){return(byMonth[m]||{})[r]||0;}),
-      borderColor:COLORS[r],backgroundColor:COLORS[r]+'22',fill:false,tension:.3,pointRadius:3};
-  });
-  mkC('chartRetailerTrend','line',sortedMonths,trendDatasets,
-    {plugins:{legend:{position:'bottom'}},scales:{y:{ticks:{callback:function(v){return'A$'+v.toLocaleString();}}}}});
-
-  // ── Product Table ──────────────────────────────────────────────────────────
-  var sortedProds = Object.values(byProduct).sort(function(a,b){return b.rev-a.rev;});
-  var thead='<table><thead><tr>'+
-    '<th class="stk-th">#</th>'+
-    '<th class="stk-th">Product</th>'+
-    '<th class="stk-th">SKU</th>'+
-    '<th class="stk-th">Type</th>'+
-    '<th class="stk-th" style="text-align:right">Units</th>'+
-    '<th class="stk-th" style="text-align:right">Revenue</th>'+
-    '<th class="stk-th" style="text-align:right">GP</th>'+
-    '<th class="stk-th" style="text-align:right">Margin</th>'+
-    '</tr></thead><tbody>';
-
-  var tbody = sortedProds.map(function(p,i){
-    var margin = p.rev>0?p.gp/p.rev*100:0;
-    return '<tr>'+
-      '<td class="stk-num-cell">'+(i+1)+'</td>'+
-      '<td style="font-size:12px;font-weight:600;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.name+'</td>'+
-      '<td style="font-size:11px;color:var(--muted2);font-family:monospace">'+p.sku+'</td>'+
-      '<td><span style="font-size:10px;padding:2px 6px;border-radius:999px;background:var(--grn-bg);color:var(--grn);font-weight:700">'+p.type+'</span></td>'+
-      '<td style="text-align:right;font-size:13px;font-weight:700">'+p.units.toLocaleString()+'</td>'+
-      '<td style="text-align:right;font-size:13px;font-weight:700">'+fmd(p.rev)+'</td>'+
-      '<td style="text-align:right;font-size:13px;color:var(--grn)">'+fmd(p.gp)+'</td>'+
-      '<td style="text-align:right;font-size:12px;color:var(--muted2)">'+margin.toFixed(1)+'%</td>'+
-    '</tr>';
+  tbody.innerHTML=SETTINGS.visitors.map(function(r,i){
+    function inp(f){ return '<input type="number" min="0" step="1" class="set-inp" style="width:100%;text-align:right;padding:5px 8px;font-size:12px" data-idx="'+i+'" data-field="'+f+'" value="'+parseInt(r[f]||0,10)+'" onchange="updateVisitorCell(this)">'; }
+    return '<tr><td style="font-size:12px;font-weight:600;color:var(--text2)">'+r.month+'</td>'+
+      '<td>'+inp('all')+'</td><td>'+inp('apac')+'</td><td>'+inp('emea')+'</td><td>'+inp('amer')+'</td>'+
+      '<td style="text-align:center"><button class="set-del-btn" onclick="removeVisitorRow('+i+')" title="Remove">×</button></td></tr>';
   }).join('');
-
-  var tEl=document.getElementById('retailerProductTable');
-  if(tEl) tEl.innerHTML=thead+tbody+'</tbody></table>';
-
-  // ── Matrix ─────────────────────────────────────────────────────────────────
-  var top15 = sortedProds.slice(0,15);
-  var activeRetailers = retailers.filter(function(r){return byRetailer[r]&&byRetailer[r].rev>0;});
-  var mHead='<table><thead><tr><th class="stk-th">Product</th>'+
-    activeRetailers.map(function(r){return '<th class="stk-th" style="text-align:right;color:'+COLORS[r]+'">'+r+'</th>';}).join('')+
-    '<th class="stk-th" style="text-align:right">Total</th></tr></thead><tbody>';
-  var mBody=top15.map(function(p){
-    return '<tr><td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+p.name+'">'+p.name+'</td>'+
-      activeRetailers.map(function(r){
-        var rv=(p.byRetailer[r]||{}).rev||0;
-        return '<td style="text-align:right;font-size:12px">'+(rv?fmd(rv):'—')+'</td>';
-      }).join('')+
-      '<td style="text-align:right;font-size:12px;font-weight:700">'+fmd(p.rev)+'</td></tr>';
-  }).join('');
-  var mEl=document.getElementById('retailerMatrix');
-  if(mEl) mEl.innerHTML=mHead+mBody+'</tbody></table>';
 }
 
-function exportRetailersCSV(){
-  var filt=(document.getElementById('retailerFilter')||{}).value||'all';
-  var sales=fRetailerSales(filt);
-  var rows=[['Retailer','Month','Year','Product','SKU','Type','Units Sold','Revenue AUD','Return Units','Return Rev AUD','Net Units','Net Revenue AUD','Gross Profit AUD','Margin %']];
-  sales.forEach(function(s){
-    var netRev=s.revenueAUD-(s.returnRevenueAUD||0);
-    var netU=s.unitsSold-(s.returnUnits||0);
-    var m=getRetailerMargin(s.retailer,s.sku);
-    var gp=netRev*m;
-    rows.push([s.retailer,s.month,s.year,s.productName,s.sku,s.type,s.unitsSold,s.revenueAUD,s.returnUnits||0,s.returnRevenueAUD||0,netU,netRev.toFixed(2),gp.toFixed(2),(m*100).toFixed(1)+'%']);
-  });
-  var csv=rows.map(function(r){return r.map(function(v){v=String(v);return(v.includes(','))?'"'+v+'"':v;}).join(',');}).join('\n');
-  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download='us_retailers_export.csv';a.click();
+function addVisitorRow(){
+  var now=new Date(), m=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  if(!SETTINGS.visitors) SETTINGS.visitors=[];
+  SETTINGS.visitors.unshift({month:m,all:0,apac:0,emea:0,amer:0});
+  saveSettings(); renderVisitorsTable();
 }
 
+function removeVisitorRow(i){
+  SETTINGS.visitors.splice(i,1); saveSettings(); renderVisitorsTable(); applyVisitorsToRawV();
+}
+
+function updateVisitorCell(inp){
+  var i=parseInt(inp.dataset.idx), field=inp.dataset.field, val=parseInt(inp.value)||0;
+  if(!SETTINGS.visitors[i]) return;
+  SETTINGS.visitors[i][field]=val; saveSettings(); applyVisitorsToRawV();
+}
+
+function applyVisitorsToRawV(){
+  if(!SETTINGS.visitors||!SETTINGS.visitors.length) return;
+  var hasData=SETTINGS.visitors.some(function(r){return r.all>0||r.apac>0||r.emea>0||r.amer>0;});
+  if(!hasData) return;
+  rawV=SETTINGS.visitors.map(function(r){return{'month':r.month,'all_visitors':r.all||0,'apac_visitors':r.apac||0,'emea_visitors':r.emea||0,'amer_visitors':r.amer||0};});
+  lV=true; buildVisMap();
+  try{if(aTab) rTab(aTab);}catch(e){}
+}
+
+function confirmClear(){
+  if(!confirm('Clear all saved data? You will need to re-upload your CSV files.')) return;
+  dbDel('re_orders',function(){dbDel('re_products',function(){dbDel('re_source',function(){
+    rawO=[];rawP=[];rawS=[];lO=false;lP=false;lS=false;prods={};srcMap={};
+    alert('All saved data cleared. Please refresh.');
+  });});});
+}
+
+function triggerBackup(){
+  if(!lO){alert('No data to backup.');return;}
+  exportData();
+}
+
+// ══════════════════════════════════════════════════════════
+
+function toggleSettings(){
+  var panel=document.getElementById('settingsPanel');
+  var btn=document.getElementById('settingsBtn');
+  if(!panel) return;
+  if(panel.classList.contains('open')){ closeSettings(); return; }
+  panel.classList.add('open');
+  if(btn) btn.classList.add('active');
+  sNavTo('upload', document.getElementById('snav-upload'));
+  loadSettingsUI();
+}
+
+function closeSettings(){
+  var panel=document.getElementById('settingsPanel');
+  var btn=document.getElementById('settingsBtn');
+  if(panel) panel.classList.remove('open');
+  if(btn) btn.classList.remove('active');
+}
 
 window.addEventListener('load',function(){
   try{applyChartDefaults();}catch(e){}
@@ -11341,9 +10367,6 @@ window.addEventListener('load',function(){
     }
   }, 12000);
 });
-
-
-
 
 </script>
 
@@ -11482,150 +10505,204 @@ window.addEventListener('load',function(){
 
 <!-- SETTINGS MODAL -->
 <div class="settings-panel" id="settingsPanel">
-
-  <!-- Settings Layout: left nav + right content -->
   <div class="set-layout">
 
-    <!-- LEFT NAV SIDEBAR -->
+    <!-- LEFT NAV -->
     <div class="set-nav">
       <div class="set-nav-header">
-        <div class="set-nav-title">⚙ Settings</div>
-        <button class="fp-close" onclick="closeSettings()" style="margin-left:auto">✕</button>
+        <span class="set-nav-title">⚙ Settings</span>
+        <button class="set-nav-close" onclick="closeSettings()">✕</button>
       </div>
 
-      <!-- Nav groups -->
-      <div class="set-nav-group">
-        <div class="set-nav-label">DATA</div>
-        <button class="set-nav-item active" id="snav-upload" onclick="sNavTab('upload',this)">
-          <span class="set-nav-icon">📊</span> Upload Status
-        </button>
-      </div>
+      <div class="set-nav-section">DATA</div>
+      <button class="set-nav-item active" id="snav-upload" onclick="sNavTo('upload',this)">
+        <span class="set-nav-icon">📊</span>Upload Status
+      </button>
 
-      <div class="set-nav-group">
-        <div class="set-nav-label">FINANCIALS</div>
-        <button class="set-nav-item" id="snav-spend" onclick="sNavTab('spend',this)">
-          <span class="set-nav-icon">💸</span> Ad Spend
-        </button>
-        <button class="set-nav-item" id="snav-margin" onclick="sNavTab('margin',this)">
-          <span class="set-nav-icon">💰</span> Margins
-        </button>
-      </div>
+      <div class="set-nav-section">FINANCIALS</div>
+      <button class="set-nav-item" id="snav-spend" onclick="sNavTo('spend',this)">
+        <span class="set-nav-icon">📢</span>Ad Spend
+      </button>
+      <button class="set-nav-item" id="snav-margin" onclick="sNavTo('margin',this)">
+        <span class="set-nav-icon">💰</span>Margins
+      </button>
 
-      <div class="set-nav-group">
-        <div class="set-nav-label">PRODUCTS</div>
-        <button class="set-nav-item" id="snav-bundle" onclick="sNavTab('bundle',this)">
-          <span class="set-nav-icon">📦</span> Bundle Mapping
-        </button>
-        <button class="set-nav-item" id="snav-region" onclick="sNavTab('region',this)">
-          <span class="set-nav-icon">🌏</span> Region Mapping
-        </button>
-      </div>
+      <div class="set-nav-section">PRODUCTS</div>
+      <button class="set-nav-item" id="snav-bundles" onclick="sNavTo('bundles',this)">
+        <span class="set-nav-icon">🎁</span>Bundle Mapping
+      </button>
+      <button class="set-nav-item" id="snav-regions" onclick="sNavTo('regions',this)">
+        <span class="set-nav-icon">🗺</span>Region Mapping
+      </button>
 
-      <div class="set-nav-group">
-        <div class="set-nav-label">GENERAL</div>
-        <button class="set-nav-item" id="snav-prefs" onclick="sNavTab('prefs',this)">
-          <span class="set-nav-icon">🎛️</span> Preferences
-        </button>
-        <button class="set-nav-item" id="snav-visitors" onclick="sNavTab('visitors',this)">
-          <span class="set-nav-icon">👥</span> Visitors
-        </button>
-      </div>
+      <div class="set-nav-section">GENERAL</div>
+      <button class="set-nav-item" id="snav-prefs" onclick="sNavTo('prefs',this)">
+        <span class="set-nav-icon">🎛</span>Preferences
+      </button>
+      <button class="set-nav-item" id="snav-visitors" onclick="sNavTo('visitors',this)">
+        <span class="set-nav-icon">📅</span>Visitors
+      </button>
 
-      <!-- Dark mode toggle at bottom of nav -->
       <div class="set-nav-bottom">
-        <button class="thbtn set-nav-dark" onclick="toggleTheme()" style="width:100%;justify-content:center;border-radius:8px;height:38px">
+        <button class="thbtn set-nav-dark" onclick="toggleTheme()">
           <span id="tic">🌙</span>&nbsp;<span id="tlbl">Dark</span>
         </button>
-        <div style="font-size:10px;color:var(--muted2);text-align:center;margin-top:6px" id="settingsSaved" style="display:none">✓ Saved</div>
+        <div id="settingsSaved" style="font-size:11px;color:var(--grn);text-align:center;margin-top:6px;display:none">✓ Saved</div>
       </div>
     </div>
 
     <!-- RIGHT CONTENT -->
     <div class="set-content">
-
-      <!-- Header with apply button -->
-      <div class="set-content-header">
+      <div class="set-content-hdr">
         <div class="set-content-title" id="setContentTitle">Upload Status</div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="abtn" id="snapshotBtn" onclick="saveSnapshot()" style="padding:6px 14px;font-size:12px;background:#16a34a;border-color:#16a34a">💾 Save Snapshot</button>
-          <button class="abtn" onclick="applySettings()" style="padding:6px 16px;font-size:13px">✓ Apply &amp; Close</button>
-        </div>
+        <button class="abtn" onclick="applySettings()" style="padding:6px 18px;font-size:13px">✓ Apply &amp; Close</button>
       </div>
 
       <!-- UPLOAD STATUS -->
-      <div class="set-panel active" id="setPanel-upload">
-        <div class="set-block-sub" style="margin-bottom:16px">Data auto-loads from GitHub on startup. Use the button below to pull the latest CSVs.</div>
-        <button class="abtn" id="githubRefreshBtn" onclick="refreshGithubData()" style="margin-bottom:20px;background:#1e40af;border-color:#1e40af">↻ Refresh Data from GitHub</button>
+      <div class="set-panel active" id="setContent-upload">
+        <div class="set-section-sub">Data auto-loads from GitHub. Use Refresh to pull the latest files.</div>
+        <button class="abtn" id="githubRefreshBtn" onclick="refreshGithubData()" style="margin-bottom:20px;background:#1e40af;border-color:#1e40af">↻ Refresh from GitHub</button>
         <div id="uploadStatusList" class="upload-status-grid"></div>
-
-        <div style="margin-top:28px">
-          <div class="set-block-title" style="margin-bottom:6px">Export Configuration Files</div>
-          <div class="set-block-sub" style="margin-bottom:14px">Download, fill in, upload to GitHub repo. Dashboard auto-loads on next refresh.</div>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <div class="set-export-row">
-              <div><div style="font-size:13px;font-weight:600">bundles.csv</div><div style="font-size:11px;color:var(--muted2)">Bundle SKUs with component ISBNs</div></div>
-              <button class="cbtn" onclick="exportBundlesCSV()" style="padding:5px 12px;font-size:12px">↓ Export</button>
-            </div>
-            <div class="set-export-row">
-              <div><div style="font-size:13px;font-weight:600">regionmap.csv</div><div style="font-size:11px;color:var(--muted2)">Products with AU/UK/USA active flags</div></div>
-              <button class="cbtn" onclick="exportRegionMapCSV()" style="padding:5px 12px;font-size:12px">↓ Export</button>
-            </div>
-            <div class="set-export-row">
-              <div><div style="font-size:13px;font-weight:600">adspend.csv</div><div style="font-size:11px;color:var(--muted2)">Monthly ad spend by region/platform</div></div>
-              <button class="cbtn" onclick="exportAdSpendCSV()" style="padding:5px 12px;font-size:12px">↓ Export</button>
-            </div>
-            <div class="set-export-row">
-              <div><div style="font-size:13px;font-weight:600">Month-End Report</div><div style="font-size:11px;color:var(--muted2)">Executive Word document for CEO/CRO</div></div>
-              <button class="cbtn" onclick="generateMonthEndReport();closeSettings();" style="padding:5px 12px;font-size:12px">📄 Generate</button>
-            </div>
-          </div>
+        <div style="margin-top:24px;display:flex;gap:10px;flex-wrap:wrap">
+          <button class="abtn" onclick="generateMonthEndReport()" style="background:#16a34a;border-color:#16a34a">📄 Month-End Report</button>
+          <button class="cbtn" onclick="if(confirm('Clear all saved data?'))confirmClear()" style="color:var(--red)">✕ Clear all data</button>
         </div>
       </div>
 
       <!-- AD SPEND -->
-      <div class="set-panel" id="setPanel-spend">
-        <div class="set-block-title">Ad Spend — Monthly</div>
-        <div class="set-block-sub">Enter total ad spend per platform per month. Used to calculate ROAS and CAC.</div>
-        <div id="spendContent"></div>
+      <div class="set-panel" id="setContent-spend">
+        <div class="set-section-sub">Monthly ad spend by platform and region. Used to calculate ROAS and CAC.</div>
+        <div class="set-region-tabs">
+          <button class="set-rtab active" onclick="showSpendRegion('au',this)">🇦🇺 AU</button>
+          <button class="set-rtab" onclick="showSpendRegion('uk',this)">🇬🇧 UK</button>
+          <button class="set-rtab" onclick="showSpendRegion('us',this)">🇺🇸 USA</button>
+        </div>
+        <div class="set-region-panel" id="spend-au"><div id="spendGrid-au"></div></div>
+        <div class="set-region-panel" id="spend-uk" style="display:none"><div id="spendGrid-uk"></div></div>
+        <div class="set-region-panel" id="spend-us" style="display:none"><div id="spendGrid-us"></div></div>
+        <button class="set-add-btn" onclick="addPlatformRow()">+ Add platform</button>
       </div>
 
       <!-- MARGINS -->
-      <div class="set-panel" id="setPanel-margin">
-        <div class="set-block-title">Margins</div>
-        <div class="set-block-sub">Set gross margin percentages by region and product type.</div>
-        <div id="marginContent"></div>
+      <div class="set-panel" id="setContent-margin">
+        <div class="set-section-sub">Gross margin % by region and product type, after COGS. Used to calculate gross profit.</div>
+        <table class="set-margin-table">
+          <thead><tr><th>Region</th><th>Digital</th><th>Physical (ISBN)</th><th>Bundle</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="set-region-badge au">🇦🇺 AU</span></td>
+              <td><input type="number" class="set-inp" id="mg-au-digital"  min="0" max="100" step="0.1" placeholder="—" onchange="saveSettings()"> %</td>
+              <td><input type="number" class="set-inp" id="mg-au-physical" min="0" max="100" step="0.1" placeholder="—" onchange="saveSettings()"> %</td>
+              <td><input type="number" class="set-inp" id="mg-au-bundle"   min="0" max="100" step="0.1" placeholder="—" onchange="saveSettings()"> %</td>
+            </tr>
+            <tr>
+              <td><span class="set-region-badge uk">🇬🇧 UK</span></td>
+              <td><input type="number" class="set-inp" id="mg-uk-digital"  min="0" max="100" step="0.1" placeholder="—" onchange="saveSettings()"> %</td>
+              <td><input type="number" class="set-inp" id="mg-uk-physical" min="0" max="100" step="0.1" placeholder="—" onchange="saveSettings()"> %</td>
+              <td><input type="number" class="set-inp" id="mg-uk-bundle"   min="0" max="100" step="0.1" placeholder="—" onchange="saveSettings()"> %</td>
+            </tr>
+            <tr>
+              <td><span class="set-region-badge us">🇺🇸 USA</span></td>
+              <td><input type="number" class="set-inp" id="mg-us-digital"  min="0" max="100" step="0.1" placeholder="—" onchange="saveSettings()"> %</td>
+              <td><input type="number" class="set-inp" id="mg-us-physical" min="0" max="100" step="0.1" placeholder="—" onchange="saveSettings()"> %</td>
+              <td><input type="number" class="set-inp" id="mg-us-bundle"   min="0" max="100" step="0.1" placeholder="—" onchange="saveSettings()"> %</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <!-- BUNDLE MAPPING -->
-      <div class="set-panel" id="setPanel-bundle">
-        <div class="set-block-title">Bundle Mapping</div>
-        <div class="set-block-sub">Map bundle SKUs to their component ISBNs. Used to attribute bundle sales back to individual books for stock and velocity tracking.</div>
-        <div id="bundleContent"></div>
+      <div class="set-panel" id="setContent-bundles">
+        <div class="set-section-sub">Map each bundle to its component ISBNs per region. Drag ISBNs from the left into bundles on the right.</div>
+        <div class="set-region-tabs" style="margin-bottom:16px">
+          <button class="set-rtab active" id="bmap-tab-au" onclick="showBmapRegion('au',this)">🇦🇺 AU</button>
+          <button class="set-rtab" id="bmap-tab-uk" onclick="showBmapRegion('uk',this)">🇬🇧 UK</button>
+          <button class="set-rtab" id="bmap-tab-us" onclick="showBmapRegion('us',this)">🇺🇸 USA</button>
+        </div>
+        <div class="bmap-layout">
+          <div class="bmap-left">
+            <div class="bmap-panel-title">ISBN Products</div>
+            <input class="set-inp" id="bmapIsbnSearch" placeholder="Search ISBNs…" oninput="filterBmapIsbns()" style="margin:8px;width:calc(100% - 16px);font-size:12px">
+            <div class="bmap-isbn-list" id="bmapIsbnList"></div>
+          </div>
+          <div class="bmap-right">
+            <div class="bmap-panel-title">Bundles <span id="bmapRegionLabel" style="color:var(--muted);font-weight:400;font-size:11px"></span></div>
+            <div class="bmap-bundle-list" id="bmapBundleList"></div>
+          </div>
+        </div>
       </div>
 
       <!-- REGION MAPPING -->
-      <div class="set-panel" id="setPanel-region">
-        <div class="set-block-title">Region Mapping</div>
-        <div class="set-block-sub">Control which regions each product is active in. By default this is derived from stock data.</div>
-        <div id="regionContent"></div>
+      <div class="set-panel" id="setContent-regions">
+        <div class="set-section-sub">Control which regions each product is active in. Affects stock, velocity and regional analytics.</div>
+        <div class="rm-toolbar">
+          <input class="set-inp" id="regionMapSearch" placeholder="Search products…" oninput="filterRegionMap()" style="width:220px">
+          <button class="cbtn" onclick="regionMapSelectAll('au')">✓ All AU</button>
+          <button class="cbtn" onclick="regionMapSelectAll('uk')">✓ All UK</button>
+          <button class="cbtn" onclick="regionMapSelectAll('us')">✓ All USA</button>
+          <button class="cbtn" onclick="regionMapClearAll()" style="color:var(--red)">✕ Clear all</button>
+          <span class="rm-count" id="regionMapCount"></span>
+        </div>
+        <div class="rm-header">
+          <span>#</span><span>Product</span><span>SKU</span>
+          <span style="text-align:center">AU</span>
+          <span style="text-align:center">UK</span>
+          <span style="text-align:center">USA</span>
+        </div>
+        <div id="regionMapList"></div>
       </div>
 
       <!-- PREFERENCES -->
-      <div class="set-panel" id="setPanel-prefs">
-        <div class="set-block-title">Preferences</div>
-        <div id="prefsContent"></div>
+      <div class="set-panel" id="setContent-prefs">
+        <div class="set-section-sub">Default dashboard behaviour applied on every load.</div>
+        <div style="max-width:460px">
+          <div class="set-pref-row">
+            <div><div class="set-pref-label">Default date range</div><div class="set-pref-sub">Shown when you first open the dashboard</div></div>
+            <select class="set-sel" id="pref-range" onchange="saveSettings()" style="width:160px">
+              <option value="mtd">Month to date</option>
+              <option value="lm">Last month</option>
+              <option value="30">Last 30 days</option>
+              <option value="90">Last 90 days</option>
+              <option value="fytd">FY to date</option>
+            </select>
+          </div>
+          <div class="set-pref-row">
+            <div><div class="set-pref-label">Comparison period</div><div class="set-pref-sub">How KPI changes are calculated</div></div>
+            <select class="set-sel" id="pref-comp" onchange="saveSettings()" style="width:160px">
+              <option value="prior">Prior period</option>
+              <option value="ly">Same time last year</option>
+              <option value="none">None</option>
+            </select>
+          </div>
+          <div class="set-pref-row">
+            <div><div class="set-pref-label">Currency display</div><div class="set-pref-sub">All revenue shown in this currency</div></div>
+            <select class="set-sel" id="pref-currency" onchange="saveSettings()" style="width:160px">
+              <option value="aud">AUD (A$)</option>
+              <option value="usd">USD ($)</option>
+              <option value="gbp">GBP (£)</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       <!-- VISITORS -->
-      <div class="set-panel" id="setPanel-visitors">
-        <div class="set-block-title">Visitor Data</div>
-        <div class="set-block-sub">Monthly session data used for conversion rate calculations.</div>
-        <div id="visitorsContent"></div>
+      <div class="set-panel" id="setContent-visitors">
+        <div class="set-section-sub">Monthly unique visitor counts by region. Used to calculate conversion rates.</div>
+        <div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px;max-width:600px;box-shadow:var(--shadow-xs)">
+          <table class="set-margin-table" style="max-width:100%;min-width:480px;border:none;border-radius:0">
+            <thead><tr>
+              <th style="text-align:left">Month</th>
+              <th>All</th><th>APAC</th><th>EMEA</th><th>AMER</th>
+              <th style="width:32px"></th>
+            </tr></thead>
+            <tbody id="visitorsTableBody"></tbody>
+          </table>
+        </div>
+        <button class="set-add-btn" onclick="addVisitorRow()">+ Add month</button>
       </div>
 
     </div><!-- /set-content -->
   </div><!-- /set-layout -->
-
 </div><!-- /settings-panel -->
 <div class="footer">
   Created by <strong>Asvine Ganeshan</strong> &nbsp;|&nbsp; <strong>3P Learning</strong>
