@@ -3131,7 +3131,7 @@ function sNavTo(tab, btn){
   if(tab==='bundles') showBmapRegion(bmapActiveRegion, document.getElementById('bmap-tab-'+bmapActiveRegion));
   if(tab==='regions') renderRegionMapList();
   if(tab==='visitors') renderVisitorsTable();
-  if(tab==='upload')  { renderUploadStatus(); renderGithubPatStatus(); }
+  if(tab==='upload')  renderUploadStatus();
 }
 
 
@@ -3878,7 +3878,7 @@ function fOrders(){
   var co=document.getElementById('fCO')?.value||'';
   var stQ=(document.getElementById('fST2')?.value||'').toLowerCase().trim();
   var cyQ=(document.getElementById('fCY')?.value||'').toLowerCase().trim();
-  var prodType=document.getElementById('fPT')?.value||'';
+  var prodTypes=Array.from(document.querySelectorAll('.fpt:checked')).map(function(c){return c.value;});
   var mn=parseFloat(document.getElementById('fMN')?.value);
   if(isNaN(mn))mn=0;
   var mx=parseFloat(document.getElementById('fMX')?.value);
@@ -3924,9 +3924,10 @@ function fOrders(){
     if(cyQ&&!(r._cy||'').toLowerCase().includes(cyQ))return false;
     var t=r._aud;
     if(t<mn||t>mx)return false;
-    // Product type filter — order has at least one item of that type
-    if(prodType){
-      var match=r._items.some(function(it){return it.type===prodType;});
+    // Product type filter — active only when some (not all) are checked
+    var allPtCount=document.querySelectorAll('.fpt').length;
+    if(prodTypes.length>0&&prodTypes.length<allPtCount){
+      var match=(r._items||[]).some(function(it){return prodTypes.includes(it.type);});
       if(!match)return false;
     }
     return true;
@@ -3951,7 +3952,7 @@ function clf(){
   document.getElementById('fR').value='mtd';document.getElementById('cr').style.display='none';
   document.getElementById('fCO').value='';document.getElementById('fST2').value='';
   document.getElementById('fCY').value='';document.getElementById('fMN').value='';
-  document.getElementById('fMX').value='';document.getElementById('fPT').value='';
+  document.getElementById('fMX').value='';document.querySelectorAll('.fpt').forEach(function(c){c.checked=true;});
   document.getElementById('fESA').checked=true;document.getElementById('fESAonly').checked=false;
   document.querySelectorAll('.fc,.fs,.fp').forEach(function(el){el.checked=true;});
   // Reset to MTD on clear
@@ -4351,7 +4352,7 @@ function updateFilterBadge(){
   var mx=parseFloat(document.getElementById('fMX')?.value||'');
   if(!isNaN(mn)&&mn>0)count++;
   if(!isNaN(mx)&&mx>0)count++;
-  if((document.getElementById('fPT')?.value||'')!=='')count++;
+  var ptChecked=document.querySelectorAll('.fpt:checked').length; var ptTotal=document.querySelectorAll('.fpt').length; if(ptChecked>0&&ptChecked<ptTotal)count+=(ptTotal-ptChecked);
   if(document.getElementById('fESAonly')?.checked)count++;
   var badge=document.getElementById('filterBadge');
   var btn=document.getElementById('filterBtn');
@@ -8463,34 +8464,8 @@ function applySettings(){
   if(rangeEl && SETTINGS.prefs.range){ rangeEl.value = SETTINGS.prefs.range; onRC(); }
   // Apply comparison preference
   if(SETTINGS.prefs.comp){ setCompMode(SETTINGS.prefs.comp); }
-
-  // Save to GitHub if PAT is available, otherwise save locally only
-  var pat = getGithubPAT();
-  if(pat){
-    saveSettingsToGithub(function(ok){
-      var ind = document.getElementById('settingsSyncStatus');
-      if(ind){
-        if(ok){
-          ind.textContent = '☁️ Synced to GitHub';
-          ind.style.color = 'var(--grn)';
-        } else {
-          ind.textContent = '⚠️ Saved locally only';
-          ind.style.color = 'var(--amb)';
-        }
-        setTimeout(function(){ ind.textContent=''; }, 4000);
-      }
-    });
-  } else {
-    // No PAT — save locally and show note
-    var ind = document.getElementById('settingsSyncStatus');
-    if(ind){
-      ind.textContent = 'Saved locally — add a GitHub token to sync';
-      ind.style.color = 'var(--muted)';
-      setTimeout(function(){ ind.textContent=''; }, 4000);
-    }
-  }
-
   closeSettings();
+  // Always re-render financials tab if we're on it, or force it next time
   if(aTab === 'financials'){
     try{ rFinancials(fOrders()); }catch(e){ console.error('rFinancials:', e); }
   } else {
@@ -10066,147 +10041,6 @@ function applyVisitorsToRawV(){
 
 var bmapActiveRegion = 'au';
 
-// ── fixName: fix mojibake in product names (â€" → –) ──────────────────────────
-function fixName(s){
-  if(!s) return s;
-  return s
-    .replace(/\u00e2\u0080\u0093/g,'\u2013')
-    .replace(/\u00e2\u0080\u0094/g,'\u2014')
-    .replace(/\u00e2\u0080\u0099/g,'\u2019')
-    .replace(/\u00e2\u0080\u009c/g,'\u201c')
-    .replace(/\u00e2\u0080\u009d/g,'\u201d')
-    .replace(/\u00e2\u0080\u00a6/g,'\u2026');
-}
-
-// ── GitHub PAT UI ─────────────────────────────────────────────────────────────
-function saveGithubPAT(){
-  var inp = document.getElementById('githubPatInput');
-  var st  = document.getElementById('githubPatStatus');
-  if(!inp) return;
-  var token = inp.value.trim();
-  if(!token){
-    if(st){ st.textContent='Please paste your token first.'; st.style.color='var(--amb)'; }
-    return;
-  }
-  setGithubPAT(token);
-  inp.value = '';
-  var masked = token.slice(0,14)+'••••••••••••'+token.slice(-4);
-  if(st){ st.textContent='✅ Token saved: '+masked; st.style.color='var(--grn)'; }
-  // Pre-fetch SHA now that we have the token
-  fetch(GITHUB_API+'settings.json',{
-    headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}
-  }).then(function(r){ return r.ok?r.json():null; })
-    .then(function(d){ if(d&&d.sha) _ghSHA['settings.json']=d.sha; })
-    .catch(function(){});
-}
-
-function clearGithubPAT(){
-  try{ localStorage.removeItem('re_github_pat'); }catch(e){}
-  var inp=document.getElementById('githubPatInput');
-  var st=document.getElementById('githubPatStatus');
-  if(inp) inp.value='';
-  if(st){ st.textContent='Token removed.'; st.style.color='var(--muted)'; }
-}
-
-function renderGithubPatStatus(){
-  var st=document.getElementById('githubPatStatus');
-  if(!st) return;
-  var tok=getGithubPAT();
-  if(tok){
-    var masked=tok.slice(0,14)+'••••••••••••'+tok.slice(-4);
-    st.textContent='✅ Token active: '+masked+' — settings will sync to GitHub on Apply.';
-    st.style.color='var(--grn)';
-  } else {
-    st.textContent='No token saved. Add one above to enable GitHub sync.';
-    st.style.color='var(--muted)';
-  }
-}
-
-// ── saveSettingsToGithub ──────────────────────────────────────────────────────
-// Saves all shared settings to settings.json on GitHub.
-// cb(true/false) called when done.
-function saveSettingsToGithub(cb){
-  var pat = getGithubPAT();
-  if(!pat){ if(cb) cb(false); return; }
-
-  // Build the shared-settings object — exclude personal/browser prefs
-  var cleanBundleMap = {};
-  ['au','uk','us'].forEach(function(reg){
-    cleanBundleMap[reg]={};
-    var src=(SETTINGS.bundleMap&&SETTINGS.bundleMap[reg])||{};
-    Object.keys(src).forEach(function(sku){
-      if(sku==='__excluded'||sku==='__extra') return;
-      var isbns=src[sku];
-      if(Array.isArray(isbns)&&isbns.length>0) cleanBundleMap[reg][sku]=isbns;
-    });
-  });
-
-  var shared = {
-    spend:           SETTINGS.spend          || {au:[],uk:[],us:[]},
-    margin:          SETTINGS.margin         || {},
-    retailerMargins: SETTINGS.retailerMargins|| {},
-    regionMap:       SETTINGS.regionMap      || {},
-    bundleMap:       cleanBundleMap,
-    visitors:        SETTINGS.visitors       || [],
-    _savedAt:        new Date().toISOString(),
-    _savedBy:        'BookshopDashboard'
-  };
-
-  var jsonStr = JSON.stringify(shared, null, 2);
-  var b64     = btoa(unescape(encodeURIComponent(jsonStr)));
-  var payload = {
-    message: 'Update settings.json — '+new Date().toISOString().slice(0,10),
-    content: b64
-  };
-  if(_ghSHA['settings.json']) payload.sha = _ghSHA['settings.json'];
-
-  fetch(GITHUB_API+'settings.json',{
-    method:'PUT',
-    headers:{
-      'Authorization':'token '+pat,
-      'Accept':'application/vnd.github.v3+json',
-      'Content-Type':'application/json'
-    },
-    body: JSON.stringify(payload)
-  })
-  .then(function(r){
-    if(!r.ok) return r.json().then(function(e){ throw new Error(e.message||'HTTP '+r.status); });
-    return r.json();
-  })
-  .then(function(data){
-    if(data&&data.content&&data.content.sha) _ghSHA['settings.json']=data.content.sha;
-    console.log('✅ settings.json saved to GitHub');
-    if(cb) cb(true);
-  })
-  .catch(function(err){
-    console.error('GitHub settings save failed:',err);
-    if(cb) cb(false);
-  });
-}
-
-function saveBundleMapToGithub(){
-  var btn    = document.getElementById('bundleSaveBtn');
-  var status = document.getElementById('bundleSaveStatus');
-  var pat = getGithubPAT();
-  if(!pat){
-    if(status){ status.textContent='⚠️ No token — add it in Settings → Upload Status'; status.style.color='var(--amb)'; }
-    return;
-  }
-  if(btn){ btn.disabled=true; btn.textContent='⏳ Saving…'; }
-  if(status){ status.textContent=''; }
-  saveSettingsToGithub(function(ok){
-    if(btn){ btn.disabled=false; btn.innerHTML='☁️ Save to GitHub'; }
-    if(status){
-      if(ok){
-        var t=new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
-        status.textContent='✅ Saved at '+t; status.style.color='var(--grn)';
-      } else {
-        status.textContent='❌ Save failed — check your token'; status.style.color='var(--red)';
-      }
-    }
-  });
-}
-
 function showBmapRegion(region, btn){
   bmapActiveRegion = region;
   document.querySelectorAll('#setContent-bundles .set-rtab').forEach(function(b){ b.classList.remove('active'); });
@@ -10243,9 +10077,9 @@ function renderBmapIsbns(){
     return '<div class="bmap-isbn-item'+(isUsed?' used':'')+'" draggable="true"'+
       ' data-isbn="'+p.sku+'" data-name="'+p.name.replace(/"/g,'&quot;')+'"'+
       ' ondragstart="bmapDragStart(event)"'+
-      ' title="'+fixName(p.name)+'">'+
+      ' title="'+p.name+'">'+
       '<span class="bmap-isbn-drag">⠿</span>'+
-      '<span class="bmap-isbn-name">'+fixName(p.name)+'</span>'+
+      '<span class="bmap-isbn-name">'+p.name+'</span>'+
       '<span class="bmap-isbn-code">'+p.sku+'</span>'+
     '</div>';
   }).join('') || '<div style="padding:16px;font-size:12px;color:var(--muted)">No ISBN products found</div>';
@@ -10284,7 +10118,7 @@ function renderBmapBundles(){
   if(!SETTINGS.bundleMap[region]) SETTINGS.bundleMap[region]={};
   var map=SETTINGS.bundleMap[region], bundles=bmapGetActiveBundles(region);
   var isbnLookup={};
-  (RAW_PRODUCTS||[]).forEach(function(p){isbnLookup[p.sku]=fixName(p.name);});
+  (RAW_PRODUCTS||[]).forEach(function(p){isbnLookup[p.sku]=p.name;});
 
   var html=bundles.map(function(b){
     var components=map[b.sku]||[];
@@ -10292,7 +10126,7 @@ function renderBmapBundles(){
       ?'<span class="bmap-bundle-count">'+components.length+' ISBNs</span>'
       :'<span class="bmap-bundle-count empty">No ISBNs</span>';
     var componentRows=components.map(function(isbn){
-      var name=fixName(isbnLookup[isbn]||isbn);
+      var name=isbnLookup[isbn]||isbn;
       return '<div class="bmap-component">'+
         '<span class="bmap-component-isbn">'+isbn+'</span>'+
         '<span class="bmap-component-name" title="'+name+'">'+name+'</span>'+
@@ -10301,11 +10135,11 @@ function renderBmapBundles(){
     }).join('');
 
     var copyOptions=bundles.filter(function(ob){return ob.sku!==b.sku&&(map[ob.sku]||[]).length>0;})
-      .map(function(ob){return '<option value="'+ob.sku+'">'+ob.sku+' \u2014 '+fixName(ob.name||'').slice(0,30)+'</option>';}).join('');
+      .map(function(ob){return '<option value="'+ob.sku+'">'+ob.sku+' \u2014 '+ob.name.slice(0,30)+'</option>';}).join('');
 
     return '<div class="bmap-bundle" id="bmap-bundle-'+b.sku+'">'+
       '<div class="bmap-bundle-header">'+
-        '<span class="bmap-bundle-name" data-sku="'+b.sku+'" onclick="bmapToggle(this.dataset.sku)" style="cursor:pointer;flex:1">'+fixName(b.name)+'</span>'+
+        '<span class="bmap-bundle-name" data-sku="'+b.sku+'" onclick="bmapToggle(this.dataset.sku)" style="cursor:pointer;flex:1">'+b.name+'</span>'+
         '<span class="bmap-bundle-sku">'+b.sku+'</span>'+countLabel+
         '<select class="bmap-copy-select" data-target="'+b.sku+'" onchange="bmapCopyFromSel(this)">'+
           '<option value="">\u2398 Copy from\u2026</option>'+copyOptions+
@@ -10518,13 +10352,7 @@ function closeSettings(){
 // ═══════════════════════════════════════════════════════
 // GITHUB DATA LOADING
 // ═══════════════════════════════════════════════════════
-var GITHUB_BASE  = 'https://raw.githubusercontent.com/AsvineG/BookshopDashboard/main/';
-var GITHUB_API   = 'https://api.github.com/repos/AsvineG/BookshopDashboard/contents/';
-var _ghSHA = {}; // tracks SHA per filename so updates work in-place
-
-function getGithubPAT(){ try{ return localStorage.getItem('re_github_pat')||''; }catch(e){ return ''; } }
-function setGithubPAT(t){ try{ localStorage.setItem('re_github_pat',t.trim()); }catch(e){} }
-
+var GITHUB_BASE = 'https://raw.githubusercontent.com/AsvineG/BookshopDashboard/main/';
 var GITHUB_FILES = [
   { url: GITHUB_BASE + 'orders.csv',        type: 'orders'    },
   { url: GITHUB_BASE + 'products.csv',      type: 'products'  },
@@ -10600,38 +10428,6 @@ function fetchFromGithub(onComplete){
       .then(function(buf){ try{ parseRetailersXlsx(buf); }catch(e){ console.warn('xlsx parse:',e); } })
       .catch(function(e){ console.warn('xlsx fetch failed:',e); });
   });
-
-  // Fetch settings.json from GitHub — non-blocking, GitHub wins over localStorage
-  fetch(GITHUB_BASE + 'settings.json?t=' + Date.now())
-    .then(function(r){ return r.ok ? r.json() : null; })
-    .then(function(data){
-      if(!data) return;
-      // Merge GitHub settings into SETTINGS (GitHub is source of truth for shared config)
-      if(data.spend)         SETTINGS.spend         = data.spend;
-      if(data.margin)        SETTINGS.margin        = data.margin;
-      if(data.retailerMargins) SETTINGS.retailerMargins = data.retailerMargins;
-      if(data.regionMap)     SETTINGS.regionMap     = data.regionMap;
-      if(data.bundleMap)     SETTINGS.bundleMap     = data.bundleMap;
-      if(data.visitors)      SETTINGS.visitors      = data.visitors;
-      // Note: prefs NOT overwritten — stays personal per browser
-      try{ localStorage.setItem('re_settings', JSON.stringify(SETTINGS)); }catch(e){}
-      console.log('✅ settings.json loaded from GitHub');
-      // Refresh visitors
-      if(typeof applyVisitorsToRawV === 'function') try{ applyVisitorsToRawV(); }catch(e){}
-    })
-    .catch(function(){ console.log('settings.json not on GitHub yet — using localStorage'); });
-
-  // Pre-fetch SHAs for GitHub-managed files if PAT is available
-  if(getGithubPAT()){
-    ['settings.json'].forEach(function(fname){
-      fetch(GITHUB_API + fname, {
-        headers:{'Authorization':'token '+getGithubPAT(),'Accept':'application/vnd.github.v3+json'}
-      })
-        .then(function(r){ return r.ok ? r.json() : null; })
-        .then(function(d){ if(d && d.sha) _ghSHA[fname] = d.sha; })
-        .catch(function(){});
-    });
-  }
 
   if(total === 0){ finish(); return; }
 
@@ -10760,6 +10556,15 @@ window.addEventListener('load',function(){
     </div>
 
     <div class="fp-section">
+      <div class="fp-label">📦 Product type</div>
+      <div class="cg" id="fPTWrap">
+        <label class="ci"><input type="checkbox" class="fpt" value="digital" checked><span>Digital / Program Access</span></label>
+        <label class="ci"><input type="checkbox" class="fpt" value="bundle" checked><span>Bundle</span></label>
+        <label class="ci"><input type="checkbox" class="fpt" value="isbn" checked><span>ISBN / Book</span></label>
+      </div>
+    </div>
+
+    <div class="fp-section">
       <div class="fp-label">📋 Order status</div>
       <div class="cg" id="fST"></div>
     </div>
@@ -10782,16 +10587,6 @@ window.addEventListener('load',function(){
         <input type="number" class="sinp" id="fMN" placeholder="Min">
         <input type="number" class="sinp" id="fMX" placeholder="Max">
       </div>
-    </div>
-
-    <div class="fp-section">
-      <div class="fp-label">📦 Product type</div>
-      <select class="ssel" id="fPT">
-        <option value="">All types</option>
-        <option value="digital">Digital only</option>
-        <option value="bundle">Bundle</option>
-        <option value="isbn">ISBN / Book</option>
-      </select>
     </div>
 
   </div>
@@ -10891,10 +10686,7 @@ window.addEventListener('load',function(){
     <div class="set-content">
       <div class="set-content-hdr">
         <div class="set-content-title" id="setContentTitle">Upload Status</div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <span id="settingsSyncStatus" style="font-size:11px;color:var(--muted)"></span>
-          <button class="abtn" onclick="applySettings()" style="padding:6px 18px;font-size:13px">✓ Apply &amp; Close</button>
-        </div>
+        <button class="abtn" onclick="applySettings()" style="padding:6px 18px;font-size:13px">✓ Apply &amp; Close</button>
       </div>
 
       <!-- UPLOAD STATUS -->
@@ -10905,30 +10697,6 @@ window.addEventListener('load',function(){
         <div style="margin-top:24px;display:flex;gap:10px;flex-wrap:wrap">
           <button class="abtn" onclick="generateMonthEndReport()" style="background:#16a34a;border-color:#16a34a">📄 Month-End Report</button>
           <button class="cbtn" onclick="if(confirm('Clear all saved data?'))confirmClear()" style="color:var(--red)">✕ Clear all data</button>
-        </div>
-
-        <!-- GitHub PAT — stored in localStorage only, never in the HTML file -->
-        <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--border)">
-          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">🔑 GitHub Sync Token</div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">
-            Enables settings to automatically sync to GitHub when you click Apply &amp; Close.
-            Stored only in <em>your</em> browser — never written into the HTML file.<br>
-            Generate at <strong>github.com → Settings → Developer settings → Fine-grained tokens</strong>
-            with <strong>Contents: Read &amp; Write</strong> on the BookshopDashboard repo.
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <input type="password" id="githubPatInput"
-              placeholder="github_pat_…"
-              style="font-family:monospace;font-size:12px;flex:1;min-width:260px;max-width:460px;
-                     padding:7px 10px;border:1px solid var(--border2);border-radius:7px;
-                     background:var(--inp);color:var(--text);outline:none"
-              onfocus="this.style.borderColor='var(--blu)'"
-              onblur="this.style.borderColor='var(--border2)'"
-              onkeydown="if(event.key==='Enter') saveGithubPAT()">
-            <button class="abtn" onclick="saveGithubPAT()" style="padding:7px 16px;flex-shrink:0">Save Token</button>
-            <button class="cbtn" onclick="clearGithubPAT()" style="color:var(--red);font-size:12px;flex-shrink:0">Remove</button>
-          </div>
-          <div id="githubPatStatus" style="font-size:11px;margin-top:8px;color:var(--muted);min-height:16px"></div>
         </div>
       </div>
 
@@ -10976,16 +10744,7 @@ window.addEventListener('load',function(){
 
       <!-- BUNDLE MAPPING -->
       <div class="set-panel" id="setContent-bundles">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap">
-          <div class="set-section-sub" style="margin:0">Map each bundle to its component ISBNs per region. Drag ISBNs from the left into bundles on the right.</div>
-          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-            <span id="bundleSaveStatus" style="font-size:11px;color:var(--muted)"></span>
-            <button class="abtn" id="bundleSaveBtn" onclick="saveBundleMapToGithub()"
-              style="font-size:12px;padding:5px 14px;background:var(--grn);border-color:var(--grn);color:#fff;display:flex;align-items:center;gap:5px">
-              ☁️ Save to GitHub
-            </button>
-          </div>
-        </div>
+        <div class="set-section-sub">Map each bundle to its component ISBNs per region. Drag ISBNs from the left into bundles on the right.</div>
         <div class="set-region-tabs" style="margin-bottom:16px">
           <button class="set-rtab active" id="bmap-tab-au" onclick="showBmapRegion('au',this)">🇦🇺 AU</button>
           <button class="set-rtab" id="bmap-tab-uk" onclick="showBmapRegion('uk',this)">🇬🇧 UK</button>
