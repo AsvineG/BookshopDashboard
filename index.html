@@ -10696,12 +10696,13 @@ function runReportGeneration(){
       st.textContent='Building Word document\u2026';
       if(!window.docx){st.textContent='\u274c docx library not loaded \u2014 check internet connection';st.style.color='var(--red)';return;}
       var docObj=null;try{docObj=buildDocxContent(mName,monthKey,exM,exAP,exEM,exAR,exYTD,exYTDap,exYTDem,exYTDar,dash,chartPNG);}catch(e){st.textContent='\u274c Error: '+e.message;st.style.color='var(--red)';console.error(e);return;}
-      window.docx.Packer.toBuffer(docObj).then(function(buf){
+      window.docx.Packer.toBlob(docObj).then(function(blob){
         var fname=mName.replace(' ','_')+'_Monthly_Report.docx';
-        var blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
         var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
         st.textContent='\u2705 Downloaded: '+fname;st.style.color='var(--grn)';
-        window._lastReportBuf=buf;window._lastReportName=fname;
+        // Also store as ArrayBuffer for GitHub save
+        blob.arrayBuffer().then(function(buf){window._lastReportBuf=buf;}).catch(function(){});
+        window._lastReportName=fname;window._lastReportBlob=blob;
         var gh=document.getElementById('rptSaveGHBtn');if(gh)gh.style.display='inline-flex';
       }).catch(function(e){st.textContent='\u274c '+e.message;st.style.color='var(--red)';console.error(e);});
     });
@@ -10712,16 +10713,34 @@ function saveReportToGithub(){
   var pat=typeof getGithubPAT==='function'?getGithubPAT():(localStorage.getItem('re_github_pat')||'');
   var st=document.getElementById('rptStatus');
   if(!pat){st.textContent='\u26a0\ufe0f No GitHub token \u2014 add in Settings \u2192 Upload Status';st.style.color='var(--amb)';return;}
-  if(!window._lastReportBuf){st.textContent='\u26a0\ufe0f Generate the report first';st.style.color='var(--amb)';return;}
+  if(!window._lastReportName){st.textContent='\u26a0\ufe0f Generate the report first';st.style.color='var(--amb)';return;}
   st.textContent='\u23f3 Saving to GitHub\u2026';st.style.color='var(--muted)';
-  var arr=new Uint8Array(window._lastReportBuf),chunks=[];
-  for(var i=0;i<arr.length;i+=8192)chunks.push(String.fromCharCode.apply(null,arr.subarray(i,i+8192)));
-  var b64=btoa(chunks.join(''));
-  var path='reports/'+window._lastReportName;
-  var api='https://api.github.com/repos/AsvineG/BookshopDashboard/contents/'+path;
-  fetch(api,{headers:{'Authorization':'token '+pat,'Accept':'application/vnd.github.v3+json'}}).then(function(r){return r.ok?r.json():null;}).then(function(ex){var pl={message:'Add '+window._lastReportName,content:b64};if(ex&&ex.sha)pl.sha=ex.sha;return fetch(api,{method:'PUT',headers:{'Authorization':'token '+pat,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(pl)});}).then(function(r){return r.ok?r.json():r.json().then(function(e){throw new Error(e.message||'HTTP '+r.status);});}).then(function(){st.textContent='\u2705 Saved to GitHub: '+path;st.style.color='var(--grn)';}).catch(function(e){st.textContent='\u274c '+e.message;st.style.color='var(--red)';});
-}
 
+  function uploadB64(b64){
+    var path='reports/'+window._lastReportName;
+    var api='https://api.github.com/repos/AsvineG/BookshopDashboard/contents/'+path;
+    fetch(api,{headers:{'Authorization':'token '+pat,'Accept':'application/vnd.github.v3+json'}})
+      .then(function(r){return r.ok?r.json():null;})
+      .then(function(ex){var pl={message:'Add '+window._lastReportName,content:b64};if(ex&&ex.sha)pl.sha=ex.sha;return fetch(api,{method:'PUT',headers:{'Authorization':'token '+pat,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(pl)});})
+      .then(function(r){return r.ok?r.json():r.json().then(function(e){throw new Error(e.message||'HTTP '+r.status);});})
+      .then(function(){st.textContent='\u2705 Saved to GitHub: reports/'+window._lastReportName;st.style.color='var(--grn)';})
+      .catch(function(e){st.textContent='\u274c '+e.message;st.style.color='var(--red)';});
+  }
+
+  function arrBufToB64(buf){
+    var arr=new Uint8Array(buf),chunks=[];
+    for(var i=0;i<arr.length;i+=8192)chunks.push(String.fromCharCode.apply(null,arr.subarray(i,i+8192)));
+    return btoa(chunks.join(''));
+  }
+
+  if(window._lastReportBuf){
+    uploadB64(arrBufToB64(window._lastReportBuf));
+  } else if(window._lastReportBlob){
+    window._lastReportBlob.arrayBuffer().then(function(buf){uploadB64(arrBufToB64(buf));}).catch(function(e){st.textContent='\u274c '+e.message;st.style.color='var(--red)';});
+  } else {
+    st.textContent='\u26a0\ufe0f Generate the report first';st.style.color='var(--amb)';
+  }
+}
 </script>
 
 <!-- FILTER PANEL -->
