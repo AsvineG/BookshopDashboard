@@ -2202,6 +2202,7 @@ table td:first-child, table th:first-child {
       <div class="sb-section-label">Overview</div>
       <div class="sb-item active" onclick="sTab('insights',this)" data-tab="insights"><span class="sb-icon">💡</span>Insights</div>
       <div class="sb-item" onclick="sTab('overview',this)" data-tab="overview"><span class="sb-icon">📊</span>Overview</div>
+      <div class="sb-item" onclick="sTab('ytd',this)" data-tab="ytd"><span class="sb-icon">📅</span>Year to Date</div>
 
       <div class="sb-section-label">Revenue</div>
       <div class="sb-item" onclick="sTab('regional',this)" data-tab="regional"><span class="sb-icon">🌏</span>Regional</div>
@@ -3053,7 +3054,10 @@ table td:first-child, table th:first-child {
 
 
     <!-- RETAILERS TAB -->
-    <div class="tp" id="tp-retailers" style="display:none">
+    <div class="tp" id="tp-ytd">
+  <div id="ytd-content"></div>
+</div>
+<div class="tp" id="tp-retailers" style="display:none">
 
       <!-- KPI Strip -->
       <div class="ks" id="retailerKpis"></div>
@@ -4256,7 +4260,7 @@ function updateTbKpis(){
   if(el('tbAOVDelta'))el('tbAOVDelta').innerHTML=deltaBadge(getDeltaPct(aov,prevAOV),false,lbl);
   // Conversion rate (only if visitor data loaded)
   var vMonths=lV?visMonths(paid):[];
-  var vis=lV?getTotalVis(vMonths,'all'):0;
+  var vis=lV?getTotalVis(vMonths,typeof activeVisRegion==='function'?activeVisRegion():'all'):0;
   var conv=vis>0?getConvRate(paid.length,vis):null;
   var convWrap=el('tbConvWrap');
   if(convWrap){
@@ -4445,6 +4449,7 @@ function rTab(t){
     'abandoned':function(){rAbandoned(o);},
     'financials':function(){rFinancials(o);},
     'stock':function(){rStock(o);},
+    'ytd':function(){rYTD(o);},
     'retailers':function(){rRetailers();}
   };
   if(fns[t]){
@@ -4637,7 +4642,8 @@ function rInsights(orders){
   var convRate=orders.length?paid.filter(function(r){return r._status.toLowerCase().includes('ship')||r._status.toLowerCase().includes('complet');}).length/orders.filter(function(r){return!r._zero;}).length:0;
   // Visitor-based conv rate for insights hero
   var insVMonths=lV?visMonths(paid):[];
-  var insTotalVis=lV?getTotalVis(insVMonths,'all'):0;
+  var insVisReg=typeof activeVisRegion==='function'?activeVisRegion():'all';
+  var insTotalVis=lV?getTotalVis(insVMonths,insVisReg):0;
   var insConvRate=lV&&insTotalVis>0?getConvRate(paid.length,insTotalVis):null;
   var insApacVis=lV?getTotalVis(insVMonths,'apac'):0;
   var insEmeaVis=lV?getTotalVis(insVMonths,'emea'):0;
@@ -4654,7 +4660,7 @@ function rInsights(orders){
     '<div class="ih"><div class="ih-val" style="color:var(--blu)">'+fmd(aov)+'</div><div class="ih-lbl">AOV</div><div class="ih-sub">excl. '+zeroCount+' zero-value orders</div></div>'+
     (insConvRate!==null?(function(){
       var lyIVM=insVMonths.map(function(m){var p=m.split('-');return(parseInt(p[0])-1)+'-'+p[1];}).filter(function(m){return visMap[m];});
-      var lyIVis=lyIVM.length>0?getTotalVis(lyIVM,'all'):0;
+      var lyIVis=lyIVM.length>0?getTotalVis(lyIVM,insVisReg):0;
       var lyIConv=lyIVis>0?getConvRate(paid.length,lyIVis):null;
       var convDelta=lyIConv!==null?insConvRate-lyIConv:null;
       var convDeltaStr=convDelta!==null?' <span style="font-size:11px;color:'+(convDelta>=0?'var(--grn)':'var(--red)')+';">'+(convDelta>=0?'&#9650;':'&#9660;')+Math.abs(convDelta).toFixed(2)+'pp vs LY</span>':'';
@@ -4725,7 +4731,7 @@ function rInsights(orders){
   // YoY visitor trend (working or gap)
   if(lV&&insVMonths.length>0){
     var lyInsMonths=insVMonths.map(function(m){var p=m.split('-');return(parseInt(p[0])-1)+'-'+p[1];}).filter(function(m){return visMap[m];});
-    var lyInsTotalVis=lyInsMonths.length>0?getTotalVis(lyInsMonths,'all'):0;
+    var lyInsTotalVis=lyInsMonths.length>0?getTotalVis(lyInsMonths,insVisReg):0;
     if(lyInsTotalVis>0){
       var visYoY=(insTotalVis-lyInsTotalVis)/lyInsTotalVis*100;
       if(visYoY>5)
@@ -6123,7 +6129,8 @@ function rInsightsScorecard(orders){
 
   // Visitor conv rate
   var vMonths2=lV?visMonths(paid):[];
-  var totalVis=lV?getTotalVis(vMonths2,'all'):0;
+  var scVisReg=typeof activeVisRegion==='function'?activeVisRegion():'all';
+  var totalVis=lV?getTotalVis(vMonths2,scVisReg):0;
   var convRate=totalVis>0?paid.length/totalVis*100:null;
 
   // Forecast
@@ -10624,7 +10631,7 @@ function extractDashboardData(monthKey){
 
 function buildTop15Chart(top15,cb){if(!top15||!top15.length){cb(null);return;}var canvas=document.createElement('canvas');canvas.width=800;canvas.height=380;var chart=new Chart(canvas.getContext('2d'),{type:'bar',data:{labels:top15.map(function(p){var n=p[0];return n.length>38?n.slice(0,38)+'\u2026':n;}),datasets:[{data:top15.map(function(p){return p[1].rev;}),backgroundColor:'#1E3A5F',borderRadius:4}]},options:{indexAxis:'y',responsive:false,animation:false,plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{x:{ticks:{callback:function(v){return '$'+Math.round(v/1000)+'k';}},grid:{color:'rgba(0,0,0,0.06)'}},y:{ticks:{font:{size:10}},grid:{display:false}}}}});setTimeout(function(){var png=canvas.toDataURL('image/png').split(',')[1];chart.destroy();cb(png);},300);}
 
-function buildDocxContent(monthName,monthKey,exM,exAP,exEM,exAR,exYTD,exYTDap,exYTDem,exYTDar,dash,chartPNG){
+function buildDocxContent(monthName,monthKey,exM,exAP,exEM,exAR,exYTD,exYTDap,exYTDem,exYTDar,dash,chartPNG,dashYTD){
   var D=window.docx;if(!D)throw new Error('docx library not loaded');
   var NAVY='1E3A5F',BLUE='2563EB',WHITE='FFFFFF',LGREY='F8FAFC',AM='FEF3C7',AT='92400E';
   function N(n){if(n==null||n===''||isNaN(+n)||+n===0)return '$\u2014';return '$'+Math.round(+n).toLocaleString('en-AU');}
@@ -10652,10 +10659,32 @@ function buildDocxContent(monthName,monthKey,exM,exAP,exEM,exAR,exYTD,exYTDap,ex
   var gR=dash?dash.global.rev:0,gO=dash?dash.global.orders:0,gA=dash?dash.global.aov:0,gV=dash?dash.vis.all:0;
   c.push(pr([tx('Total Revenue: ',{b:true}),tx(N(gR),{b:true,c:'16A34A'}),tx('   |   Visitors: ',{b:true}),tx(gV?Math.round(gV).toLocaleString():'\u2014'),tx('   |   Orders: ',{b:true}),tx(gO?gO.toLocaleString():'\u2014'),tx('   |   AOV: ',{b:true}),tx(A(gA),{b:true})],{bf:80,af:120}));
   if(dash){var gRw=[];[{n:'US',r:dash.us,v:dash.vis.amer,cv:dash.convUS},{n:'AU',r:dash.au,v:dash.vis.apac,cv:dash.convAU},{n:'UK',r:dash.uk,v:dash.vis.emea,cv:dash.convUK},{n:'All',r:dash.global,v:dash.vis.all,cv:dash.convGlobal}].forEach(function(x){gRw.push([x.n,N(x.r.rev),x.v?Math.round(x.v).toLocaleString():'\u2014',x.r.orders?x.r.orders.toLocaleString():'\u2014',A(x.r.aov),(x.cv!=null&&!isNaN(+x.cv))?(+x.cv).toFixed(2)+'%':'\u2014']);});c.push(tbl(['Region','Revenue (AUD)','Visitors','Orders','AOV (AUD)','Conv Rate (%)'],gRw,[700,1800,1400,1200,1600,1500]));}else{c.push(nP('[Upload orders.csv to populate]'));}
-  c.push(pb(),h2('3. Year-to-Date Performance (FY26)'));
-  var yR=[['AU',N(exYTDap?exYTDap.grossFY25:0),N(exYTDap?exYTDap.grossKPI:0),N(exYTDap?exYTDap.grossFY26:0),vC(exYTDap?exYTDap.grossFY26:0,exYTDap?exYTDap.grossKPI:0),N(exYTDap?exYTDap.netFY26:0),(exYTDap&&exYTDap.ordFY26!=null)?Math.round(exYTDap.ordFY26).toLocaleString():'\u2014',C(exYTDap?exYTDap.crFY26:0),A(exYTDap?exYTDap.aovFY26:0)],['UK',N(exYTDem?exYTDem.grossFY25:0),N(exYTDem?exYTDem.grossKPI:0),N(exYTDem?exYTDem.grossFY26:0),vC(exYTDem?exYTDem.grossFY26:0,exYTDem?exYTDem.grossKPI:0),N(exYTDem?exYTDem.netFY26:0),(exYTDem&&exYTDem.ordFY26!=null)?Math.round(exYTDem.ordFY26).toLocaleString():'\u2014',C(exYTDem?exYTDem.crFY26:0),A(exYTDem?exYTDem.aovFY26:0)],['US',N(exYTDar?exYTDar.grossFY25:0),N(exYTDar?exYTDar.grossKPI:0),N(exYTDar?exYTDar.grossFY26:0),vC(exYTDar?exYTDar.grossFY26:0,exYTDar?exYTDar.grossKPI:0),N(exYTDar?exYTDar.netFY26:0),(exYTDar&&exYTDar.ordFY26!=null)?Math.round(exYTDar.ordFY26).toLocaleString():'\u2014',C(exYTDar?exYTDar.crFY26:0),A(exYTDar?exYTDar.aovFY26:0)],['Global',N(exYTD?exYTD.grossFY25:0),N(exYTD?exYTD.grossKPI:0),N(exYTD?exYTD.grossFY26:0),vC(exYTD?exYTD.grossFY26:0,exYTD?exYTD.grossKPI:0),N(exYTD?exYTD.netFY26:0),(exYTD&&exYTD.ordFY26!=null)?Math.round(exYTD.ordFY26).toLocaleString():'\u2014',C(exYTD?exYTD.crFY26:0),A(exYTD?exYTD.aovFY26:0)]];
-  c.push(tbl(['Region','Gross LY','Gross KPI','Gross FY26','% vs KPI','Net FY26','YTD Orders','YTD Conv','YTD AOV'],yR,[700,1300,1300,1350,1000,1300,1100,1100,1050]));
-  c.push(sp(),h3('YTD with ESA / Without ESA'),nP('[Add YTD ESA vs Non-ESA breakdown and commentary here]'));
+  // ── 3. YTD — actuals from dashboard, KPI targets from Excel ──
+  c.push(pb(),h2('3. Year-to-Date Performance (FY26 — Jul 2025 to '+monthName+')'));
+  // Dashboard actuals
+  var dG=dashYTD?dashYTD.global:null, dAP=dashYTD?dashYTD.apac:null, dEM=dashYTD?dashYTD.emea:null, dAR=dashYTD?dashYTD.amer:null;
+  var dEsa=dashYTD?dashYTD.esa:null, dNesa=dashYTD?dashYTD.nonEsa:null;
+  // KPI targets from Excel
+  var ytdKpiGlobal=exYTD?exYTD.grossKPI:null, ytdLYGlobal=exYTD?exYTD.grossFY25:null;
+  var ytdKpiAU=exYTDap?exYTDap.grossKPI:null, ytdLYAU=exYTDap?exYTDap.grossFY25:null;
+  var ytdKpiUK=exYTDem?exYTDem.grossKPI:null, ytdLYUK=exYTDem?exYTDem.grossFY25:null;
+  var ytdKpiUS=exYTDar?exYTDar.grossKPI:null, ytdLYUS=exYTDar?exYTDar.grossFY25:null;
+  function yN(n){if(n==null||isNaN(+n))return '\u2014';return '$'+Math.round(+n).toLocaleString('en-AU');}
+  function yPct(a,b){if(a==null||b==null||isNaN(+a)||isNaN(+b)||+b===0)return{v:'\u2014',color:'64748B'};return{v:((+a/+b)*100).toFixed(0)+'%',color:(+a>=+b)?'16A34A':'DC2626'};}
+  var yR=[
+    ['AU', yN(ytdLYAU), yN(ytdKpiAU), yN(dAP?dAP.rev:null), yPct(dAP?dAP.rev:null,ytdKpiAU), yPct(dAP?dAP.rev:null,ytdLYAU), dAP?dAP.orders.toLocaleString():'\u2014'],
+    ['UK', yN(ytdLYUK), yN(ytdKpiUK), yN(dEM?dEM.rev:null), yPct(dEM?dEM.rev:null,ytdKpiUK), yPct(dEM?dEM.rev:null,ytdLYUK), dEM?dEM.orders.toLocaleString():'\u2014'],
+    ['US', yN(ytdLYUS), yN(ytdKpiUS), yN(dAR?dAR.rev:null), yPct(dAR?dAR.rev:null,ytdKpiUS), yPct(dAR?dAR.rev:null,ytdLYUS), dAR?dAR.orders.toLocaleString():'\u2014'],
+    ['Global', yN(ytdLYGlobal), yN(ytdKpiGlobal), yN(dG?dG.rev:null), yPct(dG?dG.rev:null,ytdKpiGlobal), yPct(dG?dG.rev:null,ytdLYGlobal), dG?dG.orders.toLocaleString():'\u2014'],
+  ];
+  c.push(tbl(['Region','LY Revenue','KPI Target','Actual Revenue','% vs KPI','% vs LY','YTD Orders'],yR,[800,1400,1400,1600,1000,1000,1000]));
+  c.push(sp(),h3('YTD ESA vs Non-ESA (US)'));
+  c.push(tbl(['Category','Revenue (AUD)','Orders','% of US Revenue'],
+    [['ESA',yN(dEsa?dEsa.rev:null),(dEsa?dEsa.orders:0).toLocaleString(),dAR&&dAR.rev?(((dEsa?dEsa.rev:0)/dAR.rev*100).toFixed(0)+'%'):'\u2014'],
+     ['Non-ESA',yN(dNesa?dNesa.rev:null),(dNesa?dNesa.orders:0).toLocaleString(),dAR&&dAR.rev?(((dNesa?dNesa.rev:0)/dAR.rev*100).toFixed(0)+'%'):'\u2014'],
+     ['Total US',yN(dAR?dAR.rev:null),(dAR?dAR.orders:0).toLocaleString(),'100%']],
+    [2200,2000,1600,2400]));
+  c.push(sp(),nP('[Add YTD ESA commentary here — trend vs prior year, program mix, state breakdown]'));
   c.push(sp(),h2('4. US Insights'));
   if(dash){var uT=dash.us.rev||1;c.push(h3('US Bookshop Sales (Gross)'),tbl(['Category','Revenue (AUD)','% of US'],[['ESA',N(dash.esaRev),pO(dash.esaRev,uT)],['Non-ESA',N(dash.nonEsaRev),pO(dash.nonEsaRev,uT)],['Total US',N(uT),'100%']],[2500,2800,3000]),sp(),h3('US Sales Breakdown \u2014 All Channels (Net)'),tbl(['Channel','Revenue (AUD)','% of US Net'],[['ESA (Bookshop)',N(dash.esaRev),exAR?pO(dash.esaRev,exAR.netFY26):'\u2014'],['Non-ESA (Bookshop)',N(dash.nonEsaRev),exAR?pO(dash.nonEsaRev,exAR.netFY26):'\u2014'],['Rainbow Resources','[Add from retailers file]','\u2014'],['Amazon','[Add from retailers file]','\u2014'],['Total US Net',N(exAR?exAR.netFY26:0),'100%']],[2500,2900,2800]));}else{c.push(nP('[Upload orders.csv to populate US Insights]'));}
   c.push(sp(),nP('[ESA commentary \u2014 trend, state breakdown, program changes, outlook]'));
@@ -10690,12 +10719,16 @@ function runReportGeneration(){
     var MN={'2025-07':'July 2025','2025-08':'August 2025','2025-09':'September 2025','2025-10':'October 2025','2025-11':'November 2025','2025-12':'December 2025','2026-01':'January 2026','2026-02':'February 2026','2026-03':'March 2026','2026-04':'April 2026','2026-05':'May 2026','2026-06':'June 2026'};
     var mName=MN[monthKey]||monthKey;
     var exM=excel?excel.global[monthKey]:null,exAP=excel?excel.apac[monthKey]:null,exEM=excel?excel.emea[monthKey]:null,exAR=excel?excel.amer[monthKey]:null;
+    // YTD from Excel (for net revenue targets) + dashboard orders (for actuals)
     var exYTD=excel?excel.global.ytd:null,exYTDap=excel?excel.apac.ytd:null,exYTDem=excel?excel.emea.ytd:null,exYTDar=excel?excel.amer.ytd:null;
+    // Override YTD actuals with live dashboard data (Jul 2025 to end of selected month)
+    var dashYTD = null;
+    try{ dashYTD = buildYTDDataForReport(monthKey); }catch(e){ console.warn('YTD build:',e); }
     st.textContent='Building chart\u2026';
     buildTop15Chart(dash?dash.top15:[],function(chartPNG){
       st.textContent='Building Word document\u2026';
       if(!window.docx){st.textContent='\u274c docx library not loaded \u2014 check internet connection';st.style.color='var(--red)';return;}
-      var docObj=null;try{docObj=buildDocxContent(mName,monthKey,exM,exAP,exEM,exAR,exYTD,exYTDap,exYTDem,exYTDar,dash,chartPNG);}catch(e){st.textContent='\u274c Error: '+e.message;st.style.color='var(--red)';console.error(e);return;}
+      var docObj=null;try{docObj=buildDocxContent(mName,monthKey,exM,exAP,exEM,exAR,exYTD,exYTDap,exYTDem,exYTDar,dash,chartPNG,dashYTD);}catch(e){st.textContent='\u274c Error: '+e.message;st.style.color='var(--red)';console.error(e);return;}
       window.docx.Packer.toBlob(docObj).then(function(blob){
         var fname=mName.replace(' ','_')+'_Monthly_Report.docx';
         var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
@@ -10741,6 +10774,343 @@ function saveReportToGithub(){
     st.textContent='\u26a0\ufe0f Generate the report first';st.style.color='var(--amb)';
   }
 }
+
+
+// ═══════════════════════════════════════════════════════════════
+// YEAR TO DATE TAB
+// ═══════════════════════════════════════════════════════════════
+
+function getYTDMonths(toMonthKey){
+  // FY26 = Jul 2025 to Jun 2026
+  // Returns all months from Jul 2025 up to and including toMonthKey
+  var FY_START = '2025-07';
+  var all = ['2025-07','2025-08','2025-09','2025-10','2025-11','2025-12',
+             '2026-01','2026-02','2026-03','2026-04','2026-05','2026-06'];
+  return all.filter(function(m){ return m >= FY_START && m <= toMonthKey; });
+}
+
+function getYTDOrders(toMonthKey){
+  // All paid orders from Jul 2025 01 to end of toMonthKey
+  var yr = parseInt(toMonthKey.split('-')[0]);
+  var mo = parseInt(toMonthKey.split('-')[1]);
+  var from = new Date(2025, 6, 1); // Jul 1 2025
+  var to   = new Date(yr, mo, 0, 23, 59, 59); // last day of toMonth
+  return (rawO||[]).filter(function(r){
+    return r._date && r._date >= from && r._date <= to && !r._zero && !r._excluded;
+  });
+}
+
+function rYTD(orders){
+  var panel = document.getElementById('ytd-content');
+  if(!panel) return;
+
+  // Determine "to" month — use the latest month in the current filter, or current month
+  var allPaid = (orders||[]).filter(function(r){return !r._zero&&!r._excluded;});
+  var now = new Date();
+  var currentMonthKey = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+
+  // Find latest month in filtered orders, fall back to last completed month
+  var latestMonth = currentMonthKey;
+  if(allPaid.length){
+    var months = allPaid.map(function(r){
+      if(!r._date) return '';
+      return r._date.getFullYear()+'-'+String(r._date.getMonth()+1).padStart(2,'0');
+    }).filter(Boolean).sort();
+    if(months.length) latestMonth = months[months.length-1];
+  }
+
+  var ytdMonths = getYTDMonths(latestMonth);
+  var ytdOrders = getYTDOrders(latestMonth);
+  var ytdPaid   = ytdOrders.filter(function(r){return !r._zero&&!r._excluded;});
+
+  if(!ytdPaid.length && !rawO.length){
+    panel.innerHTML = '<div class="nd"><span class="ndic">📅</span><div>No order data loaded.<br><span style="font-size:12px;color:var(--muted)">Upload orders.csv to GitHub to see YTD analytics.</span></div></div>';
+    return;
+  }
+
+  // ── Helper functions ─────────────────────────────────────────
+  function fmtP(n){ return n!=null&&!isNaN(n) ? (n*100).toFixed(1)+'%' : '—'; }
+  function fmtPct(a,b){ if(!b||isNaN(+a)||isNaN(+b)||+b===0)return '—'; var p=(+a/+b*100); return p.toFixed(0)+'%'; }
+  function vsBar(actual,kpi){
+    if(!kpi||!actual)return '';
+    var pct=Math.min(actual/kpi*100,120);
+    var col=pct>=100?'var(--grn)':pct>=80?'var(--amb)':'var(--red)';
+    return '<div style="height:5px;background:var(--border);border-radius:3px;margin-top:4px"><div style="height:5px;width:'+Math.min(pct,100)+'%;background:'+col+';border-radius:3px;transition:width .5s"></div></div>';
+  }
+  function vsBadge(actual,kpi,label){
+    if(!kpi||actual==null)return '';
+    var pct=actual/kpi*100;
+    var col=pct>=100?'var(--grn-bg);color:var(--grn);border-color:var(--grn-border)':pct>=80?'var(--amb-bg);color:var(--amb);border-color:var(--amb-border)':'var(--red-bg);color:var(--red);border-color:var(--red-border)';
+    return '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px;border:1px solid;background:'+col+'">'+fmtPct(actual,kpi)+' of '+(label||'KPI')+'</span>';
+  }
+  function chanFilter(o,ch){ return o.filter(function(r){return r._ch&&r._ch.toLowerCase().includes(ch);}); }
+  function sumRev(o){ return o.reduce(function(s,r){return s+r._aud;},0); }
+
+  // ── Segment orders by region ──────────────────────────────────
+  var auOrds = chanFilter(ytdPaid,'au');
+  var ukOrds = chanFilter(ytdPaid,'uk');
+  var usOrds = chanFilter(ytdPaid,'us');
+  var esaOrds   = usOrds.filter(function(r){return r._esa;});
+  var nonEsaOrds= usOrds.filter(function(r){return !r._esa;});
+
+  var totRev   = sumRev(ytdPaid);
+  var auRev    = sumRev(auOrds);
+  var ukRev    = sumRev(ukOrds);
+  var usRev    = sumRev(usOrds);
+  var esaRev   = sumRev(esaOrds);
+  var nonEsaRev= sumRev(nonEsaOrds);
+
+  var totOrd = ytdPaid.length, auOrd=auOrds.length, ukOrd=ukOrds.length, usOrd=usOrds.length;
+  var totAOV = totOrd?totRev/totOrd:0, auAOV=auOrd?auRev/auOrd:0, ukAOV=ukOrd?ukRev/ukOrd:0, usAOV=usOrd?usRev/usOrd:0;
+
+  // ── Visitor / conv rate data ──────────────────────────────────
+  var visMap2={};
+  (SETTINGS.visitors||[]).forEach(function(v){ if(v.month)visMap2[v.month]={all:+v.all_visitors||0,apac:+v.apac_visitors||0,emea:+v.emea_visitors||0,amer:+v.amer_visitors||0}; });
+  function sumVis(key){ return ytdMonths.reduce(function(s,m){ return s+(visMap2[m]?visMap2[m][key]:0); },0); }
+  var totVis=sumVis('all'), auVis=sumVis('apac'), ukVis=sumVis('emea'), usVis=sumVis('amer');
+  function cr(ord,vis){ return vis>0?(ord/vis*100):null; }
+
+  // ── KPI Targets for YTD months ────────────────────────────────
+  function kpi(region,field){ return getTargetForMonths(ytdMonths, region, field); }
+  var kpiRev   = kpi('global','fy26_kpi'),    lyRev   = kpi('global','fy25_rev');
+  var kpiOrd   = kpi('global','fy26_kpi_orders'), lyOrd = kpi('global','fy25_orders');
+  var kpiRevAU = kpi('apac','fy26_kpi'),      lyRevAU = kpi('apac','fy25_rev');
+  var kpiRevUK = kpi('emea','fy26_kpi'),      lyRevUK = kpi('emea','fy25_rev');
+  var kpiRevUS = kpi('amer','fy26_kpi'),      lyRevUS = kpi('amer','fy25_rev');
+  var kpiOrdAU = kpi('apac','fy26_kpi_orders'), kpiOrdUK=kpi('emea','fy26_kpi_orders'), kpiOrdUS=kpi('amer','fy26_kpi_orders');
+
+  // ── Month label ───────────────────────────────────────────────
+  var mLabels={'2025-07':'Jul','2025-08':'Aug','2025-09':'Sep','2025-10':'Oct','2025-11':'Nov','2025-12':'Dec','2026-01':'Jan','2026-02':'Feb','2026-03':'Mar','2026-04':'Apr','2026-05':'May','2026-06':'Jun'};
+  var monthName = mLabels[latestMonth]||latestMonth;
+  var periodLabel = 'Jul 2025 – '+monthName+' 2026 (FY26 YTD)';
+
+  // ── Product breakdown ─────────────────────────────────────────
+  var prodMap={}, paMap={};
+  ytdPaid.forEach(function(r){
+    (r._items||[]).forEach(function(it){
+      if(it.audPrice>0){
+        if(!prodMap[it.type])prodMap[it.type]={rev:0,orders:0,qty:0};
+        prodMap[it.type].rev+=it.audPrice; prodMap[it.type].qty+=it.qty||1;
+      }
+      if(it.type==='isbn'&&it.audPrice>0){
+        if(!paMap[it.name])paMap[it.name]={rev:0,qty:0};
+        paMap[it.name].rev+=it.audPrice; paMap[it.name].qty+=it.qty||1;
+      }
+    });
+  });
+  var digRev=(prodMap.digital||{rev:0}).rev;
+  var bndRev=(prodMap.bundle||{rev:0}).rev;
+  var isbnRev=(prodMap.isbn||{rev:0}).rev;
+  var top20 = Object.entries(paMap).sort(function(a,b){return b[1].rev-a[1].rev;}).slice(0,20);
+
+  // ── Monthly trend data ────────────────────────────────────────
+  var monthlyRev={}, monthlyOrd={}, monthlyKPI={};
+  ytdMonths.forEach(function(m){
+    monthlyRev[m]=0; monthlyOrd[m]=0;
+    monthlyKPI[m] = (TARGETS.global&&TARGETS.global[m]) ? TARGETS.global[m].fy26_kpi||0 : 0;
+  });
+  ytdPaid.forEach(function(r){
+    if(!r._date)return;
+    var mk=r._date.getFullYear()+'-'+String(r._date.getMonth()+1).padStart(2,'0');
+    if(monthlyRev[mk]!==undefined){ monthlyRev[mk]+=r._aud; monthlyOrd[mk]++; }
+  });
+
+  // ══ BUILD HTML ═══════════════════════════════════════════════
+  var html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px">';
+  html += '<div><div style="font-size:18px;font-weight:800;color:var(--text);letter-spacing:-.02em">📅 Year to Date</div>';
+  html += '<div style="font-size:12px;color:var(--muted);margin-top:2px">'+periodLabel+'</div></div>';
+  html += '<span style="font-size:11px;background:var(--blu-bg);color:var(--blu);border:1px solid var(--blu-border);border-radius:6px;padding:3px 10px;font-weight:600">'+ytdMonths.length+' months</span>';
+  html += '</div>';
+
+  // ── SECTION 1: Global KPI Summary ────────────────────────────
+  html += '<div style="font-size:13px;font-weight:700;color:var(--text);letter-spacing:-.01em;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--blu)">1. Global Year-to-Date vs Target</div>';
+
+  // Hero KPI cards
+  html += '<div class="ks" style="margin-bottom:8px">';
+  // Revenue
+  var revPct = kpiRev?totRev/kpiRev*100:null;
+  var revCol = revPct!=null?(revPct>=100?'g':revPct>=80?'a':'r'):'b';
+  html += '<div class="kpi '+revCol+'"><div class="kpi-accent"></div><div class="kl">Revenue (AUD)</div><div class="kv">'+fm(totRev)+'</div><div class="ks2">'+vsBadge(totRev,kpiRev,'KPI')+'</div>'+vsBar(totRev,kpiRev)+'</div>';
+  // vs LY
+  html += '<div class="kpi b"><div class="kpi-accent"></div><div class="kl">vs Last Year</div><div class="kv" style="font-size:24px">'+fmtPct(totRev,lyRev)+'</div><div class="ks2">LY: '+fm(lyRev||0)+'</div></div>';
+  // Orders
+  var ordPct = kpiOrd?totOrd/kpiOrd*100:null;
+  var ordCol = ordPct!=null?(ordPct>=100?'g':ordPct>=80?'a':'r'):'b';
+  html += '<div class="kpi '+ordCol+'"><div class="kpi-accent"></div><div class="kl">Orders</div><div class="kv">'+totOrd.toLocaleString()+'</div><div class="ks2">'+vsBadge(totOrd,kpiOrd,'KPI')+'</div>'+vsBar(totOrd,kpiOrd)+'</div>';
+  // AOV
+  html += '<div class="kpi b"><div class="kpi-accent"></div><div class="kl">Avg Order Value</div><div class="kv">'+fmd(totAOV)+'</div><div class="ks2">'+(totVis?'Conv: '+cr(totOrd,totVis).toFixed(2)+'%':'—')+'</div></div>';
+  // Visitors
+  html += '<div class="kpi b"><div class="kpi-accent"></div><div class="kl">Visitors (YTD)</div><div class="kv" style="font-size:22px">'+(totVis?totVis.toLocaleString():'—')+'</div><div class="ks2">'+(totVis?cr(totOrd,totVis).toFixed(2)+'% conv rate':'Add visitors in Settings')+'</div></div>';
+  html += '</div>';
+
+  // Monthly revenue trend vs KPI chart
+  html += '<div class="card mb"><div class="ct">Monthly Revenue vs KPI Target</div><div class="cw h220"><canvas id="cYTDtrend"></canvas></div></div>';
+
+  // ── SECTION 2: Regional Breakdown ────────────────────────────
+  html += '<div style="font-size:13px;font-weight:700;color:var(--text);letter-spacing:-.01em;margin:20px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--blu)">2. Regional Year-to-Date vs Target</div>';
+
+  function regCard(label, rev, ord, aov, vis, kpiR, lyR, kpiO, flag){
+    var rPct=kpiR?rev/kpiR*100:null;
+    var bdrCol=rPct==null?'var(--border)':rPct>=100?'var(--grn-border)':rPct>=80?'var(--amb-border)':'var(--red-border)';
+    var bgCol=rPct==null?'var(--card)':rPct>=100?'var(--grn-bg)':rPct>=80?'var(--amb-bg)':'var(--red-bg)';
+    var convRate=vis?cr(ord,vis):null;
+    var h='<div class="card" style="border:2px solid '+bdrCol+';background:'+bgCol+'">';
+    h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
+    h+='<div style="font-size:14px;font-weight:700;color:var(--text)">'+flag+' '+label+'</div>';
+    h+=vsBadge(rev,kpiR,'KPI');
+    h+='</div>';
+    h+='<div style="font-size:26px;font-weight:800;color:var(--text);letter-spacing:-.04em;margin-bottom:2px">'+fm(rev)+'</div>';
+    h+=vsBar(rev,kpiR);
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px">';
+    h+='<div style="text-align:center"><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">LY</div><div style="font-size:13px;font-weight:700;color:var(--text2)">'+fm(lyR||0)+'</div></div>';
+    h+='<div style="text-align:center"><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Orders</div><div style="font-size:13px;font-weight:700;color:var(--text2)">'+ord.toLocaleString()+(kpiO?'<span style="font-size:10px;color:var(--muted)"> /'+Math.round(kpiO)+'</span>':'')+'</div></div>';
+    h+='<div style="text-align:center"><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Conv</div><div style="font-size:13px;font-weight:700;color:var(--text2)">'+(convRate!=null?convRate.toFixed(2)+'%':'—')+'</div></div>';
+    h+='</div>';
+    h+='<div style="margin-top:8px;font-size:11px;color:var(--muted2)">AOV '+fmd(aov)+(vis?' · '+vis.toLocaleString()+' visitors':'')+'</div>';
+    h+='</div>';
+    return h;
+  }
+
+  html += '<div class="g3" style="margin-bottom:4px">';
+  html += regCard('Australia', auRev, auOrd, auAOV, auVis, kpiRevAU, lyRevAU, kpiOrdAU, '🌏');
+  html += regCard('United Kingdom', ukRev, ukOrd, ukAOV, ukVis, kpiRevUK, lyRevUK, kpiOrdUK, '🇬🇧');
+  html += regCard('United States', usRev, usOrd, usAOV, usVis, kpiRevUS, lyRevUS, kpiOrdUS, '🇺🇸');
+  html += '</div>';
+
+  // Regional bar chart
+  html += '<div class="card mb"><div class="ct">Revenue by Region — Monthly YTD</div><div class="cw h220"><canvas id="cYTDreg"></canvas></div></div>';
+
+  // ── SECTION 3: Product YTD ────────────────────────────────────
+  html += '<div style="font-size:13px;font-weight:700;color:var(--text);letter-spacing:-.01em;margin:20px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--blu)">3. Product Performance YTD</div>';
+
+  var catTotal = digRev+bndRev+isbnRev||1;
+  html += '<div class="g3" style="margin-bottom:16px">';
+  [{lbl:'Digital / Program Access',rev:digRev,icon:'💻',col:'b'},{lbl:'Bundles',rev:bndRev,icon:'📦',col:'p'},{lbl:'ISBN / Books',rev:isbnRev,icon:'📚',col:'g'}].forEach(function(cat){
+    html += '<div class="kpi '+cat.col+'"><div class="kpi-accent"></div>';
+    html += '<div class="kl">'+cat.icon+' '+cat.lbl+'</div>';
+    html += '<div class="kv">'+fm(cat.rev)+'</div>';
+    html += '<div class="ks2">'+fmtPct(cat.rev,catTotal)+' of revenue</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // Top 20 ISBN products table
+  if(top20.length){
+    html += '<div class="card"><div class="ct">Top Products by Revenue — Books (YTD) <span class="ctag">ISBN only</span></div>';
+    html += '<div class="tw"><table><thead><tr><th>#</th><th>Product</th><th class="r">Units</th><th class="r">Revenue</th><th class="r">% of Books</th></tr></thead><tbody>';
+    top20.forEach(function(p,i){
+      html += '<tr><td style="color:var(--muted2);font-size:11px">'+(i+1)+'</td>';
+      html += '<td style="font-size:13px">'+p[0]+'</td>';
+      html += '<td class="val">'+p[1].qty.toLocaleString()+'</td>';
+      html += '<td class="val">'+fmd(p[1].rev)+'</td>';
+      html += '<td class="val">'+fmtPct(p[1].rev,isbnRev)+'</td></tr>';
+    });
+    html += '</tbody></table></div></div>';
+  }
+
+  // ── SECTION 4: ESA YTD ───────────────────────────────────────
+  html += '<div style="font-size:13px;font-weight:700;color:var(--text);letter-spacing:-.01em;margin:20px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--blu)">4. ESA Sales YTD</div>';
+
+  html += '<div class="ks" style="margin-bottom:16px">';
+  html += '<div class="kpi r"><div class="kpi-accent"></div><div class="kl">🔥 ESA Revenue</div><div class="kv">'+fm(esaRev)+'</div><div class="ks2">'+fmtPct(esaRev,usRev)+' of US bookshop</div></div>';
+  html += '<div class="kpi b"><div class="kpi-accent"></div><div class="kl">Non-ESA Revenue</div><div class="kv">'+fm(nonEsaRev)+'</div><div class="ks2">'+fmtPct(nonEsaRev,usRev)+' of US bookshop</div></div>';
+  html += '<div class="kpi g"><div class="kpi-accent"></div><div class="kl">ESA Orders</div><div class="kv">'+esaOrds.length.toLocaleString()+'</div><div class="ks2">'+fmtPct(esaOrds.length,usOrd)+' of US orders</div></div>';
+  html += '<div class="kpi a"><div class="kpi-accent"></div><div class="kl">ESA AOV</div><div class="kv">'+(esaOrds.length?fmd(esaRev/esaOrds.length):'—')+'</div><div class="ks2">vs Non-ESA '+(nonEsaOrds.length?fmd(nonEsaRev/nonEsaOrds.length):'—')+'</div></div>';
+  html += '<div class="kpi b"><div class="kpi-accent"></div><div class="kl">vs US Target</div><div class="kv" style="font-size:22px">'+fmtPct(usRev,kpiRevUS)+'</div><div class="ks2">KPI: '+fm(kpiRevUS||0)+'</div></div>';
+  html += '</div>';
+
+  // ESA monthly trend chart
+  var esaMonthly={}, nonEsaMonthly={};
+  ytdMonths.forEach(function(m){ esaMonthly[m]=0; nonEsaMonthly[m]=0; });
+  esaOrds.forEach(function(r){ if(!r._date)return; var mk=r._date.getFullYear()+'-'+String(r._date.getMonth()+1).padStart(2,'0'); if(esaMonthly[mk]!==undefined)esaMonthly[mk]+=r._aud; });
+  nonEsaOrds.forEach(function(r){ if(!r._date)return; var mk=r._date.getFullYear()+'-'+String(r._date.getMonth()+1).padStart(2,'0'); if(nonEsaMonthly[mk]!==undefined)nonEsaMonthly[mk]+=r._aud; });
+
+  html += '<div class="card"><div class="ct">ESA vs Non-ESA Monthly Revenue (YTD)</div><div class="cw h220"><canvas id="cYTDesa"></canvas></div></div>';
+
+  panel.innerHTML = html;
+
+  // ── RENDER CHARTS ─────────────────────────────────────────────
+  setTimeout(function(){
+    var mLbls = ytdMonths.map(function(m){ return mLabels[m]||m; });
+
+    // Chart 1: Global trend vs KPI
+    var c1 = document.getElementById('cYTDtrend');
+    if(c1) new Chart(c1, {type:'bar', data:{labels:mLbls, datasets:[
+      {label:'Revenue',data:ytdMonths.map(function(m){return monthlyRev[m]||0;}),backgroundColor:'#2563EB99',borderColor:'#2563EB',borderWidth:2,borderRadius:4},
+      {label:'KPI Target',data:ytdMonths.map(function(m){return monthlyKPI[m]||0;}),type:'line',borderColor:'#DC2626',borderWidth:2,borderDash:[5,3],pointRadius:3,fill:false,tension:0}
+    ]}, options:{animation:false,plugins:{legend:{display:true,position:'top'}},scales:{y:{ticks:{callback:function(v){return 'A$'+Math.round(v/1000)+'k';}},grid:{color:'rgba(0,0,0,0.04)'}},x:{grid:{display:false}}}}});
+
+    // Chart 2: Regional monthly
+    var c2 = document.getElementById('cYTDreg');
+    if(c2){
+      var auM={},ukM={},usM={};
+      ytdMonths.forEach(function(m){auM[m]=0;ukM[m]=0;usM[m]=0;});
+      chanFilter(ytdPaid,'au').forEach(function(r){if(!r._date)return;var mk=r._date.getFullYear()+'-'+String(r._date.getMonth()+1).padStart(2,'0');if(auM[mk]!==undefined)auM[mk]+=r._aud;});
+      chanFilter(ytdPaid,'uk').forEach(function(r){if(!r._date)return;var mk=r._date.getFullYear()+'-'+String(r._date.getMonth()+1).padStart(2,'0');if(ukM[mk]!==undefined)ukM[mk]+=r._aud;});
+      chanFilter(ytdPaid,'us').forEach(function(r){if(!r._date)return;var mk=r._date.getFullYear()+'-'+String(r._date.getMonth()+1).padStart(2,'0');if(usM[mk]!==undefined)usM[mk]+=r._aud;});
+      new Chart(c2, {type:'bar', data:{labels:mLbls, datasets:[
+        {label:'AU',data:ytdMonths.map(function(m){return auM[m];}),backgroundColor:'#2563EB',borderRadius:3},
+        {label:'UK',data:ytdMonths.map(function(m){return ukM[m];}),backgroundColor:'#7C3AED',borderRadius:3},
+        {label:'US',data:ytdMonths.map(function(m){return usM[m];}),backgroundColor:'#16A34A',borderRadius:3}
+      ]}, options:{animation:false,animation:false,plugins:{legend:{display:true,position:'top'}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:function(v){return 'A$'+Math.round(v/1000)+'k';}},grid:{color:'rgba(0,0,0,0.04)'}}}}}); 
+    }
+
+    // Chart 3: ESA vs Non-ESA
+    var c3 = document.getElementById('cYTDesa');
+    if(c3) new Chart(c3, {type:'bar', data:{labels:mLbls, datasets:[
+      {label:'ESA',data:ytdMonths.map(function(m){return esaMonthly[m];}),backgroundColor:'#DC262699',borderColor:'#DC2626',borderWidth:2,borderRadius:4},
+      {label:'Non-ESA',data:ytdMonths.map(function(m){return nonEsaMonthly[m];}),backgroundColor:'#2563EB99',borderColor:'#2563EB',borderWidth:2,borderRadius:4}
+    ]}, options:{animation:false,plugins:{legend:{display:true,position:'top'}},scales:{y:{ticks:{callback:function(v){return 'A$'+Math.round(v/1000)+'k';}},grid:{color:'rgba(0,0,0,0.04)'}},x:{grid:{display:false}}}}});
+
+  }, 50);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FIX: Report YTD section — pull from dashboard order data
+// ═══════════════════════════════════════════════════════════════
+function buildYTDDataForReport(toMonthKey){
+  // Returns YTD data object for the report generator
+  var ytdMonths = getYTDMonths(toMonthKey);
+  var ytdPaid   = getYTDOrders(toMonthKey).filter(function(r){return !r._zero&&!r._excluded;});
+  function chanF(o,c){return o.filter(function(r){return r._ch&&r._ch.toLowerCase().includes(c);});}
+  function sRev(o){return o.reduce(function(s,r){return s+r._aud;},0);}
+  var auO=chanF(ytdPaid,'au'),ukO=chanF(ytdPaid,'uk'),usO=chanF(ytdPaid,'us');
+  var esaO=usO.filter(function(r){return r._esa;});
+  var visMap2={};
+  (SETTINGS.visitors||[]).forEach(function(v){if(v.month)visMap2[v.month]={all:+v.all_visitors||0,apac:+v.apac_visitors||0,emea:+v.emea_visitors||0,amer:+v.amer_visitors||0};});
+  function sVis(key){return ytdMonths.reduce(function(s,m){return s+(visMap2[m]?visMap2[m][key]:0);},0);}
+  function kpi(reg,field){return getTargetForMonths(ytdMonths,reg,field);}
+  return {
+    months: ytdMonths, orders: ytdPaid,
+    global:{rev:sRev(ytdPaid),orders:ytdPaid.length,vis:sVis('all'),kpiRev:kpi('global','fy26_kpi'),lyRev:kpi('global','fy25_rev'),kpiOrd:kpi('global','fy26_kpi_orders'),lyOrd:kpi('global','fy25_orders')},
+    apac:  {rev:sRev(auO),orders:auO.length,vis:sVis('apac'),kpiRev:kpi('apac','fy26_kpi'),lyRev:kpi('apac','fy25_rev')},
+    emea:  {rev:sRev(ukO),orders:ukO.length,vis:sVis('emea'),kpiRev:kpi('emea','fy26_kpi'),lyRev:kpi('emea','fy25_rev')},
+    amer:  {rev:sRev(usO),orders:usO.length,vis:sVis('amer'),kpiRev:kpi('amer','fy26_kpi'),lyRev:kpi('amer','fy25_rev')},
+    esa:   {rev:sRev(esaO),orders:esaO.length},
+    nonEsa:{rev:sRev(usO.filter(function(r){return !r._esa;})),orders:usO.filter(function(r){return !r._esa;}).length},
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FIX: Conversion rate respects active channel filter
+// ═══════════════════════════════════════════════════════════════
+function activeVisRegion(){
+  // Returns which visitor slice to use based on channel filter checkboxes
+  var cbs = document.querySelectorAll('.fc:checked');
+  var vals = Array.from(cbs).map(function(c){return (c.value||'').toLowerCase();});
+  var hasAU = vals.some(function(v){return v.includes('au');});
+  var hasUK = vals.some(function(v){return v.includes('uk');});
+  var hasUS = vals.some(function(v){return v.includes('us')||v.includes('usa');});
+  var total = document.querySelectorAll('.fc').length;
+  var checked = cbs.length;
+  // All selected or none selected = global
+  if(checked===0||checked===total) return 'all';
+  if(hasAU&&!hasUK&&!hasUS) return 'apac';
+  if(hasUK&&!hasAU&&!hasUS) return 'emea';
+  if(hasUS&&!hasAU&&!hasUK) return 'amer';
+  return 'all';
+}
+
 </script>
 
 <!-- FILTER PANEL -->
