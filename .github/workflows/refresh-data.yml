@@ -1,0 +1,336 @@
+name: Refresh Bookshop Data
+
+on:
+  workflow_dispatch:
+    inputs:
+      date_range:
+        description: 'Date range to fetch (days back, 0 = all)'
+        required: false
+        default: '0'
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Fetch and sanitise BigCommerce data
+        env:
+          BC_STORE_HASH: ${{ secrets.BC_STORE_HASH }}
+          BC_CLIENT_ID: ${{ secrets.BC_CLIENT_ID }}
+          BC_ACCESS_TOKEN: ${{ secrets.BC_ACCESS_TOKEN }}
+        run: |
+          python3 << 'PYEOF'
+          import requests, csv, hashlib, json, os, sys, time
+          from datetime import datetime, timedelta
+
+          STORE_HASH   = os.environ['BC_STORE_HASH']
+          CLIENT_ID    = os.environ['BC_CLIENT_ID']
+          ACCESS_TOKEN = os.environ['BC_ACCESS_TOKEN']
+
+          BASE_V2 = f'https://api.bigcommerce.com/stores/{STORE_HASH}/v2'
+          BASE_V3 = f'https://api.bigcommerce.com/stores/{STORE_HASH}/v3'
+
+          HEADERS = {
+              'X-Auth-Token': ACCESS_TOKEN,
+              'X-Auth-Client': CLIENT_ID,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+          }
+
+          def sha256(value):
+              if not value: return ''
+              return hashlib.sha256(str(value).strip().lower().encode()).hexdigest()[:16]
+
+          def bc_get_all(url, params=None, key='data', v3=True):
+              """Paginate through all BC API results."""
+              results = []
+              page = 1
+              while True:
+                  p = dict(params or {})
+                  if v3:
+                      p.update({'page': page, 'limit': 250})
+                  else:
+                      p.update({'page': page, 'limit': 250})
+                  r = requests.get(url, headers=HEADERS, params=p, timeout=30)
+                  if r.status_code == 429:
+                      print(f'Rate limited, waiting 10s...')
+                      time.sleep(10)
+                      continue
+                  r.raise_for_status()
+                  data = r.json()
+                  if v3:
+                      batch = data.get(key, [])
+                      results.extend(batch)
+                      meta = data.get('meta', {}).get('pagination', {})
+                      if page >= meta.get('total_pages', 1):
+                          break
+                  else:
+                      batch = data if isinstance(data, list) else data.get(key, [])
+                      if not batch:
+                          break
+                      results.extend(batch)
+                  page += 1
+                  print(f'  Page {page-1}: {len(batch)} records (total {len(results)})')
+                  time.sleep(0.2)  # respect rate limits
+              return results
+
+          # ── VALIDATION ────────────────────────────────────────────────────────
+          import re
+          EMAIL_RE = re.compile(r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}')
+
+          def validate_no_pii(rows, filename):
+              for i, row in enumerate(rows):
+                  for k, v in row.items():
+                      if v and EMAIL_RE.search(str(v)):
+                          print(f'ERROR: PII detected in {filename} row {i} field {k}: {str(v)[:20]}...')
+                          sys.exit(1)
+              print(f'  ✅ {filename}: no PII detected ({len(rows)} rows)')
+
+          # ─────────────────────────────────────────────────────────────────────
+          # 1. ORDERS
+          # ─────────────────────────────────────────────────────────────────────
+          print('\n📦 Fetching orders...')
+          orders = bc_get_all(f'{BASE_V2}/orders', 
+                              params={'sort': 'date_created:desc', 'is_deleted': 'false'},
+                              key=None, v3=False)
+          print(f'  Total orders: {len(orders)}')
+
+          # Fetch order products (line items) in batches
+          print('  Fetching order line items...')
+          order_products = {}
+          for i, order in enumerate(orders):
+              oid = order['id']
+              try:
+                  r = requests.get(f'{BASE_V2}/orders/{oid}/products', headers=HEADERS, timeout=30)
+                  if r.status_code == 200:
+                      order_products[oid] = r.json()
+              except:
+                  pass
+              if (i+1) % 100 == 0:
+                  print(f'    Line items: {i+1}/{len(orders)} orders processed')
+              time.sleep(0.05)
+
+          ORDER_COLS = [
+              'Order ID', 'Order Date', 'Order Status', 'Channel Name',
+              'Order Total (inc tax)', 'Order Total (ex tax)', 'Exchange Rate',
+              'Tax Total', 'Shipping Cost (ex tax)', 'Coupon Discount',
+              'Payment Method', 'Product Details',
+              'Billing Country', 'Billing State', 'Billing Suburb',
+              'Order Source', 'Order Time', 'Ship Method',
+              'Date Shipped', 'Total Shipped',
+              'Customer ID',  # will be hashed
+          ]
+
+          def build_product_details(line_items):
+              """Format line items like BC export: name [SKU] x qty @ price"""
+              parts = []
+              for item in (line_items or []):
+                  name = item.get('name','')
+                  sku  = item.get('sku','')
+                  qty  = item.get('quantity',1)
+                  price= item.get('price_inc_tax', item.get('base_price','0'))
+                  parts.append(f"{name} [{sku}] x{qty} @ {price}")
+              return ' | '.join(parts)
+
+          def get_channel_name(channel_id):
+              channels = {1: 'Reading Eggs AU', 2: 'Reading Eggs UK', 3: 'Reading Eggs USA'}
+              return channels.get(channel_id, f'Channel {channel_id}')
+
+          clean_orders = []
+          for o in orders:
+              oid = o['id']
+              line_items = order_products.get(oid, [])
+              # Parse date
+              date_str = o.get('date_created', '')
+              try:
+                  dt = datetime.fromisoformat(date_str.replace('Z','+00:00'))
+                  order_date = dt.strftime('%d/%m/%Y')
+                  order_time = dt.strftime('%H:%M:%S')
+              except:
+                  order_date = date_str
+                  order_time = ''
+
+              # Shipping
+              ship_date = ''
+              if o.get('date_shipped'):
+                  try:
+                      sd = datetime.fromisoformat(o['date_shipped'].replace('Z','+00:00'))
+                      ship_date = sd.strftime('%d/%m/%Y')
+                  except:
+                      ship_date = o.get('date_shipped','')
+
+              clean_orders.append({
+                  'Order ID': oid,
+                  'Order Date': order_date,
+                  'Order Status': o.get('status',''),
+                  'Channel Name': get_channel_name(o.get('channel_id',1)),
+                  'Order Total (inc tax)': o.get('total_inc_tax','0'),
+                  'Order Total (ex tax)': o.get('total_ex_tax','0'),
+                  'Exchange Rate': o.get('currency_exchange_rate','1'),
+                  'Tax Total': o.get('total_tax','0'),
+                  'Shipping Cost (ex tax)': o.get('shipping_cost_ex_tax','0'),
+                  'Coupon Discount': o.get('coupon_discount','0'),
+                  'Payment Method': o.get('payment_method',''),
+                  'Product Details': build_product_details(line_items),
+                  'Billing Country': o.get('billing_address',{}).get('country',''),
+                  'Billing State': o.get('billing_address',{}).get('state',''),
+                  'Billing Suburb': o.get('billing_address',{}).get('city',''),
+                  'Order Source': o.get('order_source', o.get('external_source','')),
+                  'Order Time': order_time,
+                  'Ship Method': (o.get('shipping_addresses') or [{}])[0].get('shipping_method','') if o.get('shipping_addresses') else '',
+                  'Date Shipped': ship_date,
+                  'Total Shipped': o.get('items_shipped',0),
+                  'Customer ID': sha256(o.get('billing_address',{}).get('email','')),
+              })
+
+          validate_no_pii(clean_orders, 'orders.csv')
+          with open('orders.csv','w',newline='',encoding='utf-8') as f:
+              w = csv.DictWriter(f, fieldnames=list(clean_orders[0].keys()))
+              w.writeheader(); w.writerows(clean_orders)
+          print(f'  ✅ orders.csv written ({len(clean_orders)} rows)')
+
+          # ─────────────────────────────────────────────────────────────────────
+          # 2. PRODUCTS
+          # ─────────────────────────────────────────────────────────────────────
+          print('\n📚 Fetching products...')
+          products = bc_get_all(f'{BASE_V3}/catalog/products',
+                                params={'include':'variants', 'is_visible': True},
+                                key='data', v3=True)
+          print(f'  Total products: {len(products)}')
+
+          clean_products = []
+          for p in products:
+              # Main product row
+              clean_products.append({
+                  'Product ID': p.get('id',''),
+                  'Product Name': p.get('name',''),
+                  'SKU': p.get('sku',''),
+                  'Price': p.get('price',''),
+                  'Cost Price': p.get('cost_price',''),
+                  'Retail Price': p.get('retail_price',''),
+                  'Type': p.get('type',''),
+                  'Inventory Level': p.get('inventory_level',0),
+                  'Inventory Warning Level': p.get('inventory_warning_level',0),
+                  'Categories': ','.join(str(c) for c in (p.get('categories') or [])),
+                  'Brand': p.get('brand_id',''),
+                  'Weight': p.get('weight',''),
+                  'Availability': p.get('availability',''),
+                  'Condition': p.get('condition',''),
+                  'Is Featured': p.get('is_featured',False),
+                  'Date Created': p.get('date_created',''),
+                  'Date Modified': p.get('date_modified',''),
+              })
+
+          validate_no_pii(clean_products, 'products.csv')
+          with open('products.csv','w',newline='',encoding='utf-8') as f:
+              w = csv.DictWriter(f, fieldnames=list(clean_products[0].keys()))
+              w.writeheader(); w.writerows(clean_products)
+          print(f'  ✅ products.csv written ({len(clean_products)} rows)')
+
+          # ─────────────────────────────────────────────────────────────────────
+          # 3. CUSTOMERS
+          # ─────────────────────────────────────────────────────────────────────
+          print('\n👥 Fetching customers...')
+          customers = bc_get_all(f'{BASE_V3}/customers',
+                                 params={}, key='data', v3=True)
+          print(f'  Total customers: {len(customers)}')
+
+          clean_customers = []
+          for c in customers:
+              clean_customers.append({
+                  'Customer ID': sha256(c.get('email','')),
+                  'Date Created': c.get('date_created',''),
+                  'Date Modified': c.get('date_modified',''),
+                  'Store Credit': c.get('store_credit_amounts',[{}])[0].get('amount',0) if c.get('store_credit_amounts') else 0,
+                  'Total Orders': c.get('orders_count',0),
+                  'Channel ID': c.get('channel_ids',[1])[0] if c.get('channel_ids') else 1,
+                  'Accepts Marketing': c.get('accepts_product_review_abandoned_cart_emails', False),
+              })
+
+          validate_no_pii(clean_customers, 'customers.csv')
+          with open('customers.csv','w',newline='',encoding='utf-8') as f:
+              w = csv.DictWriter(f, fieldnames=list(clean_customers[0].keys()))
+              w.writeheader(); w.writerows(clean_customers)
+          print(f'  ✅ customers.csv written ({len(clean_customers)} rows)')
+
+          # ─────────────────────────────────────────────────────────────────────
+          # 4. ABANDONED CARTS
+          # ─────────────────────────────────────────────────────────────────────
+          print('\n🛒 Fetching abandoned carts...')
+          carts = bc_get_all(f'{BASE_V2}/customers/abandoned_carts',
+                             params={}, key=None, v3=False)
+          print(f'  Total abandoned carts: {len(carts)}')
+
+          clean_carts = []
+          for c in carts:
+              clean_carts.append({
+                  'cart_id': c.get('id',''),
+                  'date_created': c.get('date_created',''),
+                  'date_modified': c.get('date_modified',''),
+                  'customer_email': sha256(c.get('customer_email','')),
+                  'cart_amount': c.get('cart_amount','0'),
+                  'channel_id': c.get('channel_id',1),
+                  'line_items': len(c.get('line_items',{}).get('physical_items',[]) + c.get('line_items',{}).get('digital_items',[])),
+              })
+
+          validate_no_pii(clean_carts, 'carts.csv')
+          with open('carts.csv','w',newline='',encoding='utf-8') as f:
+              if clean_carts:
+                  w = csv.DictWriter(f, fieldnames=list(clean_carts[0].keys()))
+                  w.writeheader(); w.writerows(clean_carts)
+          print(f'  ✅ carts.csv written ({len(clean_carts)} rows)')
+
+          # ─────────────────────────────────────────────────────────────────────
+          # 5. SOURCES (order attribution from order_source field)
+          # ─────────────────────────────────────────────────────────────────────
+          print('\n📊 Building sources.csv from order data...')
+          clean_sources = []
+          for o in orders:
+              src = o.get('order_source') or o.get('external_source') or 'direct'
+              ref = o.get('referral_source','')
+              clean_sources.append({
+                  'order_id': o['id'],
+                  'order_date': o.get('date_created',''),
+                  'channel_id': o.get('channel_id',1),
+                  'attribution': src,
+                  'referral_source': ref,
+                  'total': o.get('total_inc_tax','0'),
+                  'currency': o.get('currency_code','AUD'),
+              })
+
+          validate_no_pii(clean_sources, 'sources.csv')
+          with open('sources.csv','w',newline='',encoding='utf-8') as f:
+              w = csv.DictWriter(f, fieldnames=list(clean_sources[0].keys()))
+              w.writeheader(); w.writerows(clean_sources)
+          print(f'  ✅ sources.csv written ({len(clean_sources)} rows)')
+
+          print('\n✅ All files sanitised and ready to commit.')
+          PYEOF
+
+      - name: Commit updated data files
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add orders.csv products.csv customers.csv carts.csv sources.csv
+          
+          # Only commit if something changed
+          if git diff --staged --quiet; then
+            echo "No changes detected — data is already up to date."
+          else
+            TIMESTAMP=$(TZ='Australia/Sydney' date '+%Y-%m-%d %H:%M AEST')
+            git commit -m "Auto-refresh data — ${TIMESTAMP}"
+            git push
+            echo "✅ Data committed and pushed."
+          fi
