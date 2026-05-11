@@ -11166,7 +11166,7 @@ function startDataRefresh(){
       'Accept': 'application/vnd.github.v3+json',
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ ref: 'main', inputs: { date_range: '0' } })
+    body: JSON.stringify({ ref: 'main', inputs: { full_refresh: 'false' } })
   })
   .then(function(r){
     if(r.status === 204){
@@ -11193,12 +11193,12 @@ function startDataRefresh(){
 function pollWorkflowRun(){
   var pat = typeof getGithubPAT === 'function' ? getGithubPAT() : (localStorage.getItem('re_github_pat')||'');
   var pollCount = 0;
-  var maxPolls = 60; // 5 minutes max (60 × 5s)
+  var maxPolls = 360; // 30 minutes max (360 × 5s)
 
   function poll(){
     pollCount++;
     if(pollCount > maxPolls){
-      setRefreshStatus('⚠️ Timed out waiting for workflow. Check GitHub Actions tab for status.', 'var(--amb)');
+      setRefreshStatus('⚠️ Dashboard polling stopped after 30 min. Check GitHub Actions tab — workflow may still be running. Reload when complete.', 'var(--amb)');
       clearInterval(_refreshPollTimer); _refreshPollTimer = null;
       return;
     }
@@ -11218,7 +11218,11 @@ function pollWorkflowRun(){
       if(status === 'queued'){
         setRefreshStatus('⏳ Workflow queued — waiting to start…', 'var(--muted)');
       } else if(status === 'in_progress'){
-        setRefreshStatus('🔄 Fetching data from BigCommerce… ('+pollCount*5+'s elapsed)', 'var(--blu)');
+        var elapsed = pollCount*5;
+        var mins = Math.floor(elapsed/60), secs = elapsed%60;
+        var timeStr = mins > 0 ? mins+'m '+secs+'s' : secs+'s';
+        var pct = Math.min(Math.round(elapsed/1200*100), 95); // estimate ~20min total
+        setRefreshStatus('🔄 Fetching data from BigCommerce… '+timeStr+' elapsed (~'+pct+'% complete)', 'var(--blu)');
         addRefreshLog('Run in progress: '+runUrl);
       } else if(status === 'completed'){
         clearInterval(_refreshPollTimer); _refreshPollTimer = null;
