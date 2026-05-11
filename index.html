@@ -3759,12 +3759,24 @@ function preProcess(cb){
     // If channel name is unknown (e.g. "Channel 1692461"), derive from billing country
     var rawCh = row['Channel Name']||'';
     if(rawCh && /^Channel\s+\d+$/.test(rawCh.trim())){
-      // Unknown channel ID — map to region by country
-      var co2 = row._co.toLowerCase();
-      if(co2==='australia') rawCh='Reading Eggs AU';
-      else if(co2==='united kingdom'||co2==='uk') rawCh='Reading Eggs UK';
-      else if(co2==='united states'||co2==='usa'||co2==='us') rawCh='Reading Eggs USA';
-      else rawCh='Reading Eggs AU'; // default fallback
+      // Unknown channel ID — map to region by billing country
+      var co2 = (row._co||'').toLowerCase();
+      // US region countries
+      if(['united states','usa','us','canada'].indexOf(co2)>-1){
+        rawCh='Reading Eggs USA';
+      // UK/EMEA region countries (buy from UK store)
+      } else if(['united kingdom','uk','ireland','new zealand (uk pricing)'].indexOf(co2)>-1){
+        rawCh='Reading Eggs UK';
+      // AU/APAC region countries (buy from AU store)  
+      } else if(['australia','new zealand','singapore','hong kong','malaysia','south africa','south africa'].indexOf(co2)>-1){
+        rawCh='Reading Eggs AU';
+      // European countries -> UK store
+      } else if(co2.indexOf('europe')>-1||['germany','france','spain','italy','netherlands','sweden','norway','denmark','finland','switzerland','austria','belgium','portugal'].indexOf(co2)>-1){
+        rawCh='Reading Eggs UK';
+      // Default: try to guess from country, fall back to AU
+      } else {
+        rawCh='Reading Eggs AU';
+      }
     }
     row._ch=rawCh||'Unknown';
     row._st=row['Billing State']||'';
@@ -3928,8 +3940,10 @@ function fOrders(){
   }
 
   return rawO.filter(function(r){
-    if(!r||!r._date===undefined) return false; // skip unprocessed rows
+    if(!r) return false;
     var d=r._date;
+    // Orders with no parseable date are excluded when a date filter is active
+    if((from||to)&&!d) return false;
     if(from&&d&&d<from)return false;
     if(to&&d&&d>to)return false;
     if(chs.length&&!chs.includes(r._ch||'Unknown'))return false;
@@ -4487,8 +4501,8 @@ function rTab(t){
 var HD={APAC:'#22c55e',EMEA:'#3b82f6',AMER:'#f59e0b',Other:'#8b5cf6'};
 var HL={APAC:'#16a34a',EMEA:'#2563eb',AMER:'#d97706',Other:'#7c3aed'};
 function rHx(rg){return dk()?HD[rg]:HL[rg];}
-function chHx(ch){var l=(ch||'').toLowerCase();return l.includes('au')?rHx('APAC'):l.includes('uk')?rHx('EMEA'):l.includes('us')?rHx('AMER'):rHx('Other');}
-function chReg(ch){var l=(ch||'').toLowerCase();if(l.includes('au'))return'APAC';if(l.includes('uk'))return'EMEA';if(l.includes('us'))return'AMER';return'Other';}
+function chHx(ch){var l=(ch||'').toLowerCase();return l.includes('au')?rHx('APAC'):l.includes('uk')?rHx('EMEA'):l.includes('usa')?rHx('AMER'):rHx('Other');}
+function chReg(ch){var l=(ch||'').toLowerCase();if(l.includes('au'))return'APAC';if(l.includes('uk'))return'EMEA';if(l.includes('usa'))return'AMER';return'Other';}
 var PD=['#22c55e','#3b82f6','#f59e0b','#8b5cf6','#06b6d4','#f43f5e','#f97316','#34d399','#a78bfa','#facc15','#22d3ee','#c084fc'];
 var PL=['#16a34a','#2563eb','#d97706','#7c3aed','#0891b2','#e11d48','#ea580c','#059669','#6d28d9','#b45309','#0369a1','#9333ea'];
 var PAL=function(){return dk()?PD:PL;};
@@ -4516,7 +4530,7 @@ function sBadge(s){
 }
 function chPill(ch){
   var l=(ch||'').toLowerCase(),cls='bm',sh=ch.slice(0,3);
-  if(l.includes('au')){cls='chau';sh='AU';}else if(l.includes('uk')){cls='chuk';sh='UK';}else if(l.includes('usa')||l.includes('us')){cls='chus';sh='USA';}
+  if(l.includes('au')){cls='chau';sh='AU';}else if(l.includes('uk')){cls='chuk';sh='UK';}else if(l.includes('usa')){cls='chus';sh='USA';}
   return'<span class="badge '+cls+'">'+sh+'</span>';
 }
 function nd(msg){return'<div class="nd"><div class="ndic">&#128219;</div>'+msg+'</div>';}
@@ -5212,7 +5226,7 @@ function rDelivery(orders){
     { label:'UK', flag:'🇬🇧', statuses:['Awaiting fulfillment','Partially shipped'],
       test:function(ch){ return (ch||'').toLowerCase().includes('uk'); } },
     { label:'USA', flag:'🇺🇸', statuses:['Awaiting fulfillment'],
-      test:function(ch){ return (ch||'').toLowerCase().includes('us'); } },
+      test:function(ch){ return (ch||'').toLowerCase().includes('usa'); } },
   ];
   var regRowsHtml = regPendDel.map(function(rg, i){
     var rOrds = rawO.filter(function(r){ return rg.statuses.indexOf(r._status)>-1 && rg.test(r._ch); });
@@ -5366,7 +5380,7 @@ function rDelivery(orders){
   // ── Monthly avg days to ship by region ─────────────────
   var chToRegDel = function(ch){
     ch=(ch||'').toLowerCase();
-    return ch.includes('au')?'AU':ch.includes('uk')?'UK':ch.includes('us')?'USA':null;
+    return ch.includes('au')?'AU':ch.includes('uk')?'UK':ch.includes('usa')?'USA':null;
   };
   // Build month map: { 'YYYY-MM': { AU:{sum,cnt}, UK:{sum,cnt}, USA:{sum,cnt} } }
   var monthMap = {};
@@ -5890,7 +5904,8 @@ function rAbandoned(orders){
     return null;
   }
 
-  var chMap={'1':'Reading Eggs USA','1692941':'Reading Eggs AU','1692461':'Reading Eggs UK'};
+  // Channel map — unknown IDs will be resolved by the order data's _ch field
+  var chMap={'1':'Reading Eggs AU','2':'Reading Eggs UK','3':'Reading Eggs USA'};
 
   // Parse carts
   var validCarts=rawCarts.map(function(r){
