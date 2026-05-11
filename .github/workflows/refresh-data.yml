@@ -167,7 +167,20 @@ jobs:
               with open(filename,'r',encoding='utf-8') as f:
                   return list(csv.DictReader(f))
 
+          # Build channel map dynamically from BC API
           CHANNEL_MAP = {1:'Reading Eggs AU', 2:'Reading Eggs UK', 3:'Reading Eggs USA'}
+          try:
+              ch_data = safe_get(f'{BASE_V3}/channels', {'limit': 250})
+              if ch_data and ch_data.get('data'):
+                  for ch in ch_data['data']:
+                      ch_id = ch.get('id')
+                      ch_name = ch.get('name','') or ch.get('type','')
+                      ch_platform = ch.get('platform','')
+                      if ch_id and ch_name:
+                          CHANNEL_MAP[ch_id] = ch_name
+                  print(f'  Channels loaded: {CHANNEL_MAP}')
+          except Exception as e:
+              print(f'  Channel lookup failed, using defaults: {e}')
 
           # ── READ EXISTING DATA ────────────────────────────────────────────────
           existing_orders = read_csv('orders.csv')
