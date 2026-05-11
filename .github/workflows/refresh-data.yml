@@ -260,7 +260,7 @@ jobs:
               print(f'  ✅ Line items done')
 
               def _derive_channel(country, channel_id):
-              """For unknown channel IDs, derive region from billing country."""
+              # For unknown channel IDs, derive region from billing country
               c = (country or '').lower().strip()
               # US region
               if c in ('united states','usa','us','canada'):
