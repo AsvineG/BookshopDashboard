@@ -369,22 +369,32 @@ jobs:
 
           # ── 4. ABANDONED CARTS ────────────────────────────────────────────────
           print('\n🛒 Fetching abandoned carts...')
-          carts = bc_get_all_v2('/customers/abandoned_carts')
-          clean_carts = []
-          for c in carts:
-              line_items = c.get('line_items') or {}
-              item_count = len(line_items.get('physical_items',[])) + len(line_items.get('digital_items',[]))
-              clean_carts.append({
-                  'cart_id':        c.get('id',''),
-                  'date_created':   fmt_date(c.get('date_created','')),
-                  'date_modified':  fmt_date(c.get('date_modified','')),
-                  'customer_email': sha256(c.get('customer_email','')),
-                  'cart_amount':    c.get('cart_amount','0'),
-                  'channel_id':     c.get('channel_id',1),
-                  'line_items':     item_count,
-              })
-          validate_no_pii(clean_carts, 'carts.csv')
-          write_csv('carts.csv', clean_carts)
+          try:
+              carts = bc_get_all_v2('/customers/abandoned_carts')
+              clean_carts = []
+              for c in carts:
+                  if not isinstance(c, dict): continue
+                  line_items = c.get('line_items') or {}
+                  if isinstance(line_items, dict):
+                      item_count = len(line_items.get('physical_items',[])) + len(line_items.get('digital_items',[]))
+                  else:
+                      item_count = 0
+                  clean_carts.append({
+                      'cart_id':        c.get('id',''),
+                      'date_created':   fmt_date(c.get('date_created','')),
+                      'date_modified':  fmt_date(c.get('date_modified','')),
+                      'customer_email': sha256(c.get('customer_email','')),
+                      'cart_amount':    c.get('cart_amount','0'),
+                      'channel_id':     c.get('channel_id',1),
+                      'line_items':     item_count,
+                  })
+              if clean_carts:
+                  validate_no_pii(clean_carts, 'carts.csv')
+                  write_csv('carts.csv', clean_carts)
+              else:
+                  print('  ⚠️  No abandoned carts found')
+          except Exception as e:
+              print(f'  ⚠️  Abandoned carts skipped: {e}')
 
           print('\n✅ All done.')
           PYEOF
