@@ -259,7 +259,17 @@ jobs:
 
               print(f'  ✅ Line items done')
 
-              def build_order_row(o):
+              def _derive_channel(country, channel_id):
+              """For unknown channel IDs, derive region from billing country."""
+              c = (country or '').lower()
+              if 'australia' in c: return 'Reading Eggs AU'
+              if 'united kingdom' in c or c == 'uk': return 'Reading Eggs UK'
+              if 'united states' in c or c in ('usa','us'): return 'Reading Eggs USA'
+              # Log unknown channel for future mapping
+              print(f'  Unknown channel {channel_id} in {country} — defaulting to AU')
+              return f'Reading Eggs AU'
+
+          def build_order_row(o):
                   oid = o['id']
                   items   = order_items.get(oid, [])
                   billing = o.get('billing_address') or {}
@@ -283,7 +293,7 @@ jobs:
                       'Order ID':               str(oid),
                       'Order Date':             fmt_date(o.get('date_created','')),
                       'Order Status':           o.get('status',''),
-                      'Channel Name':           CHANNEL_MAP.get(o.get('channel_id',1), f"Channel {o.get('channel_id',1)}"),
+                      'Channel Name':           CHANNEL_MAP.get(o.get('channel_id',1), _derive_channel(billing.get('country',''), o.get('channel_id',1))),
                       'Order Total (inc tax)':  o.get('total_inc_tax','0'),
                       'Order Total (ex tax)':   o.get('total_ex_tax','0'),
                       'Exchange Rate':          o.get('currency_exchange_rate','1'),
