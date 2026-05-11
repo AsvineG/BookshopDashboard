@@ -261,13 +261,27 @@ jobs:
 
               def _derive_channel(country, channel_id):
               """For unknown channel IDs, derive region from billing country."""
-              c = (country or '').lower()
-              if 'australia' in c: return 'Reading Eggs AU'
-              if 'united kingdom' in c or c == 'uk': return 'Reading Eggs UK'
-              if 'united states' in c or c in ('usa','us'): return 'Reading Eggs USA'
-              # Log unknown channel for future mapping
-              print(f'  Unknown channel {channel_id} in {country} — defaulting to AU')
-              return f'Reading Eggs AU'
+              c = (country or '').lower().strip()
+              # US region
+              if c in ('united states','usa','us','canada'):
+                  return 'Reading Eggs USA'
+              # UK/EMEA region (buy from UK store)
+              if c in ('united kingdom','uk','ireland','england','scotland','wales'):
+                  return 'Reading Eggs UK'
+              # European countries -> UK store
+              eu = ['germany','france','spain','italy','netherlands','sweden','norway',
+                    'denmark','finland','switzerland','austria','belgium','portugal',
+                    'poland','czech republic','hungary','romania','greece']
+              if c in eu:
+                  return 'Reading Eggs UK'
+              # AU/APAC region (buy from AU store)
+              apac = ['australia','new zealand','singapore','hong kong','malaysia',
+                      'south africa','india','philippines','indonesia','thailand']
+              if c in apac:
+                  return 'Reading Eggs AU'
+              # Default fallback
+              print(f'  Unknown channel {channel_id} in country "{country}" — defaulting to AU')
+              return 'Reading Eggs AU'
 
           def build_order_row(o):
                   oid = o['id']
