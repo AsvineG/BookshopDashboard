@@ -196,6 +196,9 @@ jobs:
               items   = order_items.get(oid, [])
               billing = o.get('billing_address') or {}
               ship_addrs = o.get('shipping_addresses') or []
+              # BC sometimes returns a dict {0:{...}} instead of a list
+              if isinstance(ship_addrs, dict):
+                  ship_addrs = list(ship_addrs.values())
               ship_method = ship_addrs[0].get('shipping_method','') if ship_addrs else ''
 
               clean_orders.append({
