@@ -37,7 +37,7 @@ jobs:
           FULL_REFRESH: ${{ inputs.full_refresh }}
         run: |
           python3 << 'PYEOF'
-          import requests, csv, hashlib, os, sys, time, re, io
+          import requests, csv, hashlib, os, sys, time, re
           from datetime import datetime, timedelta, timezone
           from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -55,7 +55,6 @@ jobs:
               'Accept': 'application/json',
           }
 
-          # ── Helpers ──────────────────────────────────────────────────────────
           def sha256(v):
               if not v: return ''
               return hashlib.sha256(str(v).strip().lower().encode()).hexdigest()[:16]
@@ -86,9 +85,9 @@ jobs:
                       time.sleep(2**attempt)
               return None
 
-          def bc_get_all_v2(endpoint, params=None, min_date_created=None):
-              """Paginate V2. If min_date_created set, stop fetching pages once
-              all orders on a page are older than that date (BC returns newest first)."""
+          def bc_get_all_v2(endpoint, params=None, stop_at_id=None):
+              """Paginate V2. BC returns newest first by default.
+              If stop_at_id set, stop once we see an order ID <= that value."""
               results = []
               page = 1
               while True:
@@ -98,23 +97,19 @@ jobs:
                   batch = data if isinstance(data, list) else []
                   if not batch: break
 
-                  if min_date_created:
+                  if stop_at_id:
                       filtered = []
-                      page_exhausted = False
+                      done = False
                       for item in batch:
-                          item_dt_str = item.get('date_created','') or item.get('date_modified','')
-                          if item_dt_str:
-                              try:
-                                  item_dt = datetime.fromisoformat(item_dt_str.replace('Z','+00:00'))
-                                  if item_dt < min_date_created:
-                                      page_exhausted = True
-                                      continue  # skip this item, older than cutoff
-                              except: pass
+                          item_id = int(item.get('id', 0))
+                          if item_id <= stop_at_id:
+                              done = True
+                              break  # all remaining orders are older, stop
                           filtered.append(item)
                       results.extend(filtered)
-                      print(f'  Page {page}: {len(batch)} fetched, {len(filtered)} within range (total new: {len(results)})')
-                      if page_exhausted:
-                          print(f'  Reached orders older than cutoff — stopping pagination.')
+                      print(f'  Page {page}: {len(batch)} fetched, {len(filtered)} new (total: {len(results)})')
+                      if done:
+                          print(f'  Reached existing orders — stopping.')
                           break
                   else:
                       results.extend(batch)
@@ -155,138 +150,166 @@ jobs:
               print(f'  ✅ {filename} written ({len(rows)} rows)')
 
           def read_csv(filename):
-              """Read existing CSV into list of dicts. Returns [] if file doesn't exist."""
               if not os.path.exists(filename): return []
               with open(filename,'r',encoding='utf-8') as f:
                   return list(csv.DictReader(f))
 
           CHANNEL_MAP = {1:'Reading Eggs AU', 2:'Reading Eggs UK', 3:'Reading Eggs USA'}
 
-          # ── INCREMENTAL LOGIC ─────────────────────────────────────────────────
-          # Read existing orders to find the most recently modified order date
-          # We fetch orders modified after (latest_date - 2 days) as a safety buffer
-          # to catch any orders whose status changed recently
+          # ── READ EXISTING DATA ────────────────────────────────────────────────
           existing_orders = read_csv('orders.csv')
-          existing_customers = read_csv('customers.csv')
-          existing_products = read_csv('products.csv')
+          print(f'\n📋 Existing orders.csv: {len(existing_orders)} rows')
 
-          min_date = None  # None = fetch everything
+          # Find highest existing Order ID — fetch everything above it from BC
+          max_existing_id = 0
+          if existing_orders and not FULL_REFRESH:
+              for row in existing_orders:
+                  try:
+                      oid = int(row.get('Order ID', 0))
+                      if oid > max_existing_id:
+                          max_existing_id = oid
+                  except: pass
 
-          if not FULL_REFRESH and existing_orders:
-              # Parse all dates from existing CSV and find the most recent
-              dates = []
+          if FULL_REFRESH:
+              print('🔄 Full refresh — fetching all orders from BC')
+              stop_at_id = None
+          elif max_existing_id > 0:
+              print(f'⚡ Incremental — fetching orders with ID > {max_existing_id}')
+              stop_at_id = max_existing_id
+          else:
+              print('📋 No existing data — fetching all orders (first run)')
+              stop_at_id = None
+
+          # Also fetch last 7 days regardless to catch status updates on recent orders
+          # (e.g. an order placed last week that shipped today)
+          recent_cutoff_id = 0
+          if max_existing_id > 0 and not FULL_REFRESH:
+              # Find the oldest order ID from the last 7 days in existing data
+              cutoff_date = datetime.now() - timedelta(days=7)
               for row in existing_orders:
                   d = row.get('Order Date','')
-                  if d:
-                      try:
-                          # Our CSV stores DD/MM/YYYY
-                          dates.append(datetime.strptime(d, '%d/%m/%Y'))
-                      except: pass
-              if dates:
-                  latest = max(dates)
-                  # Go back 7 days from latest order to catch status changes on recent orders
-                  min_date = (latest - timedelta(days=7)).replace(
-                      hour=0, minute=0, second=0, microsecond=0,
-                      tzinfo=timezone.utc
-                  )
-                  print(f'\n📋 Incremental mode: fetching orders modified/created after {min_date.strftime("%d/%m/%Y")}')
-                  print(f'   (existing CSV has {len(existing_orders)} orders, latest: {latest.strftime("%d/%m/%Y")})')
-          else:
-              if FULL_REFRESH:
-                  print('\n🔄 Full refresh mode: fetching all orders')
-              else:
-                  print('\n📋 No existing data found: fetching all orders (first run)')
+                  try:
+                      row_date = datetime.strptime(d, '%d/%m/%Y')
+                      if row_date >= cutoff_date:
+                          oid = int(row.get('Order ID',0))
+                          if oid < recent_cutoff_id or recent_cutoff_id == 0:
+                              recent_cutoff_id = oid
+                  except: pass
+              # Use the lower of: max_existing_id cutoff or 7-day cutoff
+              # This fetches both truly new orders AND recent updates
+              if recent_cutoff_id > 0 and recent_cutoff_id < max_existing_id:
+                  stop_at_id = recent_cutoff_id - 1
+                  print(f'   Also re-fetching last 7 days (orders >= {recent_cutoff_id}) for status updates')
 
           # ── 1. ORDERS ─────────────────────────────────────────────────────────
-          print('\n📦 Fetching orders...')
-          params = {'sort': 'date_modified:desc', 'is_deleted': 'false'}
-          new_orders = bc_get_all_v2('/orders', params, min_date_created=min_date)
-          print(f'  Fetched {len(new_orders)} orders from BC')
+          print('\n📦 Fetching orders from BigCommerce...')
+          params = {'sort': 'id:desc', 'is_deleted': 'false'}
+          new_orders = bc_get_all_v2('/orders', params, stop_at_id=stop_at_id)
+          print(f'  Fetched {len(new_orders)} new/updated orders from BC')
 
-          # Fetch line items for new/updated orders only
-          print(f'  Fetching line items for {len(new_orders)} orders (parallel, 10 workers)...')
-          order_items = {}
-          completed = 0
-
-          def fetch_items(oid):
-              data = safe_get(f'{BASE_V2}/orders/{oid}/products')
-              return oid, (data if isinstance(data, list) else [])
-
-          with ThreadPoolExecutor(max_workers=10) as ex:
-              futures = {ex.submit(fetch_items, o['id']): o['id'] for o in new_orders}
-              for future in as_completed(futures):
-                  try:
-                      oid, items = future.result()
-                      order_items[oid] = items
-                  except:
-                      order_items[futures[future]] = []
-                  completed += 1
-                  if completed % 500 == 0:
-                      print(f'    {completed}/{len(new_orders)} done ({completed/len(new_orders)*100:.0f}%)')
-
-          print(f'  ✅ Line items done')
-
-          def build_order_row(o):
-              oid = o['id']
-              items = order_items.get(oid, [])
-              billing = o.get('billing_address') or {}
-              ship_addrs = o.get('shipping_addresses') or []
-              if isinstance(ship_addrs, dict): ship_addrs = list(ship_addrs.values())
-              ship_method = ship_addrs[0].get('shipping_method','') if ship_addrs else ''
-              parts = []
-              for it in items:
-                  name  = str(it.get('name','')).replace('|','/')
-                  sku   = it.get('sku','')
-                  qty   = it.get('quantity',1)
-                  price = it.get('price_inc_tax', it.get('base_price','0'))
-                  parts.append(f"{name} [{sku}] x{qty} @ {price}")
-              return {
-                  'Order ID':               str(oid),
-                  'Order Date':             fmt_date(o.get('date_created','')),
-                  'Order Status':           o.get('status',''),
-                  'Channel Name':           CHANNEL_MAP.get(o.get('channel_id',1), f"Channel {o.get('channel_id',1)}"),
-                  'Order Total (inc tax)':  o.get('total_inc_tax','0'),
-                  'Order Total (ex tax)':   o.get('total_ex_tax','0'),
-                  'Exchange Rate':          o.get('currency_exchange_rate','1'),
-                  'Tax Total':              o.get('total_tax','0'),
-                  'Shipping Cost (ex tax)': o.get('shipping_cost_ex_tax','0'),
-                  'Coupon Discount':        o.get('coupon_discount','0'),
-                  'Payment Method':         o.get('payment_method',''),
-                  'Product Details':        ' | '.join(parts),
-                  'Billing Country':        billing.get('country',''),
-                  'Billing State':          billing.get('state',''),
-                  'Billing Suburb':         billing.get('city',''),
-                  'Order Source':           o.get('order_source') or o.get('external_source',''),
-                  'Order Time':             fmt_time(o.get('date_created','')),
-                  'Ship Method':            ship_method,
-                  'Date Shipped':           fmt_date(o.get('date_shipped','')),
-                  'Total Shipped':          o.get('items_shipped',0),
-                  'Customer ID':            sha256(billing.get('email','')),
-              }
-
-          # Build new rows
-          new_rows = [build_order_row(o) for o in new_orders]
-
-          # ── MERGE: new rows override existing by Order ID ─────────────────────
-          if existing_orders and not FULL_REFRESH:
-              new_ids = {str(r['Order ID']) for r in new_rows}
-              # Keep existing rows that weren't in the new fetch
-              kept = [r for r in existing_orders if str(r.get('Order ID','')) not in new_ids]
-              merged = new_rows + kept
-              # Sort by Order ID descending (newest first)
-              try: merged.sort(key=lambda r: int(r.get('Order ID',0)), reverse=True)
-              except: pass
-              print(f'  Merged: {len(new_rows)} new/updated + {len(kept)} existing = {len(merged)} total')
-              clean_orders = merged
+          if not new_orders and not FULL_REFRESH:
+              print('  No new orders — data already up to date.')
           else:
-              try: new_rows.sort(key=lambda r: int(r.get('Order ID',0)), reverse=True)
-              except: pass
-              clean_orders = new_rows
+              # Fetch line items for new orders only
+              print(f'  Fetching line items ({len(new_orders)} orders, 10 parallel workers)...')
+              order_items = {}
+              completed = 0
 
-          validate_no_pii(clean_orders, 'orders.csv')
-          write_csv('orders.csv', clean_orders)
+              def fetch_items(oid):
+                  data = safe_get(f'{BASE_V2}/orders/{oid}/products')
+                  return oid, (data if isinstance(data, list) else [])
 
-          # ── 2. PRODUCTS (always refresh — small dataset, fast) ────────────────
+              with ThreadPoolExecutor(max_workers=10) as ex:
+                  futures = {ex.submit(fetch_items, o['id']): o['id'] for o in new_orders}
+                  for future in as_completed(futures):
+                      try:
+                          oid, items = future.result()
+                          order_items[oid] = items
+                      except:
+                          order_items[futures[future]] = []
+                      completed += 1
+                      if completed % 500 == 0 or completed == len(new_orders):
+                          print(f'    {completed}/{len(new_orders)} done ({completed/len(new_orders)*100:.0f}%)')
+
+              print(f'  ✅ Line items done')
+
+              def build_order_row(o):
+                  oid = o['id']
+                  items   = order_items.get(oid, [])
+                  billing = o.get('billing_address') or {}
+                  ship_addrs = o.get('shipping_addresses') or []
+                  if isinstance(ship_addrs, dict): ship_addrs = list(ship_addrs.values())
+                  # Each shipping address entry might be a string or dict
+                  ship_method = ''
+                  if ship_addrs:
+                      first = ship_addrs[0]
+                      if isinstance(first, dict):
+                          ship_method = first.get('shipping_method','')
+                  parts = []
+                  for it in items:
+                      if not isinstance(it, dict): continue
+                      name  = str(it.get('name','')).replace('|','/')
+                      sku   = it.get('sku','')
+                      qty   = it.get('quantity',1)
+                      price = it.get('price_inc_tax', it.get('base_price','0'))
+                      parts.append(f"{name} [{sku}] x{qty} @ {price}")
+                  return {
+                      'Order ID':               str(oid),
+                      'Order Date':             fmt_date(o.get('date_created','')),
+                      'Order Status':           o.get('status',''),
+                      'Channel Name':           CHANNEL_MAP.get(o.get('channel_id',1), f"Channel {o.get('channel_id',1)}"),
+                      'Order Total (inc tax)':  o.get('total_inc_tax','0'),
+                      'Order Total (ex tax)':   o.get('total_ex_tax','0'),
+                      'Exchange Rate':          o.get('currency_exchange_rate','1'),
+                      'Tax Total':              o.get('total_tax','0'),
+                      'Shipping Cost (ex tax)': o.get('shipping_cost_ex_tax','0'),
+                      'Coupon Discount':        o.get('coupon_discount','0'),
+                      'Payment Method':         o.get('payment_method',''),
+                      'Product Details':        ' | '.join(parts),
+                      'Billing Country':        billing.get('country',''),
+                      'Billing State':          billing.get('state',''),
+                      'Billing Suburb':         billing.get('city',''),
+                      'Order Source':           o.get('order_source') or o.get('external_source',''),
+                      'Order Time':             fmt_time(o.get('date_created','')),
+                      'Ship Method':            ship_method,
+                      'Date Shipped':           fmt_date(o.get('date_shipped','')),
+                      'Total Shipped':          o.get('items_shipped',0),
+                      'Customer ID':            sha256(billing.get('email','')),
+                  }
+
+              new_rows = [build_order_row(o) for o in new_orders]
+
+              # ── MERGE ───────────────────────────────────────────────────────
+              if existing_orders and not FULL_REFRESH:
+                  new_ids = {str(r['Order ID']) for r in new_rows}
+                  kept = [r for r in existing_orders if str(r.get('Order ID','')) not in new_ids]
+                  clean_orders = new_rows + kept
+                  try: clean_orders.sort(key=lambda r: int(r.get('Order ID',0)), reverse=True)
+                  except: pass
+                  print(f'  Merged: {len(new_rows)} new/updated + {len(kept)} kept = {len(clean_orders)} total')
+              else:
+                  try: new_rows.sort(key=lambda r: int(r.get('Order ID',0)), reverse=True)
+                  except: pass
+                  clean_orders = new_rows
+
+              validate_no_pii(clean_orders, 'orders.csv')
+              write_csv('orders.csv', clean_orders)
+
+              # ── SOURCES (rebuild from merged orders) ──────────────────────────
+              print('\n📊 Rebuilding sources.csv...')
+              clean_sources = []
+              for row in clean_orders:
+                  clean_sources.append({
+                      'order_id':    row['Order ID'],
+                      'order_date':  row['Order Date'],
+                      'channel_id':  row['Channel Name'],
+                      'attribution': row.get('Order Source','') or 'direct',
+                      'total':       row['Order Total (inc tax)'],
+                  })
+              validate_no_pii(clean_sources, 'sources.csv')
+              write_csv('sources.csv', clean_sources)
+
+          # ── 2. PRODUCTS ───────────────────────────────────────────────────────
           print('\n📚 Fetching products...')
           products = bc_get_all_v3('/catalog/products', {'include': 'variants'})
           clean_products = []
@@ -311,9 +334,8 @@ jobs:
           validate_no_pii(clean_products, 'products.csv')
           write_csv('products.csv', clean_products)
 
-          # ── 3. CUSTOMERS (incremental by date_modified) ───────────────────────
+          # ── 3. CUSTOMERS ──────────────────────────────────────────────────────
           print('\n👥 Fetching customers...')
-          # Always do a full customer fetch — dataset is small and fast via V3
           customers = bc_get_all_v3('/customers')
           clean_customers = []
           for c in customers:
@@ -332,7 +354,7 @@ jobs:
           validate_no_pii(clean_customers, 'customers.csv')
           write_csv('customers.csv', clean_customers)
 
-          # ── 4. ABANDONED CARTS (always full — small dataset) ──────────────────
+          # ── 4. ABANDONED CARTS ────────────────────────────────────────────────
           print('\n🛒 Fetching abandoned carts...')
           carts = bc_get_all_v2('/customers/abandoned_carts')
           clean_carts = []
@@ -351,20 +373,6 @@ jobs:
           validate_no_pii(clean_carts, 'carts.csv')
           write_csv('carts.csv', clean_carts)
 
-          # ── 5. SOURCES (derived from all orders in CSV) ───────────────────────
-          print('\n📊 Building sources.csv from all orders...')
-          clean_sources = []
-          for row in clean_orders:
-              clean_sources.append({
-                  'order_id':        row['Order ID'],
-                  'order_date':      row['Order Date'],
-                  'channel_id':      row['Channel Name'],
-                  'attribution':     row['Order Source'] or 'direct',
-                  'total':           row['Order Total (inc tax)'],
-              })
-          validate_no_pii(clean_sources, 'sources.csv')
-          write_csv('sources.csv', clean_sources)
-
           print('\n✅ All done.')
           PYEOF
 
@@ -375,7 +383,7 @@ jobs:
           git add orders.csv products.csv customers.csv carts.csv sources.csv
 
           if git diff --staged --quiet; then
-            echo "No changes — data already up to date."
+            echo "No changes — already up to date."
           else
             TIMESTAMP=$(TZ='Australia/Sydney' date '+%Y-%m-%d %H:%M AEST')
             git commit -m "Auto-refresh data — ${TIMESTAMP}"
