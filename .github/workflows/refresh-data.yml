@@ -142,11 +142,24 @@ jobs:
                           print(f'ERROR: PII in {filename} row {i} field {k}'); sys.exit(1)
               print(f'  ✅ {filename}: no PII ({len(rows)} rows)')
 
-          def write_csv(filename, rows):
+          def write_csv(filename, rows, reference_rows=None):
               if not rows: print(f'  ⚠️  {filename}: no rows'); return
+              # Use union of all keys from both new and existing rows
+              # so we never lose columns that exist in the manual upload
+              all_keys = list(rows[0].keys())
+              if reference_rows:
+                  existing_keys = list(reference_rows[0].keys()) if reference_rows else []
+                  # Add any extra keys from existing that aren't in new rows
+                  for k in existing_keys:
+                      if k not in all_keys:
+                          all_keys.append(k)
               with open(filename,'w',newline='',encoding='utf-8') as f:
-                  w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
-                  w.writeheader(); w.writerows(rows)
+                  w = csv.DictWriter(f, fieldnames=all_keys, extrasaction='ignore')
+                  w.writeheader()
+                  # Fill missing fields with empty string
+                  for row in rows:
+                      filled = {k: row.get(k,'') for k in all_keys}
+                      w.writerow(filled)
               print(f'  ✅ {filename} written ({len(rows)} rows)')
 
           def read_csv(filename):
@@ -293,7 +306,7 @@ jobs:
                   clean_orders = new_rows
 
               validate_no_pii(clean_orders, 'orders.csv')
-              write_csv('orders.csv', clean_orders)
+              write_csv('orders.csv', clean_orders, reference_rows=existing_orders if existing_orders else None)
 
               # ── SOURCES (rebuild from merged orders) ──────────────────────────
               print('\n📊 Rebuilding sources.csv...')
