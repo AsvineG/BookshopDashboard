@@ -34,6 +34,7 @@ jobs:
           python3 << 'PYEOF'
           import requests, csv, hashlib, json, os, sys, time, re
           from datetime import datetime
+          from concurrent.futures import ThreadPoolExecutor, as_completed
 
           STORE_HASH   = os.environ['BC_STORE_HASH']
           CLIENT_ID    = os.environ['BC_CLIENT_ID']
@@ -54,7 +55,6 @@ jobs:
               return hashlib.sha256(str(value).strip().lower().encode()).hexdigest()[:16]
 
           def safe_get(url, params=None, retries=3):
-              """GET with retry and safe JSON parsing."""
               for attempt in range(retries):
                   try:
                       r = requests.get(url, headers=HEADERS, params=params, timeout=30)
@@ -64,19 +64,20 @@ jobs:
                           time.sleep(wait + 1)
                           continue
                       if r.status_code == 204 or not r.text.strip():
-                          return None  # empty response is valid (no items)
+                          return None
                       r.raise_for_status()
                       return r.json()
                   except requests.exceptions.JSONDecodeError:
-                      return None  # empty body = no data, not an error
+                      return None
+                  except requests.exceptions.HTTPError as e:
+                      if attempt == retries - 1: raise
+                      time.sleep(2 ** attempt)
                   except Exception as e:
-                      if attempt == retries - 1:
-                          raise
+                      if attempt == retries - 1: raise
                       time.sleep(2 ** attempt)
               return None
 
           def bc_get_all_v2(endpoint, params=None):
-              """Paginate V2 API (returns list directly)."""
               results = []
               page = 1
               while True:
@@ -97,7 +98,6 @@ jobs:
               return results
 
           def bc_get_all_v3(endpoint, params=None):
-              """Paginate V3 API (returns {data:[], meta:{pagination:{}}})."""
               results = []
               page = 1
               while True:
@@ -116,67 +116,69 @@ jobs:
                   time.sleep(0.1)
               return results
 
-          # ── PII validation ────────────────────────────────────────────────────
           EMAIL_RE = re.compile(r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}')
 
           def validate_no_pii(rows, filename):
               for i, row in enumerate(rows):
                   for k, v in row.items():
                       if v and EMAIL_RE.search(str(v)):
-                          print(f'ERROR: PII detected in {filename} row {i} field {k}')
+                          print(f'ERROR: PII in {filename} row {i} field {k}')
                           sys.exit(1)
               print(f'  ✅ {filename}: no PII ({len(rows)} rows)')
 
           def write_csv(filename, rows):
               if not rows:
-                  print(f'  ⚠️  {filename}: no rows to write')
+                  print(f'  ⚠️  {filename}: no rows')
                   return
               with open(filename, 'w', newline='', encoding='utf-8') as f:
                   w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
                   w.writeheader()
                   w.writerows(rows)
-              print(f'  ✅ {filename} written ({len(rows)} rows)')
+              print(f'  ✅ {filename} ({len(rows)} rows)')
 
           def fmt_date(s):
               if not s: return ''
-              try:
-                  return datetime.fromisoformat(s.replace('Z','+00:00')).strftime('%d/%m/%Y')
+              try: return datetime.fromisoformat(s.replace('Z','+00:00')).strftime('%d/%m/%Y')
               except: return s
 
           def fmt_time(s):
               if not s: return ''
-              try:
-                  return datetime.fromisoformat(s.replace('Z','+00:00')).strftime('%H:%M:%S')
+              try: return datetime.fromisoformat(s.replace('Z','+00:00')).strftime('%H:%M:%S')
               except: return ''
 
           CHANNEL_MAP = {1:'Reading Eggs AU', 2:'Reading Eggs UK', 3:'Reading Eggs USA'}
 
           # ─────────────────────────────────────────────────────────────────────
-          # 1. ORDERS  (fetch order list + line items via order products endpoint)
+          # 1. ORDERS
           # ─────────────────────────────────────────────────────────────────────
           print('\n📦 Fetching orders...')
           orders = bc_get_all_v2('/orders', {'sort':'date_created:desc','is_deleted':'false'})
-          print(f'  Total orders fetched: {len(orders)}')
+          print(f'  Total orders: {len(orders)}')
 
-          # Fetch line items using /orders/{id}/products
-          # Do this in batches to avoid timeout — embed product details as a string
-          print('  Fetching line items (this may take several minutes)...')
+          # ── Parallel line items fetch (10 workers) ────────────────────────────
+          print(f'  Fetching line items in parallel (10 workers)...')
           order_items = {}
-          errors = 0
-          for i, order in enumerate(orders):
-              oid = order['id']
-              data = safe_get(f'{BASE_V2}/orders/{oid}/products')
-              if data and isinstance(data, list):
-                  order_items[oid] = data
-              elif data:
-                  order_items[oid] = []
-              else:
-                  order_items[oid] = []
-              if (i+1) % 500 == 0:
-                  print(f'    Line items: {i+1}/{len(orders)} done')
-              time.sleep(0.04)  # ~25 req/s, well within BC limits
+          completed = 0
+          total = len(orders)
 
-          print(f'  Line items fetched for {len(order_items)} orders')
+          def fetch_line_items(order_id):
+              data = safe_get(f'{BASE_V2}/orders/{order_id}/products')
+              return order_id, (data if isinstance(data, list) else [])
+
+          with ThreadPoolExecutor(max_workers=10) as executor:
+              futures = {executor.submit(fetch_line_items, o['id']): o['id'] for o in orders}
+              for future in as_completed(futures):
+                  try:
+                      oid, items = future.result()
+                      order_items[oid] = items
+                  except Exception as e:
+                      oid = futures[future]
+                      order_items[oid] = []
+                  completed += 1
+                  if completed % 1000 == 0:
+                      print(f'    {completed}/{total} orders done ({completed/total*100:.0f}%)')
+
+          print(f'  ✅ Line items done for all {len(order_items)} orders')
 
           def build_product_str(items):
               parts = []
@@ -191,12 +193,10 @@ jobs:
           clean_orders = []
           for o in orders:
               oid = o['id']
-              items = order_items.get(oid, [])
+              items   = order_items.get(oid, [])
               billing = o.get('billing_address') or {}
               ship_addrs = o.get('shipping_addresses') or []
-              ship_method = ''
-              if ship_addrs and isinstance(ship_addrs, list):
-                  ship_method = ship_addrs[0].get('shipping_method','') if ship_addrs else ''
+              ship_method = ship_addrs[0].get('shipping_method','') if ship_addrs else ''
 
               clean_orders.append({
                   'Order ID':               oid,
@@ -230,7 +230,6 @@ jobs:
           # ─────────────────────────────────────────────────────────────────────
           print('\n📚 Fetching products...')
           products = bc_get_all_v3('/catalog/products', {'include':'variants'})
-          print(f'  Total products: {len(products)}')
 
           clean_products = []
           for p in products:
@@ -260,7 +259,6 @@ jobs:
           # ─────────────────────────────────────────────────────────────────────
           print('\n👥 Fetching customers...')
           customers = bc_get_all_v3('/customers')
-          print(f'  Total customers: {len(customers)}')
 
           clean_customers = []
           for c in customers:
@@ -268,13 +266,13 @@ jobs:
               credit_amt = credits[0].get('amount', 0) if credits else 0
               channel_ids = c.get('channel_ids') or [1]
               clean_customers.append({
-                  'Customer ID':      sha256(c.get('email','')),
-                  'Date Created':     fmt_date(c.get('date_created','')),
-                  'Date Modified':    fmt_date(c.get('date_modified','')),
-                  'Store Credit':     credit_amt,
-                  'Total Orders':     c.get('orders_count', 0),
-                  'Channel ID':       channel_ids[0] if channel_ids else 1,
-                  'Accepts Marketing':c.get('accepts_product_review_abandoned_cart_emails', False),
+                  'Customer ID':       sha256(c.get('email','')),
+                  'Date Created':      fmt_date(c.get('date_created','')),
+                  'Date Modified':     fmt_date(c.get('date_modified','')),
+                  'Store Credit':      credit_amt,
+                  'Total Orders':      c.get('orders_count', 0),
+                  'Channel ID':        channel_ids[0] if channel_ids else 1,
+                  'Accepts Marketing': c.get('accepts_product_review_abandoned_cart_emails', False),
               })
 
           validate_no_pii(clean_customers, 'customers.csv')
@@ -285,7 +283,6 @@ jobs:
           # ─────────────────────────────────────────────────────────────────────
           print('\n🛒 Fetching abandoned carts...')
           carts = bc_get_all_v2('/customers/abandoned_carts')
-          print(f'  Total abandoned carts: {len(carts)}')
 
           clean_carts = []
           for c in carts:
@@ -305,7 +302,7 @@ jobs:
           write_csv('carts.csv', clean_carts)
 
           # ─────────────────────────────────────────────────────────────────────
-          # 5. SOURCES (derived from order data)
+          # 5. SOURCES
           # ─────────────────────────────────────────────────────────────────────
           print('\n📊 Building sources.csv...')
           clean_sources = []
@@ -333,7 +330,7 @@ jobs:
           git add orders.csv products.csv customers.csv carts.csv sources.csv
 
           if git diff --staged --quiet; then
-            echo "No changes — data already up to date."
+            echo "No changes — already up to date."
           else
             TIMESTAMP=$(TZ='Australia/Sydney' date '+%Y-%m-%d %H:%M AEST')
             git commit -m "Auto-refresh data — ${TIMESTAMP}"
