@@ -3755,8 +3755,18 @@ function preProcess(cb){
     row._pay=cleanPay(row['Payment Method']);
     row._payRaw=row['Payment Method']||'';
     row._esa=isESA(row['Payment Method']);
-    row._ch=row['Channel Name']||'Unknown';
     row._co=row['Billing Country']||'Unknown';
+    // If channel name is unknown (e.g. "Channel 1692461"), derive from billing country
+    var rawCh = row['Channel Name']||'';
+    if(rawCh && /^Channel\s+\d+$/.test(rawCh.trim())){
+      // Unknown channel ID — map to region by country
+      var co2 = row._co.toLowerCase();
+      if(co2==='australia') rawCh='Reading Eggs AU';
+      else if(co2==='united kingdom'||co2==='uk') rawCh='Reading Eggs UK';
+      else if(co2==='united states'||co2==='usa'||co2==='us') rawCh='Reading Eggs USA';
+      else rawCh='Reading Eggs AU'; // default fallback
+    }
+    row._ch=rawCh||'Unknown';
     row._st=row['Billing State']||'';
     row._cy=row['Billing Suburb']||'';
     row._status=row['Order Status']||'Unknown';
@@ -5175,7 +5185,7 @@ function rDelivery(orders){
 
   // ── Regional awaiting breakdown ───────────────────────────────────────────
   var regions = [
-    { key:'au', label:'🇦🇺 AU',  ch:['Reading Eggs AU','Reading Eggs Australia'] },
+    { key:'au', label:'🇦🇺 AU',  ch:['Reading Eggs AU','Reading Eggs Australia','readingeggs au'] },
     { key:'uk', label:'🇬🇧 UK',  ch:['Reading Eggs UK','Reading Eggs United Kingdom'] },
     { key:'us', label:'🇺🇸 USA', ch:['Reading Eggs USA','Reading Eggs US','Reading Eggs United States'] },
   ];
