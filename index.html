@@ -10390,8 +10390,9 @@ function closeSettings(){
 // GITHUB DATA LOADING
 // ═══════════════════════════════════════════════════════
 var GITHUB_BASE = 'https://raw.githubusercontent.com/AsvineG/BookshopDashboard/main/';
+var CACHE_BUST = '?v=' + Math.floor(Date.now()/300000); // changes every 5 min
 var GITHUB_FILES = [
-  { url: GITHUB_BASE + 'orders.csv',        type: 'orders'    },
+  { url: GITHUB_BASE + 'orders.csv' + CACHE_BUST,        type: 'orders'    },
   { url: GITHUB_BASE + 'products.csv',      type: 'products'  },
   { url: GITHUB_BASE + 'carts.csv',         type: 'carts'     },
   { url: GITHUB_BASE + 'customers.csv',     type: 'customers' },

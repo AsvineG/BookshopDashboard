@@ -243,11 +243,12 @@ if new_orders or FULL_REFRESH:
         parts = []
         for it in items:
             if not isinstance(it, dict): continue
-            name = str(it.get('name', '')).replace('|', '/')
-            sku = it.get('sku', '')
-            qty = it.get('quantity', 1)
-            price = it.get('price_inc_tax', it.get('base_price', '0'))
-            parts.append(f"{name} [{sku}] x{qty} @ {price}")
+            name = str(it.get('name', '')).replace('|', '/').replace(',', ' ')
+            sku  = str(it.get('sku', '')).replace(',', ' ')
+            qty  = it.get('quantity', 1)
+            price = float(it.get('price_inc_tax', it.get('base_price', 0)) or 0)
+            total_price = round(price * int(qty), 2)
+            parts.append(f"Product Name: {name}, Product SKU: {sku}, Product Qty: {qty}, Product Total Price: {total_price}")
         ch_id = o.get('channel_id', 1)
         ch_name = CHANNEL_MAP.get(ch_id, derive_channel(billing.get('country', ''), ch_id))
         return {
@@ -272,6 +273,9 @@ if new_orders or FULL_REFRESH:
             'Date Shipped':           fmt_date(o.get('date_shipped', '')),
             'Total Shipped':          o.get('items_shipped', 0),
             'Customer ID':            sha256(billing.get('email', '')),
+            'Order Currency Code':    o.get('currency_code', 'AUD'),
+            'Subtotal (ex tax)':      o.get('subtotal_ex_tax', o.get('total_ex_tax', '0')),
+            'Total Quantity':         sum(int(it.get('quantity', 1)) for it in items if isinstance(it, dict)),
         }
 
     new_rows = [build_order_row(o) for o in new_orders]
