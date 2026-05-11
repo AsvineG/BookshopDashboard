@@ -10342,6 +10342,7 @@ function triggerBackup(){
 // ══════════════════════════════════════════════════════════
 
 function toggleSettings(){
+  setTimeout(loadGithubPATInput, 50);
   var panel=document.getElementById('settingsPanel');
   var btn=document.getElementById('settingsBtn');
   if(!panel) return;
@@ -11258,6 +11259,38 @@ function addRefreshLog(msg){
   el.scrollTop = el.scrollHeight;
 }
 
+
+function getGithubPAT(){
+  return localStorage.getItem('re_github_pat')||'';
+}
+function setGithubPAT(val){
+  if(val) localStorage.setItem('re_github_pat', val);
+  else localStorage.removeItem('re_github_pat');
+}
+function saveGithubPAT(){
+  var val = document.getElementById('ghPatInput').value.trim();
+  setGithubPAT(val);
+  var st = document.getElementById('ghPatStatus');
+  if(val){
+    st.textContent = '✅ Token saved (stored in browser only)';
+    st.style.color = 'var(--grn)';
+    document.getElementById('ghPatSaveBtn').style.background = 'var(--grn)';
+    document.getElementById('ghPatSaveBtn').style.borderColor = 'var(--grn)';
+  } else {
+    st.textContent = 'Token cleared.';
+    st.style.color = 'var(--muted)';
+  }
+}
+function loadGithubPATInput(){
+  var el = document.getElementById('ghPatInput');
+  if(!el) return;
+  var stored = getGithubPAT();
+  if(stored){
+    el.value = stored;
+    var st = document.getElementById('ghPatStatus');
+    if(st){ st.textContent = '✅ Token loaded from browser storage'; st.style.color = 'var(--grn)'; }
+  }
+}
 </script>
 
 <!-- FILTER PANEL -->
@@ -11452,6 +11485,18 @@ function addRefreshLog(msg){
       <!-- UPLOAD STATUS -->
       <div class="set-panel active" id="setContent-upload">
         <div class="set-section-sub">Data auto-loads from GitHub. Use Refresh to pull the latest files.</div>
+
+        <div style="margin-bottom:20px;padding:16px;background:var(--surface2);border-radius:10px">
+          <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px">🔑 GitHub Personal Access Token</div>
+          <div style="font-size:11px;color:var(--muted2);margin-bottom:10px">Required for ⚡ Refresh Data and ☁️ Save to GitHub. Stored in your browser only — never sent anywhere except GitHub.</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="password" id="ghPatInput" class="sinp" placeholder="github_pat_..." style="flex:1;font-family:monospace;font-size:12px"
+              oninput="document.getElementById('ghPatSaveBtn').style.background='var(--blu)'" />
+            <button id="ghPatSaveBtn" class="abtn" onclick="saveGithubPAT()" style="white-space:nowrap;font-size:13px;padding:7px 16px">Save Token</button>
+          </div>
+          <div id="ghPatStatus" style="font-size:11px;margin-top:6px;color:var(--muted)"></div>
+        </div>
+
         <button class="abtn" id="githubRefreshBtn" onclick="refreshGithubData()" style="margin-bottom:20px;background:#1e40af;border-color:#1e40af">↻ Refresh from GitHub</button>
         <div id="uploadStatusList" class="upload-status-grid"></div>
         <div style="margin-top:24px;display:flex;gap:10px;flex-wrap:wrap">
