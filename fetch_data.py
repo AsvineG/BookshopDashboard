@@ -356,7 +356,7 @@ if new_orders or FULL_REFRESH:
             'Channel Name':           ch_name,
             'Order Total (inc tax)':  _to_aud(o.get('total_inc_tax','0')),
             'Order Total (ex tax)':   _to_aud(o.get('total_ex_tax','0')),
-            'Exchange Rate':          str(_rate),
+            'Exchange Rate':          '1',  # Values already converted to AUD
             'Tax Total':              _to_aud(o.get('total_tax','0')),
             'Shipping Cost (ex tax)': _to_aud(o.get('shipping_cost_ex_tax','0')),
             'Coupon Discount':        _to_aud(o.get('coupon_discount','0')),
