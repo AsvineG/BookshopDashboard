@@ -3949,7 +3949,7 @@ function fOrders(){
     if((from||to)&&!d) return false;
     if(from&&d&&d<from)return false;
     if(to&&d&&d>to)return false;
-    if(chs.length&&!chs.includes(r._ch||'Unknown'))return false;
+    if(chs.length&&!chs.some(function(c){return (r._ch||'Unknown')===c;}))return false;
     if(sts.length&&!sts.includes(r._status||'Unknown'))return false;
     var py=r._pay||'Unknown';
     if(py!=='Unknown'&&pays.length&&!pays.includes(py))return false;
@@ -5202,9 +5202,13 @@ function rDelivery(orders){
 
   // ── Regional awaiting breakdown ───────────────────────────────────────────
   var regions = [
-    { key:'au', label:'🇦🇺 AU',  ch:['Reading Eggs AU','Reading Eggs Australia','readingeggs au'] },
-    { key:'uk', label:'🇬🇧 UK',  ch:['Reading Eggs UK','Reading Eggs United Kingdom'] },
-    { key:'us', label:'🇺🇸 USA', ch:['Reading Eggs USA','Reading Eggs US','Reading Eggs United States'] },
+    { key:'au', label:'🇦🇺 AU',  ch:['Reading Eggs AU','Reading Eggs Australia','Reading Eggs Bookshop AU',
+        'Google - Reading Eggs AU','Meta for Reading Eggs AU','Google for Reading Eggs AU'] },
+    { key:'uk', label:'🇬🇧 UK',  ch:['Reading Eggs UK','Reading Eggs United Kingdom','Reading Eggs Bookshop UK',
+        'Google - Reading Eggs UK','Google for Reading Eggs UK','Microsoft for Reading Eggs UK'] },
+    { key:'us', label:'🇺🇸 USA', ch:['Reading Eggs USA','Reading Eggs US','Reading Eggs United States',
+        'Reading Eggs Bookshop USA','Reading Eggs US','Google - Reading Eggs USA',
+        'Google for Reading Eggs USA','Microsoft for Reading Eggs USA'] },
   ];
   var regData = regions.map(function(rg){
     var regOrders = rawO.filter(function(r){
@@ -9301,7 +9305,7 @@ function rStockTable(region){
   // Compute period-filtered velocity per product from vel.byDate
   var chToRegStk = function(ch){
     ch=(ch||'').toLowerCase();
-    return ch.includes('au')?'au':ch.includes('uk')?'uk':ch.includes('us')?'us':null;
+    return ch.includes('au')&&!ch.includes('aus')?'au':ch.includes('uk')?'uk':(ch.includes('usa')||ch.includes('us'))&&!ch.includes('aus')?'us':null;
   };
   var bundleMapReg=(SETTINGS.bundleMap&&SETTINGS.bundleMap[region])||{};
   // Build period velocity by scanning orders once for this region+period
@@ -10394,6 +10398,20 @@ function closeSettings(){
 // ═══════════════════════════════════════════════════════
 var GITHUB_BASE = 'https://raw.githubusercontent.com/AsvineG/BookshopDashboard/main/';
 var CACHE_BUST = '?v=' + Math.floor(Date.now()/300000); // changes every 5 min
+
+// Clear stale CSV cache on load — ensures fresh data after format changes
+(function(){
+  try{
+    var CSV_VERSION = 'v3'; // bump this when CSV format changes
+    if(localStorage.getItem('re_csv_version') !== CSV_VERSION){
+      ['orders','products','carts','customers','source'].forEach(function(t){
+        localStorage.removeItem('re_csv_'+t);
+      });
+      localStorage.setItem('re_csv_version', CSV_VERSION);
+      console.log('CSV cache cleared — format version updated to '+CSV_VERSION);
+    }
+  }catch(e){}
+})();
 var GITHUB_FILES = [
   { url: GITHUB_BASE + 'orders.csv' + CACHE_BUST,        type: 'orders'    },
   { url: GITHUB_BASE + 'products.csv',      type: 'products'  },

@@ -36,6 +36,22 @@ COUNTRY_CHANNEL = {
     'india': 'Reading Eggs AU', 'philippines': 'Reading Eggs AU',
 }
 
+# AUD exchange rates — updated periodically
+# Source: approximate market rates for reporting purposes
+# Update these quarterly or use an FX API for real-time rates
+AUD_RATES = {
+    'AUD': 1.0,
+    'GBP': 2.02,    # 1 GBP = ~2.02 AUD
+    'USD': 1.56,    # 1 USD = ~1.56 AUD
+    'EUR': 1.73,    # 1 EUR = ~1.73 AUD
+    'NZD': 0.90,    # 1 NZD = ~0.90 AUD
+    'CAD': 1.12,    # 1 CAD = ~1.12 AUD
+    'SGD': 1.18,    # 1 SGD = ~1.18 AUD
+    'HKD': 0.20,    # 1 HKD = ~0.20 AUD
+    'ZAR': 0.085,   # 1 ZAR = ~0.085 AUD
+    'INR': 0.019,   # 1 INR = ~0.019 AUD
+}
+
 def derive_channel(country, channel_id):
     return COUNTRY_CHANNEL.get((country or '').lower().strip(), 'Reading Eggs AU')
 
@@ -168,22 +184,26 @@ def read_csv(filename):
     with open(filename, 'r', encoding='utf-8') as f:
         return list(csv.DictReader(f))
 
-# ── Debug: print sample order currencies ────────────────────────────────────
-# This will show us exactly what BC returns for exchange_rate
-def debug_currency(orders, n=3):
-    printed = 0
-    for o in orders:
-        ch = o.get('channel_id', 1)
-        curr = o.get('currency_code','AUD')
-        if curr != 'AUD' and printed < n:
-            rate = o.get('currency_exchange_rate','?')
-            total = o.get('total_inc_tax','?')
-            print(f'  CURRENCY DEBUG: channel={ch} currency={curr} '
-                  f'total={total} exchange_rate={rate}')
-            printed += 1
-
 # ── Channel map from BC API ───────────────────────────────────────────────────
-CHANNEL_MAP = {1: 'Reading Eggs AU', 2: 'Reading Eggs UK', 3: 'Reading Eggs USA'}
+CHANNEL_MAP = {
+    1: 'Reading Eggs AU',
+    2: 'Reading Eggs UK',
+    3: 'Reading Eggs USA',
+    1692460: 'Reading Eggs USA',   # US storefront variant
+    1692461: 'Reading Eggs UK',    # UK storefront variant
+    1692941: 'Reading Eggs USA',   # US storefront variant
+    1707575: 'Reading Eggs AU',    # Facebook AU → AU
+    1707576: 'Reading Eggs AU',    # Facebook Analytics AU → AU
+    1723482: 'Reading Eggs AU',    # Facebook Analytics AU → AU
+    1724452: 'Reading Eggs AU',    # Google AU
+    1747993: 'Reading Eggs USA',   # Google USA
+    1747994: 'Reading Eggs UK',    # Google UK
+    1823086: 'Reading Eggs AU',    # Meta AU
+    1835881: 'Reading Eggs AU',    # Google AU
+    1837891: 'Reading Eggs USA',   # Google USA
+    1837898: 'Reading Eggs UK',    # Google UK
+    1837908: 'Reading Eggs USA',   # Microsoft USA
+}
 try:
     ch_data = safe_get(f'{BASE_V3}/channels', {'limit': 250})
     if ch_data and ch_data.get('data'):
@@ -236,7 +256,6 @@ else:
 print('\n📦 Fetching orders from BigCommerce...')
 new_orders = bc_get_all_v2('/orders', {'sort': 'id:desc', 'is_deleted': 'false'}, stop_at_id=stop_at_id)
 print(f'  Fetched {len(new_orders)} orders')
-debug_currency(new_orders)
 
 if new_orders or FULL_REFRESH:
     # For incremental: check existing CSV for orders that already have Product Details
@@ -287,6 +306,10 @@ if new_orders or FULL_REFRESH:
     def build_order_row(o):
         oid = o['id']
         items = order_items.get(oid, [])
+        # Currency conversion
+        _curr = (o.get('currency_code') or 'AUD').upper()
+        _rate = AUD_RATES.get(_curr, 1.0)
+        def _to_aud(v): return str(round(float(v or 0) * _rate, 2))
         billing = o.get('billing_address') or {}
         ship_addrs = o.get('shipping_addresses') or []
         if isinstance(ship_addrs, dict):
@@ -299,7 +322,7 @@ if new_orders or FULL_REFRESH:
             product_details_str = items  # already formatted, reuse directly
         else:
             parts = []
-            rate = float(o.get('currency_exchange_rate', 1) or 1)
+            rate = AUD_RATES.get((o.get('currency_code') or 'AUD').upper(), 1.0)
             for it in items:
                 if not isinstance(it, dict): continue
                 name = str(it.get('name', '')).replace('|', '/').replace(',', ' ')
@@ -316,15 +339,12 @@ if new_orders or FULL_REFRESH:
             'Order Date':             fmt_date(o.get('date_created', '')),
             'Order Status':           o.get('status', ''),
             'Channel Name':           ch_name,
-            # Pre-convert all monetary values to AUD
-            # BC exchange_rate = AUD per 1 unit of order currency
-            # e.g. GBP order: rate=1.95, total=50 GBP → 50 * 1.95 = 97.50 AUD
-            'Order Total (inc tax)':  str(round(float(o.get('total_inc_tax','0') or 0) * float(o.get('currency_exchange_rate','1') or 1), 2)),
-            'Order Total (ex tax)':   str(round(float(o.get('total_ex_tax','0') or 0) * float(o.get('currency_exchange_rate','1') or 1), 2)),
-            'Exchange Rate':          '1',
-            'Tax Total':              str(round(float(o.get('total_tax','0') or 0) * float(o.get('currency_exchange_rate','1') or 1), 2)),
-            'Shipping Cost (ex tax)': str(round(float(o.get('shipping_cost_ex_tax','0') or 0) * float(o.get('currency_exchange_rate','1') or 1), 2)),
-            'Coupon Discount':        str(round(float(o.get('coupon_discount','0') or 0) * float(o.get('currency_exchange_rate','1') or 1), 2)),
+            'Order Total (inc tax)':  _to_aud(o.get('total_inc_tax','0')),
+            'Order Total (ex tax)':   _to_aud(o.get('total_ex_tax','0')),
+            'Exchange Rate':          str(_rate),
+            'Tax Total':              _to_aud(o.get('total_tax','0')),
+            'Shipping Cost (ex tax)': _to_aud(o.get('shipping_cost_ex_tax','0')),
+            'Coupon Discount':        _to_aud(o.get('coupon_discount','0')),
             'Payment Method':         o.get('payment_method', ''),
             'Product Details':        product_details_str,
             'Billing Country':        billing.get('country', ''),
@@ -337,7 +357,7 @@ if new_orders or FULL_REFRESH:
             'Total Shipped':          o.get('items_shipped', 0),
             'Customer ID':            sha256(billing.get('email', '')),
             'Order Currency Code':    o.get('currency_code', 'AUD'),
-            'Subtotal (ex tax)':      str(round(float(o.get('subtotal_ex_tax', o.get('total_ex_tax','0')) or 0) * float(o.get('currency_exchange_rate','1') or 1), 2)),
+            'Subtotal (ex tax)':      _to_aud(o.get('subtotal_ex_tax', o.get('total_ex_tax','0'))),
             'Total Quantity':         sum(int(it.get('quantity', 1)) for it in items if isinstance(it, dict)),
         }
 
