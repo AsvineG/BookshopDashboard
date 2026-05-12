@@ -36,8 +36,8 @@ COUNTRY_CHANNEL = {
     'india': 'Reading Eggs AU', 'philippines': 'Reading Eggs AU',
 }
 
-# AUD exchange rates — fetched live from BC /v2/currencies
-# Falls back to approximate rates if BC doesn't have a currency configured
+# AUD exchange rates — loaded from settings.json (configured in dashboard Settings → Currency Rates)
+# Falls back to hardcoded defaults if settings.json not found or currency not configured
 AUD_RATES = {
     'AUD': 1.0,
     'GBP': 2.02,
@@ -51,19 +51,21 @@ AUD_RATES = {
     'INR': 0.019,
 }
 try:
-    curr_data = safe_get(f'{BASE_V2}/currencies')
-    if curr_data and isinstance(curr_data, list):
-        for c in curr_data:
-            code = (c.get('currency_code') or '').upper()
-            # BC stores exchange_rate as: 1 AUD = X foreign currency
-            # So to get AUD from foreign: foreign_amount / exchange_rate
-            # e.g. if 1 AUD = 0.495 GBP, then 1 GBP = 1/0.495 = 2.02 AUD
-            raw_rate = float(c.get('exchange_rate') or 0)
-            if code and code != 'AUD' and raw_rate > 0:
-                AUD_RATES[code] = round(1.0 / raw_rate, 6)
-        print(f'  Exchange rates loaded from BC: {AUD_RATES}')
+    import json
+    if os.path.exists('settings.json'):
+        with open('settings.json','r',encoding='utf-8') as _sf:
+            _settings = json.load(_sf)
+        _rates = _settings.get('currencyRates', [])
+        for _r in _rates:
+            _code = (_r.get('code') or '').upper()
+            _rate = float(_r.get('rate') or 0)
+            if _code and _rate > 0:
+                AUD_RATES[_code] = _rate
+        print(f'  Exchange rates loaded from settings.json: {AUD_RATES}')
+    else:
+        print(f'  Using default exchange rates (no settings.json found)')
 except Exception as e:
-    print(f'  Using default exchange rates (BC currencies fetch failed: {e})')
+    print(f'  Using default exchange rates ({e})')
 
 def derive_channel(country, channel_id):
     return COUNTRY_CHANNEL.get((country or '').lower().strip(), 'Reading Eggs AU')

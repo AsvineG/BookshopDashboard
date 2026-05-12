@@ -3119,6 +3119,7 @@ table td:first-child, table th:first-child {
 
 <script>
 function sNavTo(tab, btn){
+  if(tab==='currency') setTimeout(renderCurrencyRates, 50);
   // Update nav items
   document.querySelectorAll('.set-nav-item').forEach(function(b){b.classList.remove('active');});
   if(btn) btn.classList.add('active');
@@ -11342,6 +11343,81 @@ function loadGithubPATInput(){
     if(st){ st.textContent = '✅ Token loaded from browser storage'; st.style.color = 'var(--grn)'; }
   }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// CURRENCY RATES SETTINGS
+// ═══════════════════════════════════════════════════════════════
+
+var DEFAULT_CURRENCY_RATES = [
+  {code:'GBP', name:'British Pound',    rate:2.02},
+  {code:'USD', name:'US Dollar',        rate:1.56},
+  {code:'EUR', name:'Euro',             rate:1.73},
+  {code:'NZD', name:'New Zealand Dollar', rate:0.90},
+  {code:'CAD', name:'Canadian Dollar',  rate:1.12},
+  {code:'SGD', name:'Singapore Dollar', rate:1.18},
+  {code:'HKD', name:'Hong Kong Dollar', rate:0.20},
+  {code:'ZAR', name:'South African Rand', rate:0.085},
+];
+
+function getCurrencyRates(){
+  return SETTINGS.currencyRates || DEFAULT_CURRENCY_RATES;
+}
+
+function renderCurrencyRates(){
+  var rates = getCurrencyRates();
+  var el = document.getElementById('currencyRatesTable');
+  if(!el) return;
+  el.innerHTML = rates.map(function(r, i){
+    return '<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">' +
+      '<div style="font-size:13px;font-weight:700;color:var(--text)">' + r.code + '</div>' +
+      '<button onclick="removeCurrencyRate('+i+')" style="background:none;border:none;color:var(--muted2);cursor:pointer;font-size:14px;padding:0" title="Remove">✕</button>' +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--muted);margin-bottom:8px">' + r.name + '</div>' +
+      '<div style="display:flex;align-items:center;gap:6px">' +
+      '<span style="font-size:11px;color:var(--muted)">1 ' + r.code + ' =</span>' +
+      '<input type="number" step="0.001" min="0.001" value="' + r.rate + '" ' +
+      'style="width:80px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-weight:700;background:var(--surface2);color:var(--text)" ' +
+      'onchange="updateCurrencyRate('+i+', this.value)" />' +
+      '<span style="font-size:11px;color:var(--muted)">AUD</span>' +
+      '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function updateCurrencyRate(idx, val){
+  var rates = getCurrencyRates();
+  rates[idx].rate = parseFloat(val) || rates[idx].rate;
+  SETTINGS.currencyRates = rates;
+  var st = document.getElementById('currencySaveStatus');
+  if(st){ st.style.display='block'; setTimeout(function(){st.style.display='none';},2000); }
+}
+
+function removeCurrencyRate(idx){
+  var rates = getCurrencyRates();
+  rates.splice(idx, 1);
+  SETTINGS.currencyRates = rates;
+  renderCurrencyRates();
+}
+
+function addCurrencyRate(){
+  var code = prompt('Currency code (e.g. JPY):');
+  if(!code) return;
+  code = code.trim().toUpperCase();
+  var name = prompt('Currency name (e.g. Japanese Yen):') || code;
+  var rate = parseFloat(prompt('Rate: 1 ' + code + ' = ? AUD:'));
+  if(!rate || isNaN(rate)) return;
+  var rates = getCurrencyRates();
+  // Replace if exists
+  var existing = rates.findIndex(function(r){return r.code===code;});
+  if(existing >= 0) rates[existing] = {code:code, name:name, rate:rate};
+  else rates.push({code:code, name:name, rate:rate});
+  SETTINGS.currencyRates = rates;
+  renderCurrencyRates();
+}
+
+// Hook into sNavTo to render rates when panel opens
+var _origSNavTo = typeof sNavTo === 'function' ? sNavTo : null;
 </script>
 
 <!-- FILTER PANEL -->
@@ -11517,6 +11593,9 @@ function loadGithubPATInput(){
       <button class="set-nav-item" id="snav-visitors" onclick="sNavTo('visitors',this)">
         <span class="set-nav-icon">📅</span>Visitors
       </button>
+      <button class="set-nav-item" id="snav-currency" onclick="sNavTo('currency',this)">
+        <span class="set-nav-icon">💱</span>Currency Rates
+      </button>
 
       <div class="set-nav-bottom">
         <button class="thbtn set-nav-dark" onclick="toggleTheme()">
@@ -11670,6 +11749,17 @@ function loadGithubPATInput(){
             </select>
           </div>
         </div>
+      </div>
+
+      <!-- CURRENCY RATES -->
+      <div class="set-panel" id="setContent-currency">
+        <div class="set-section-sub">Exchange rates used to convert UK (GBP), US (USD) and other currencies to AUD. Update these when rates change significantly.</div>
+        <div style="margin-bottom:16px;padding:12px 16px;background:var(--blu-bg);border:1px solid var(--blu-border);border-radius:8px;font-size:12px;color:var(--blu)">
+          ℹ️ These rates are used when importing order data. After updating, run a <strong>full refresh</strong> to recalculate all historical orders.
+        </div>
+        <div id="currencyRatesTable" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px"></div>
+        <button class="abtn" onclick="addCurrencyRate()" style="font-size:13px;padding:7px 16px;margin-bottom:16px">+ Add Currency</button>
+        <div id="currencySaveStatus" style="font-size:11px;color:var(--grn);display:none">✓ Saved</div>
       </div>
 
       <!-- VISITORS -->
