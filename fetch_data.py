@@ -36,21 +36,34 @@ COUNTRY_CHANNEL = {
     'india': 'Reading Eggs AU', 'philippines': 'Reading Eggs AU',
 }
 
-# AUD exchange rates — updated periodically
-# Source: approximate market rates for reporting purposes
-# Update these quarterly or use an FX API for real-time rates
+# AUD exchange rates — fetched live from BC /v2/currencies
+# Falls back to approximate rates if BC doesn't have a currency configured
 AUD_RATES = {
     'AUD': 1.0,
-    'GBP': 2.02,    # 1 GBP = ~2.02 AUD
-    'USD': 1.56,    # 1 USD = ~1.56 AUD
-    'EUR': 1.73,    # 1 EUR = ~1.73 AUD
-    'NZD': 0.90,    # 1 NZD = ~0.90 AUD
-    'CAD': 1.12,    # 1 CAD = ~1.12 AUD
-    'SGD': 1.18,    # 1 SGD = ~1.18 AUD
-    'HKD': 0.20,    # 1 HKD = ~0.20 AUD
-    'ZAR': 0.085,   # 1 ZAR = ~0.085 AUD
-    'INR': 0.019,   # 1 INR = ~0.019 AUD
+    'GBP': 2.02,
+    'USD': 1.56,
+    'EUR': 1.73,
+    'NZD': 0.90,
+    'CAD': 1.12,
+    'SGD': 1.18,
+    'HKD': 0.20,
+    'ZAR': 0.085,
+    'INR': 0.019,
 }
+try:
+    curr_data = safe_get(f'{BASE_V2}/currencies')
+    if curr_data and isinstance(curr_data, list):
+        for c in curr_data:
+            code = (c.get('currency_code') or '').upper()
+            # BC stores exchange_rate as: 1 AUD = X foreign currency
+            # So to get AUD from foreign: foreign_amount / exchange_rate
+            # e.g. if 1 AUD = 0.495 GBP, then 1 GBP = 1/0.495 = 2.02 AUD
+            raw_rate = float(c.get('exchange_rate') or 0)
+            if code and code != 'AUD' and raw_rate > 0:
+                AUD_RATES[code] = round(1.0 / raw_rate, 6)
+        print(f'  Exchange rates loaded from BC: {AUD_RATES}')
+except Exception as e:
+    print(f'  Using default exchange rates (BC currencies fetch failed: {e})')
 
 def derive_channel(country, channel_id):
     return COUNTRY_CHANNEL.get((country or '').lower().strip(), 'Reading Eggs AU')
