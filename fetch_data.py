@@ -43,15 +43,31 @@ def sha256(v):
     if not v: return ''
     return hashlib.sha256(str(v).strip().lower().encode()).hexdigest()[:16]
 
+def parse_bc_date(s):
+    if not s: return None
+    s = str(s).strip()
+    # Try ISO format first (V3 API): "2026-05-11T08:30:00+00:00"
+    try:
+        return datetime.fromisoformat(s.replace('Z', '+00:00'))
+    except:
+        pass
+    # Try RFC 2822 format (V2 API): "Mon, 11 May 2026 08:30:00 +0000"
+    try:
+        from email.utils import parsedate_to_datetime
+        return parsedate_to_datetime(s)
+    except:
+        pass
+    return None
+
 def fmt_date(s):
-    if not s: return ''
-    try: return datetime.fromisoformat(s.replace('Z','+00:00')).strftime('%d/%m/%Y')
-    except: return s
+    dt = parse_bc_date(s)
+    if dt: return dt.strftime('%d/%m/%Y')
+    return ''
 
 def fmt_time(s):
-    if not s: return ''
-    try: return datetime.fromisoformat(s.replace('Z','+00:00')).strftime('%H:%M:%S')
-    except: return ''
+    dt = parse_bc_date(s)
+    if dt: return dt.strftime('%H:%M:%S')
+    return ''
 
 def safe_get(url, params=None, retries=3):
     for attempt in range(retries):
@@ -246,7 +262,8 @@ if new_orders or FULL_REFRESH:
             name = str(it.get('name', '')).replace('|', '/').replace(',', ' ')
             sku  = str(it.get('sku', '')).replace(',', ' ')
             qty  = it.get('quantity', 1)
-            price = float(it.get('price_inc_tax', it.get('base_price', 0)) or 0)
+            rate = float(o.get('currency_exchange_rate', 1) or 1)
+            price = float(it.get('price_inc_tax', it.get('base_price', 0)) or 0) * rate
             total_price = round(price * int(qty), 2)
             parts.append(f"Product Name: {name}, Product SKU: {sku}, Product Qty: {qty}, Product Total Price: {total_price}")
         ch_id = o.get('channel_id', 1)
@@ -256,12 +273,15 @@ if new_orders or FULL_REFRESH:
             'Order Date':             fmt_date(o.get('date_created', '')),
             'Order Status':           o.get('status', ''),
             'Channel Name':           ch_name,
-            'Order Total (inc tax)':  o.get('total_inc_tax', '0'),
-            'Order Total (ex tax)':   o.get('total_ex_tax', '0'),
-            'Exchange Rate':          o.get('currency_exchange_rate', '1'),
-            'Tax Total':              o.get('total_tax', '0'),
-            'Shipping Cost (ex tax)': o.get('shipping_cost_ex_tax', '0'),
-            'Coupon Discount':        o.get('coupon_discount', '0'),
+            # Pre-convert all monetary values to AUD
+            # BC exchange_rate = AUD per 1 unit of order currency
+            # e.g. GBP order: rate=1.95, total=50 GBP → 50 * 1.95 = 97.50 AUD
+            'Order Total (inc tax)':  str(round(float(o.get('total_inc_tax','0') or 0) * float(o.get('currency_exchange_rate','1') or 1), 2)),
+            'Order Total (ex tax)':   str(round(float(o.get('total_ex_tax','0') or 0) * float(o.get('currency_exchange_rate','1') or 1), 2)),
+            'Exchange Rate':          '1',
+            'Tax Total':              str(round(float(o.get('total_tax','0') or 0) * float(o.get('currency_exchange_rate','1') or 1), 2)),
+            'Shipping Cost (ex tax)': str(round(float(o.get('shipping_cost_ex_tax','0') or 0) * float(o.get('currency_exchange_rate','1') or 1), 2)),
+            'Coupon Discount':        str(round(float(o.get('coupon_discount','0') or 0) * float(o.get('currency_exchange_rate','1') or 1), 2)),
             'Payment Method':         o.get('payment_method', ''),
             'Product Details':        ' | '.join(parts),
             'Billing Country':        billing.get('country', ''),
@@ -274,7 +294,7 @@ if new_orders or FULL_REFRESH:
             'Total Shipped':          o.get('items_shipped', 0),
             'Customer ID':            sha256(billing.get('email', '')),
             'Order Currency Code':    o.get('currency_code', 'AUD'),
-            'Subtotal (ex tax)':      o.get('subtotal_ex_tax', o.get('total_ex_tax', '0')),
+            'Subtotal (ex tax)':      str(round(float(o.get('subtotal_ex_tax', o.get('total_ex_tax','0')) or 0) * float(o.get('currency_exchange_rate','1') or 1), 2)),
             'Total Quantity':         sum(int(it.get('quantity', 1)) for it in items if isinstance(it, dict)),
         }
 
