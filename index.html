@@ -10403,7 +10403,7 @@ var CACHE_BUST = '?v=' + Math.floor(Date.now()/300000); // changes every 5 min
 // Clear stale CSV cache on load — ensures fresh data after format changes
 (function(){
   try{
-    var CSV_VERSION = 'v3'; // bump this when CSV format changes
+    var CSV_VERSION = 'v4'; // bump this when CSV format changes
     if(localStorage.getItem('re_csv_version') !== CSV_VERSION){
       ['orders','products','carts','customers','source'].forEach(function(t){
         localStorage.removeItem('re_csv_'+t);
