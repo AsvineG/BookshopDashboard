@@ -176,7 +176,8 @@ try:
         for ch in ch_data['data']:
             ch_id = ch.get('id')
             ch_name = ch.get('name', '') or ch.get('type', '')
-            if ch_id and ch_name:
+            # Don't override our known channels 1,2,3 — they're correctly mapped
+            if ch_id and ch_name and ch_id not in (1, 2, 3):
                 CHANNEL_MAP[ch_id] = ch_name
         print(f'  Channels: {CHANNEL_MAP}')
 except Exception as e:
@@ -223,26 +224,48 @@ new_orders = bc_get_all_v2('/orders', {'sort': 'id:desc', 'is_deleted': 'false'}
 print(f'  Fetched {len(new_orders)} orders')
 
 if new_orders or FULL_REFRESH:
-    # Fetch line items in parallel
-    print(f'  Fetching line items ({len(new_orders)} orders, 10 workers)...')
+    # For incremental: check existing CSV for orders that already have Product Details
+    # Only fetch line items for orders missing them (saves huge time on incremental)
+    existing_details = {}
+    if existing_orders and not FULL_REFRESH:
+        for row in existing_orders:
+            oid = str(row.get('Order ID',''))
+            pd = row.get('Product Details','')
+            if oid and pd and 'Product Name:' in pd:
+                existing_details[oid] = pd
+
+    orders_needing_items = [o for o in new_orders
+                            if str(o['id']) not in existing_details]
+    orders_with_details  = [o for o in new_orders
+                            if str(o['id']) in existing_details]
+
+    print(f'  Fetching line items for {len(orders_needing_items)} orders '
+          f'({len(orders_with_details)} already have details)...')
+
     order_items = {}
+    # Pre-populate from existing CSV
+    for o in orders_with_details:
+        order_items[o['id']] = existing_details[str(o['id'])]  # store as string, handled below
+
     completed = 0
 
     def fetch_items(oid):
         data = safe_get(f'{BASE_V2}/orders/{oid}/products')
         return oid, (data if isinstance(data, list) else [])
 
-    with ThreadPoolExecutor(max_workers=10) as ex:
-        futures = {ex.submit(fetch_items, o['id']): o['id'] for o in new_orders}
-        for future in as_completed(futures):
-            try:
-                oid, items = future.result()
-                order_items[oid] = items
-            except:
-                order_items[futures[future]] = []
-            completed += 1
-            if completed % 500 == 0 or completed == len(new_orders):
-                print(f'    {completed}/{len(new_orders)} done ({completed/len(new_orders)*100:.0f}%)')
+    if orders_needing_items:
+        with ThreadPoolExecutor(max_workers=10) as ex:
+            futures = {ex.submit(fetch_items, o['id']): o['id'] for o in orders_needing_items}
+            for future in as_completed(futures):
+                try:
+                    oid, items = future.result()
+                    order_items[oid] = items
+                except:
+                    order_items[futures[future]] = []
+                completed += 1
+                if completed % 500 == 0 or completed == len(orders_needing_items):
+                    pct = completed/len(orders_needing_items)*100
+                    print(f'    {completed}/{len(orders_needing_items)} done ({pct:.0f}%)')
 
     print('  ✅ Line items done')
 
@@ -256,16 +279,21 @@ if new_orders or FULL_REFRESH:
         ship_method = ''
         if ship_addrs and isinstance(ship_addrs[0], dict):
             ship_method = ship_addrs[0].get('shipping_method', '')
-        parts = []
-        for it in items:
-            if not isinstance(it, dict): continue
-            name = str(it.get('name', '')).replace('|', '/').replace(',', ' ')
-            sku  = str(it.get('sku', '')).replace(',', ' ')
-            qty  = it.get('quantity', 1)
+        # items can be a list (freshly fetched) or a string (from existing CSV)
+        if isinstance(items, str):
+            product_details_str = items  # already formatted, reuse directly
+        else:
+            parts = []
             rate = float(o.get('currency_exchange_rate', 1) or 1)
-            price = float(it.get('price_inc_tax', it.get('base_price', 0)) or 0) * rate
-            total_price = round(price * int(qty), 2)
-            parts.append(f"Product Name: {name}, Product SKU: {sku}, Product Qty: {qty}, Product Total Price: {total_price}")
+            for it in items:
+                if not isinstance(it, dict): continue
+                name = str(it.get('name', '')).replace('|', '/').replace(',', ' ')
+                sku  = str(it.get('sku', '')).replace(',', ' ')
+                qty  = it.get('quantity', 1)
+                price = float(it.get('price_inc_tax', it.get('base_price', 0)) or 0) * rate
+                total_price = round(price * int(qty), 2)
+                parts.append(f"Product Name: {name}, Product SKU: {sku}, Product Qty: {qty}, Product Total Price: {total_price}")
+            product_details_str = ' | '.join(parts)
         ch_id = o.get('channel_id', 1)
         ch_name = CHANNEL_MAP.get(ch_id, derive_channel(billing.get('country', ''), ch_id))
         return {
@@ -283,7 +311,7 @@ if new_orders or FULL_REFRESH:
             'Shipping Cost (ex tax)': str(round(float(o.get('shipping_cost_ex_tax','0') or 0) * float(o.get('currency_exchange_rate','1') or 1), 2)),
             'Coupon Discount':        str(round(float(o.get('coupon_discount','0') or 0) * float(o.get('currency_exchange_rate','1') or 1), 2)),
             'Payment Method':         o.get('payment_method', ''),
-            'Product Details':        ' | '.join(parts),
+            'Product Details':        product_details_str,
             'Billing Country':        billing.get('country', ''),
             'Billing State':          billing.get('state', ''),
             'Billing Suburb':         billing.get('city', ''),
