@@ -5194,7 +5194,7 @@ function rDelivery(orders){
   // Actually we need to filter from rawO to include non-revenue statuses
   var chFilter = (typeof gck === 'function') ? gck('fc') : [];
   var awaitingOrders = rawO.filter(function(r){
-    if(r._status !== 'Awaiting fulfillment') return false;
+    if((r._status||'').toLowerCase() !== 'awaiting fulfillment') return false;
     if(chFilter.length && !chFilter.includes(r._ch)) return false;
     return true;
   });
@@ -11755,7 +11755,7 @@ var _origSNavTo = typeof sNavTo === 'function' ? sNavTo : null;
       <div class="set-panel" id="setContent-currency">
         <div class="set-section-sub">Exchange rates used to convert UK (GBP), US (USD) and other currencies to AUD. Update these when rates change significantly.</div>
         <div style="margin-bottom:16px;padding:12px 16px;background:var(--blu-bg);border:1px solid var(--blu-border);border-radius:8px;font-size:12px;color:var(--blu)">
-          ℹ️ These rates are used when importing order data. After updating, run a <strong>full refresh</strong> to recalculate all historical orders.
+          ℹ️ These rates convert GBP, USD etc to AUD when data is imported. After changing rates, save settings then run a <strong>full refresh</strong> to recalculate all historical orders. Rates are saved to GitHub with your other settings.
         </div>
         <div id="currencyRatesTable" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px"></div>
         <button class="abtn" onclick="addCurrencyRate()" style="font-size:13px;padding:7px 16px;margin-bottom:16px">+ Add Currency</button>

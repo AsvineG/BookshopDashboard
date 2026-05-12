@@ -74,6 +74,10 @@ def sha256(v):
     if not v: return ''
     return hashlib.sha256(str(v).strip().lower().encode()).hexdigest()[:16]
 
+from datetime import timezone, timedelta
+
+AEST = timezone(timedelta(hours=10))  # Use AEST (UTC+10) consistently for all dates
+
 def parse_bc_date(s):
     if not s: return None
     s = str(s).strip()
@@ -84,7 +88,6 @@ def parse_bc_date(s):
         pass
     # Try RFC 2822 format (V2 API): "Mon, 11 May 2026 08:30:00 +0000"
     try:
-        from email.utils import parsedate_to_datetime
         return parsedate_to_datetime(s)
     except:
         pass
@@ -92,13 +95,18 @@ def parse_bc_date(s):
 
 def fmt_date(s):
     dt = parse_bc_date(s)
-    if dt: return dt.strftime('%d/%m/%Y')
-    return ''
+    if not dt: return ''
+    # Convert to AEST so orders placed at 9am Sydney don't show as yesterday
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(AEST)
+    return dt.strftime('%d/%m/%Y')
 
 def fmt_time(s):
     dt = parse_bc_date(s)
-    if dt: return dt.strftime('%H:%M:%S')
-    return ''
+    if not dt: return ''
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(AEST)
+    return dt.strftime('%H:%M:%S')
 
 def safe_get(url, params=None, retries=3):
     for attempt in range(retries):
@@ -318,6 +326,24 @@ if new_orders or FULL_REFRESH:
 
     print('  ✅ Line items done')
 
+    def _build_coupon_details(o):
+        # Build coupon details string matching BC export format
+        # Dashboard parser looks for: "Coupon Code: XXXX"
+        coupons = o.get('coupons') or []
+        if not coupons:
+            discount = float(o.get('coupon_discount', 0) or 0)
+            if discount > 0:
+                return f'Coupon Discount: {discount}'
+            return ''
+        parts = []
+        for cp in coupons:
+            if isinstance(cp, dict):
+                code = cp.get('code', '')
+                discount = cp.get('discount', 0)
+                if code:
+                    parts.append(f'Coupon Code: {code}, Discount: {discount}')
+        return ' | '.join(parts)
+
     def build_order_row(o):
         oid = o['id']
         items = order_items.get(oid, [])
@@ -356,10 +382,11 @@ if new_orders or FULL_REFRESH:
             'Channel Name':           ch_name,
             'Order Total (inc tax)':  _to_aud(o.get('total_inc_tax','0')),
             'Order Total (ex tax)':   _to_aud(o.get('total_ex_tax','0')),
-            'Exchange Rate':          '1',  # Values already converted to AUD
+            'Exchange Rate':          str(_rate),
             'Tax Total':              _to_aud(o.get('total_tax','0')),
             'Shipping Cost (ex tax)': _to_aud(o.get('shipping_cost_ex_tax','0')),
             'Coupon Discount':        _to_aud(o.get('coupon_discount','0')),
+            'Coupon Details':         _build_coupon_details(o),
             'Payment Method':         o.get('payment_method', ''),
             'Product Details':        product_details_str,
             'Billing Country':        billing.get('country', ''),
@@ -439,13 +466,16 @@ for c in customers:
     credit_amt = credits[0].get('amount', 0) if credits else 0
     channel_ids = c.get('channel_ids') or [1]
     clean_customers.append({
-        'Customer ID':       sha256(c.get('email', '')),
-        'Date Created':      fmt_date(c.get('date_created', '')),
-        'Date Modified':     fmt_date(c.get('date_modified', '')),
-        'Store Credit':      credit_amt,
-        'Total Orders':      c.get('orders_count', 0),
-        'Channel ID':        channel_ids[0] if channel_ids else 1,
-        'Accepts Marketing': c.get('accepts_product_review_abandoned_cart_emails', False),
+        'Customer ID':                          sha256(c.get('email', '')),
+        'Date Joined':                          fmt_date(c.get('date_created', '')),
+        'Date Modified':                        fmt_date(c.get('date_modified', '')),
+        'Store Credit':                         credit_amt,
+        'Total Orders':                         c.get('orders_count', 0),
+        'Channel ID':                           channel_ids[0] if channel_ids else 1,
+        'Receive Review/Abandoned Cart Emails?': 'Y' if c.get('accepts_product_review_abandoned_cart_emails', True) else 'N',
+        'First Name':                           '',
+        'Last Name':                            '',
+        'Email':                                sha256(c.get('email', '')),
     })
 validate_no_pii(clean_customers, 'customers.csv')
 write_csv('customers.csv', clean_customers)
