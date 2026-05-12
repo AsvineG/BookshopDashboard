@@ -168,6 +168,20 @@ def read_csv(filename):
     with open(filename, 'r', encoding='utf-8') as f:
         return list(csv.DictReader(f))
 
+# ── Debug: print sample order currencies ────────────────────────────────────
+# This will show us exactly what BC returns for exchange_rate
+def debug_currency(orders, n=3):
+    printed = 0
+    for o in orders:
+        ch = o.get('channel_id', 1)
+        curr = o.get('currency_code','AUD')
+        if curr != 'AUD' and printed < n:
+            rate = o.get('currency_exchange_rate','?')
+            total = o.get('total_inc_tax','?')
+            print(f'  CURRENCY DEBUG: channel={ch} currency={curr} '
+                  f'total={total} exchange_rate={rate}')
+            printed += 1
+
 # ── Channel map from BC API ───────────────────────────────────────────────────
 CHANNEL_MAP = {1: 'Reading Eggs AU', 2: 'Reading Eggs UK', 3: 'Reading Eggs USA'}
 try:
@@ -222,6 +236,7 @@ else:
 print('\n📦 Fetching orders from BigCommerce...')
 new_orders = bc_get_all_v2('/orders', {'sort': 'id:desc', 'is_deleted': 'false'}, stop_at_id=stop_at_id)
 print(f'  Fetched {len(new_orders)} orders')
+debug_currency(new_orders)
 
 if new_orders or FULL_REFRESH:
     # For incremental: check existing CSV for orders that already have Product Details
