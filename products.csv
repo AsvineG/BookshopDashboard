@@ -11,7 +11,7 @@ Product ID,Product Name,SKU,Price,Cost Price,Retail Price,Type,Inventory Level,I
 139,ABC Mathseeds Book Pack (Ages 3–5),MSMEGAPACK,0,0,0,physical,100,0,"25,29,30,31,34,53,54,55,59,61,62,143,154,175,177,182",1,available,True,22/01/2025,12/05/2026
 142,ABC Reading Eggs Level 1 and ABC Mathseeds Mega Book Pack (Ages 3–6),ABCREADMATH30,0,0,0,physical,100,25,"24,25,29,30,31,34,50,51,52,53,54,55,59,61,62,63,143,154,175,177,182",2,available,True,22/01/2025,12/05/2026
 144,Reading & Maths Essential Skills for Kindergarten Bundle,RE7995RWB,0,0,0,physical,843,100,"24,25,29,30,31,33,34,50,51,52,53,54,55,59,64,65,70,76,77,78,79,88,143,154,175,177,182",2,available,True,22/01/2025,12/05/2026
-146,Reading & Maths Essential Skills for Year 1 Bundle,RE7995YR1WB,0,0,0,physical,763,0,"24,25,29,30,31,33,34,52,55,64,88,154,175,177,182",2,available,True,22/01/2025,10/05/2026
+146,Reading & Maths Essential Skills for Year 1 Bundle,RE7995YR1WB,0,0,0,physical,763,0,"24,25,29,30,31,33,34,52,55,64,88,154,175,177,182",2,available,True,22/01/2025,12/05/2026
 148,Reading & Maths Essential Skills for Year 2 Bundle,RE7995YR2WB,0,0,0,physical,905,0,"24,25,29,30,31,33,34,52,55,64,88,154,175,177,182",2,available,True,22/01/2025,12/05/2026
 150,ABC Mathseeds 12 Month Subscription,ABCMS12MTH,119.99,0,79.99,digital,0,0,"25,29,30,76,175,177,182",0,available,False,22/01/2025,12/05/2026
 151,ABC Reading Eggs Ultimate Rewards Book,9781922887474,19.99,0,19.99,physical,1690,0,"24,25,29,30,34,50,51,52,53,54,55,59,61,84,143,154,175,177,182",0.34,available,True,22/01/2025,12/05/2026
