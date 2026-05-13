@@ -260,11 +260,12 @@ existing_orders = read_csv('orders.csv')
 print(f'\n📋 Existing orders.csv: {len(existing_orders)} rows')
 
 max_existing_id = 0
-stop_at_id = None
+modified_since = None  # datetime cutoff for date_modified fetch
 
 if FULL_REFRESH:
     print('🔄 Full refresh — fetching all orders')
 elif existing_orders:
+    # Find highest existing Order ID (for new orders)
     for row in existing_orders:
         try:
             oid = int(row.get('Order ID', 0))
@@ -273,27 +274,49 @@ elif existing_orders:
         except:
             pass
     if max_existing_id > 0:
-        # Also re-fetch last 7 days to catch status updates
-        cutoff_date = datetime.now() - timedelta(days=7)
-        recent_cutoff_id = 0
-        for row in existing_orders:
-            try:
-                row_date = datetime.strptime(row.get('Order Date', ''), '%d/%m/%Y')
-                if row_date >= cutoff_date:
-                    oid = int(row.get('Order ID', 0))
-                    if oid < recent_cutoff_id or recent_cutoff_id == 0:
-                        recent_cutoff_id = oid
-            except:
-                pass
-        stop_at_id = (recent_cutoff_id - 1) if recent_cutoff_id > 0 else max_existing_id
-        print(f'⚡ Incremental — fetching orders with ID > {stop_at_id}')
+        # Fetch orders modified in last 30 days — catches shipment updates on ANY order
+        # regardless of how old the original order is
+        modified_since = datetime.now(timezone.utc) - timedelta(days=30)
+        print(f'⚡ Incremental mode:')
+        print(f'   → New orders: ID > {max_existing_id}')
+        print(f'   → Updated orders: modified in last 30 days (catches shipments, status changes)')
 else:
     print('📋 No existing data — first run, fetching all orders')
 
 # ── 1. Orders ─────────────────────────────────────────────────────────────────
 print('\n📦 Fetching orders from BigCommerce...')
-new_orders = bc_get_all_v2('/orders', {'sort': 'id:desc', 'is_deleted': 'false'}, stop_at_id=stop_at_id)
-print(f'  Fetched {len(new_orders)} orders')
+
+if FULL_REFRESH or not existing_orders:
+    # Fetch everything
+    new_orders = bc_get_all_v2('/orders', {'sort': 'id:desc', 'is_deleted': 'false'})
+    print(f'  Fetched {len(new_orders)} orders (full)')
+else:
+    # Pass 1: New orders (ID > max_existing_id)
+    print(f'  Pass 1: New orders (ID > {max_existing_id})...')
+    new_by_id = bc_get_all_v2('/orders',
+        {'sort': 'id:desc', 'is_deleted': 'false'},
+        stop_at_id=max_existing_id)
+    print(f'  Pass 1 result: {len(new_by_id)} new orders')
+
+    # Pass 2: Recently modified orders (last 30 days, sorted by date_modified)
+    # This catches shipment updates, status changes on ANY existing order
+    print(f'  Pass 2: Orders modified in last 30 days...')
+    modified_str = modified_since.strftime('%Y-%m-%dT%H:%M:%S') + '+00:00'
+    modified_orders = bc_get_all_v2('/orders',
+        {'sort': 'date_modified:desc', 'is_deleted': 'false',
+         'min_date_modified': modified_str},
+        stop_at_id=None)
+    print(f'  Pass 2 result: {len(modified_orders)} modified orders')
+
+    # Merge both passes — deduplicate by Order ID
+    seen_ids = set()
+    new_orders = []
+    for o in new_by_id + modified_orders:
+        oid = o['id']
+        if oid not in seen_ids:
+            seen_ids.add(oid)
+            new_orders.append(o)
+    print(f'  Total unique orders to process: {len(new_orders)}')
 if new_orders or FULL_REFRESH:
     # For incremental: check existing CSV for orders that already have Product Details
     # Only fetch line items for orders missing them (saves huge time on incremental)
