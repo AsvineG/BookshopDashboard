@@ -3120,6 +3120,18 @@ table td:first-child, table th:first-child {
 <script>
 function sNavTo(tab, btn){
   if(tab==='currency') setTimeout(renderCurrencyRates, 50);
+  if(tab==='targets-info') setTimeout(function(){
+    var el = document.getElementById('targetsMonthList');
+    if(!el || !TARGETS) return;
+    var months = Object.keys(TARGETS.global||{}).sort();
+    el.innerHTML = months.map(function(m){
+      var t = TARGETS.global[m];
+      return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)">' +
+        '<span>' + m + '</span>' +
+        '<span style="color:var(--text)">KPI: ' + (t.fy26_kpi ? '$'+Math.round(t.fy26_kpi).toLocaleString() : '—') + '</span>' +
+        '</div>';
+    }).join('');
+  }, 50);
   // Update nav items
   document.querySelectorAll('.set-nav-item').forEach(function(b){b.classList.remove('active');});
   if(btn) btn.classList.add('active');
@@ -3793,7 +3805,7 @@ function preProcess(cb){
     row._qty=parseInt(row['Total Quantity']||0)||0;
     row._ref=parseFloat(String(row['Refund Amount']||0).replace(/[^\d.\-]/g,''))||0;
     // _email: use Customer Email (may be hashed by sanitiser — that's fine, hash is consistent)
-    row._email=(row['Customer Email']||row['Billing Email']||row['Customer ID']||'').toLowerCase().trim();
+    row._email=(row['Customer Email']||row['Billing Email']||'').toLowerCase().trim();
     row._name='';
     row._id=String(row['Order ID']||'');
     row._zero=row._aud<0.01||row._excluded;
@@ -8503,6 +8515,8 @@ function saveSettings(){
 
 function applySettings(){
   saveSettings();
+  // Save to GitHub so settings persist across devices and users
+  saveSettingsToGitHub();
   // Apply default range preference
   var rangeEl = document.getElementById('fR');
   if(rangeEl && SETTINGS.prefs.range){ rangeEl.value = SETTINGS.prefs.range; onRC(); }
@@ -10403,7 +10417,7 @@ var CACHE_BUST = '?v=' + Math.floor(Date.now()/300000); // changes every 5 min
 // Clear stale CSV cache on load — ensures fresh data after format changes
 (function(){
   try{
-    var CSV_VERSION = 'v5'; // bump this when CSV format changes
+    var CSV_VERSION = 'v4'; // bump this when CSV format changes
     if(localStorage.getItem('re_csv_version') !== CSV_VERSION){
       ['orders','products','carts','customers','source'].forEach(function(t){
         localStorage.removeItem('re_csv_'+t);
@@ -10537,7 +10551,8 @@ function refreshGithubData(){
 
 window.addEventListener('load',function(){
   try{applyChartDefaults();}catch(e){}
-  try{loadSavedSettings();}catch(e){}
+  try{loadSavedSettings();
+  loadSettingsFromGitHub();}catch(e){}
   try{showDash();}catch(e){console.error('showDash error:',e);}
   // Load settings from localStorage (cloud sync removed)
   try{ loadSavedSettings(); }catch(e){}
@@ -11418,6 +11433,111 @@ function addCurrencyRate(){
 
 // Hook into sNavTo to render rates when panel opens
 var _origSNavTo = typeof sNavTo === 'function' ? sNavTo : null;
+
+function saveSettingsToGitHub(){
+  var pat = getGithubPAT();
+  if(!pat){ return; } // No token = skip silently
+  var payload = {
+    spend:         SETTINGS.spend,
+    margin:        SETTINGS.margin,
+    visitors:      SETTINGS.visitors,
+    bundleMap:     SETTINGS.bundleMap,
+    regionMap:     SETTINGS.regionMap,
+    prefs:         SETTINGS.prefs,
+    currencyRates: SETTINGS.currencyRates,
+    retailerMargins: SETTINGS.retailerMargins,
+  };
+  var content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
+  // Get current SHA first (needed for update)
+  fetch('https://api.github.com/repos/'+GH_REPO+'/contents/settings.json',{
+    headers:{'Authorization':'token '+pat,'Accept':'application/vnd.github.v3+json'}
+  })
+  .then(function(r){ return r.ok ? r.json() : null; })
+  .then(function(existing){
+    var body = {
+      message: 'Update settings',
+      content: content,
+    };
+    if(existing && existing.sha) body.sha = existing.sha;
+    return fetch('https://api.github.com/repos/'+GH_REPO+'/contents/settings.json',{
+      method: 'PUT',
+      headers:{
+        'Authorization':'token '+pat,
+        'Accept':'application/vnd.github.v3+json',
+        'Content-Type':'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+  })
+  .then(function(r){
+    if(r && r.ok){
+      console.log('Settings saved to GitHub ✅');
+    }
+  })
+  .catch(function(e){ console.warn('Settings GitHub save failed:', e); });
+}
+
+function loadSettingsFromGitHub(){
+  // Load settings.json from GitHub on startup
+  fetch('https://raw.githubusercontent.com/'+GH_REPO+'/main/settings.json?v='+Date.now())
+  .then(function(r){ return r.ok ? r.json() : null; })
+  .then(function(data){
+    if(!data) return;
+    if(data.spend)         SETTINGS.spend         = data.spend;
+    if(data.margin)        SETTINGS.margin        = data.margin;
+    if(data.visitors)      SETTINGS.visitors      = data.visitors;
+    if(data.bundleMap)     SETTINGS.bundleMap     = data.bundleMap;
+    if(data.regionMap)     SETTINGS.regionMap     = data.regionMap;
+    if(data.prefs)         SETTINGS.prefs         = data.prefs;
+    if(data.currencyRates) SETTINGS.currencyRates = data.currencyRates;
+    if(data.retailerMargins) SETTINGS.retailerMargins = data.retailerMargins;
+    // Persist to localStorage too
+    try{ localStorage.setItem('re_settings', JSON.stringify(SETTINGS)); }catch(e){}
+    console.log('Settings loaded from GitHub ✅');
+    // Re-apply visitors if loaded
+    if(data.visitors && typeof applyVisitorsToRawV === 'function'){
+      applyVisitorsToRawV();
+    }
+  })
+  .catch(function(e){ console.warn('Settings GitHub load failed:', e); });
+}
+
+function fetchLiveCurrencyRates(){
+  var el = document.getElementById('liveFxStatus');
+  if(el) el.textContent = '⏳ Fetching live rates from frankfurter.app...';
+  // Frankfurter API — free, no key, ECB data, updated daily
+  fetch('https://api.frankfurter.app/latest?from=AUD')
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    if(!data || !data.rates) throw new Error('No rates returned');
+    var rates = getCurrencyRates();
+    var updated = 0;
+    // data.rates = { GBP: 0.495, USD: 0.641, ... } (1 AUD = X foreign)
+    // We need: 1 foreign = Y AUD → invert
+    rates.forEach(function(r){
+      var foreignPerAUD = data.rates[r.code];
+      if(foreignPerAUD && foreignPerAUD > 0){
+        r.rate = Math.round((1 / foreignPerAUD) * 1000) / 1000;
+        updated++;
+      }
+    });
+    // Add any new currencies from API that we don't have yet
+    Object.keys(data.rates).forEach(function(code){
+      var exists = rates.some(function(r){ return r.code === code; });
+      if(!exists && data.rates[code] > 0){
+        rates.push({code: code, name: code, rate: Math.round((1/data.rates[code])*1000)/1000});
+      }
+    });
+    SETTINGS.currencyRates = rates;
+    renderCurrencyRates();
+    var date = data.date || new Date().toISOString().slice(0,10);
+    if(el) el.textContent = '✅ Rates updated from ECB data (' + date + '). Click Apply & Close to save.';
+    if(el) el.style.color = 'var(--grn)';
+  })
+  .catch(function(e){
+    if(el){ el.textContent = '❌ Failed to fetch rates: ' + e.message; el.style.color = 'var(--red)'; }
+  });
+}
 </script>
 
 <!-- FILTER PANEL -->
@@ -11593,6 +11713,9 @@ var _origSNavTo = typeof sNavTo === 'function' ? sNavTo : null;
       <button class="set-nav-item" id="snav-visitors" onclick="sNavTo('visitors',this)">
         <span class="set-nav-icon">📅</span>Visitors
       </button>
+      <button class="set-nav-item" id="snav-targets-info" onclick="sNavTo('targets-info',this)">
+        <span class="set-nav-icon">🎯</span>Targets / KPIs
+      </button>
       <button class="set-nav-item" id="snav-currency" onclick="sNavTo('currency',this)">
         <span class="set-nav-icon">💱</span>Currency Rates
       </button>
@@ -11620,7 +11743,7 @@ var _origSNavTo = typeof sNavTo === 'function' ? sNavTo : null;
           <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px">🔑 GitHub Personal Access Token</div>
           <div style="font-size:11px;color:var(--muted2);margin-bottom:10px">Required for ⚡ Refresh Data and ☁️ Save to GitHub. Stored in your browser only — never sent anywhere except GitHub.</div>
           <div style="display:flex;gap:8px;align-items:center">
-            <input type="password" id="ghPatInput" class="sinp" placeholder="github_pat_..." style="flex:1;font-family:monospace;font-size:12px"
+            <input type="password" id="ghPatInput" class="sinp" placeholder="github_pat_..." style="flex:1;font-family:monospace;font-size:13px;padding:10px 12px;height:42px"
               oninput="document.getElementById('ghPatSaveBtn').style.background='var(--blu)'" />
             <button id="ghPatSaveBtn" class="abtn" onclick="saveGithubPAT()" style="white-space:nowrap;font-size:13px;padding:7px 16px">Save Token</button>
           </div>
@@ -11629,6 +11752,7 @@ var _origSNavTo = typeof sNavTo === 'function' ? sNavTo : null;
 
         <button class="abtn" id="githubRefreshBtn" onclick="refreshGithubData()" style="margin-bottom:20px;background:#1e40af;border-color:#1e40af">↻ Refresh from GitHub</button>
         <div id="uploadStatusList" class="upload-status-grid"></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px">All data loads automatically from GitHub via ⚡ Refresh.</div>
         <div style="margin-top:24px;display:flex;gap:10px;flex-wrap:wrap">
           <button class="abtn" onclick="generateMonthEndReport()" style="background:#16a34a;border-color:#16a34a">📄 Month-End Report</button>
           <button class="cbtn" onclick="if(confirm('Clear all saved data?'))confirmClear()" style="color:var(--red)">✕ Clear all data</button>
@@ -11758,8 +11882,31 @@ var _origSNavTo = typeof sNavTo === 'function' ? sNavTo : null;
           ℹ️ These rates convert GBP, USD etc to AUD when data is imported. After changing rates, save settings then run a <strong>full refresh</strong> to recalculate all historical orders. Rates are saved to GitHub with your other settings.
         </div>
         <div id="currencyRatesTable" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px"></div>
-        <button class="abtn" onclick="addCurrencyRate()" style="font-size:13px;padding:7px 16px;margin-bottom:16px">+ Add Currency</button>
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+          <button class="abtn" onclick="fetchLiveCurrencyRates()" style="font-size:13px;padding:7px 16px;background:var(--grn);border-color:var(--grn)">🔄 Fetch Today's Rates</button>
+          <button class="abtn" onclick="addCurrencyRate()" style="font-size:13px;padding:7px 16px">+ Add Currency</button>
+        </div>
+        <div id="liveFxStatus" style="font-size:11px;color:var(--muted);margin-bottom:8px"></div>
         <div id="currencySaveStatus" style="font-size:11px;color:var(--grn);display:none">✓ Saved</div>
+      </div>
+
+      <!-- TARGETS INFO -->
+      <div class="set-panel" id="setContent-targets-info">
+        <div class="set-section-sub">KPI targets and last year comparisons used across the dashboard.</div>
+        <div style="padding:16px;background:var(--surface2);border-radius:10px;margin-bottom:16px">
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">📊 How targets work</div>
+          <div style="font-size:12px;color:var(--muted2);line-height:1.7">
+            Targets are embedded directly in the dashboard from <strong>Book1.xlsx</strong>.<br><br>
+            They cover FY26 KPI targets and FY25 actuals for:<br>
+            • Global, APAC (AU), EMEA (UK), AMER (US)<br>
+            • Revenue (Gross & Net), Orders, Visitors, Conversion Rate, AOV<br><br>
+            <strong>To update targets:</strong> Edit Book1.xlsx and re-upload the dashboard index.html with the new embedded data. Contact the dashboard developer (Asvine) to update.
+          </div>
+        </div>
+        <div style="padding:16px;background:var(--surface2);border-radius:10px">
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">📅 Current target months</div>
+          <div id="targetsMonthList" style="font-size:12px;color:var(--muted2)">Loading...</div>
+        </div>
       </div>
 
       <!-- VISITORS -->
