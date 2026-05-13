@@ -41,15 +41,15 @@ COUNTRY_CHANNEL = {
 # Falls back to hardcoded defaults if settings.json not found or currency not configured
 AUD_RATES = {
     'AUD': 1.0,
-    'GBP': 2.02,
-    'USD': 1.56,
-    'EUR': 1.73,
-    'NZD': 0.90,
-    'CAD': 1.12,
-    'SGD': 1.18,
+    'GBP': 1.88,   # updated 13 May 2026
+    'USD': 1.40,   # updated 13 May 2026
+    'EUR': 1.58,   # updated 13 May 2026
+    'NZD': 0.93,   # updated 13 May 2026
+    'CAD': 1.02,   # updated 13 May 2026
+    'SGD': 1.08,   # updated 13 May 2026
     'HKD': 0.20,
-    'ZAR': 0.085,
-    'INR': 0.019,
+    'ZAR': 0.077,  # updated 13 May 2026
+    'INR': 0.017,  # updated 13 May 2026
 }
 try:
     import json
