@@ -1,6 +1,6 @@
 Product ID,Product Name,SKU,Price,Cost Price,Retail Price,Type,Inventory Level,Inventory Warning Level,Categories,Weight,Availability,Is Featured,Date Created,Date Modified
 112,Reading & Maths Essential Skills for Year 2 Family Bundle + FREE Ultimate Rewards Book,RE7995YR2WBURB,0,0,0,physical,895,10,"24,25,29,30,31,33,34,52,55,64,88,154,175,177,182",2,disabled,False,23/12/2024,23/03/2026
-113,ABC Reading Eggs Mega Book Pack (Ages 4–7),139READEGG,0,0,0,physical,328,100,"24,28,29,30,31,33,34,35,37,38,39,41,50,51,52,59,61,62,63,89,90,91,100,101,138,143,154,155,156,157,175,177,178,181,182,183",1,available,True,22/01/2025,12/05/2026
+113,ABC Reading Eggs Mega Book Pack (Ages 4–7),139READEGG,0,0,0,physical,328,100,"24,28,29,30,31,33,34,35,37,38,39,41,50,51,52,59,61,62,63,89,90,91,100,101,138,143,154,155,156,157,175,177,178,181,182,183",1,available,True,22/01/2025,13/05/2026
 114,Learn-to-Read Activity Book 3 – Starting Out (Ages 4–6),9781742150475,0,0,0,physical,38,25,"24,28,29,30,34,35,37,39,42,43,45,47,50,51,52,59,89,90,91,110,111,112,118,143,154,155,156,157,158,159,175,177,178,179,182,183,184",0.28,available,False,22/01/2025,13/05/2026
 115,My First Reading and Literacy Activity Book Pack (Ages 4–7),GETREADYPACK1,0,0,0,physical,1042,0,"24,29,30,31,34,50,51,52,59,61,62,143,154,175,177,182",1,available,False,22/01/2025,11/05/2026
 116,Reading Eggs Book Pack Level 2 (Ages 5–7),RE7995PK2,0,0,0,physical,330,0,"24,28,29,30,31,33,34,35,37,38,39,41,42,43,45,46,47,49,51,52,62,63,90,91,100,101,111,112,118,125,126,143,154,156,157,159,175,177,178,179,181,182,183,184",1,available,False,22/01/2025,12/05/2026
@@ -26,11 +26,11 @@ Product ID,Product Name,SKU,Price,Cost Price,Retail Price,Type,Inventory Level,I
 172,Alphabet Flashcards With Games – Starting Out (Ages 3–5),9781742150499,0,0,0,physical,9,0,"24,28,29,30,32,35,37,40,42,43,45,48,50,51,52,59,60,61,85,89,90,91,103,110,111,112,116,118,129,138,139,140,143,154,155,156,157,158,159,175,177,178,179,182,183,184",0.73,available,False,22/01/2025,13/05/2026
 173,Maths Activity Book 8 (Ages 4–6),9781742152905,10.95,0,10.95,physical,476,0,"25,29,30,34,53,54,55,59,65,76,77,78,79,143,154,175,177,182",0.2,available,False,22/01/2025,12/05/2026
 174,Reading Comprehension and Grammar Workbook for Year 3,9781742153308,12.95,0,12.95,physical,321,0,"24,29,30,33,34,52,88,105,131,154,175,177,182",1,available,False,22/01/2025,13/05/2026
-177,Spelling Workbook for Year 2 – Spelling Practice Worksheets,9781742153070,9.95,0,9.95,physical,2276,0,"24,29,30,33,34,52,88,154,175,177,182",1,available,False,22/01/2025,12/05/2026
+177,Spelling Workbook for Year 2 – Spelling Practice Worksheets,9781742153070,9.95,0,9.95,physical,2276,0,"24,29,30,33,34,52,88,154,175,177,182",1,available,False,22/01/2025,13/05/2026
 178,ABC Reading Eggs Teaching Guide Book 2 – Lessons 31–60,9781760200855,29.95,0,29.95,physical,1543,0,"24,29,30,33,50,51,52,59,87,143,154,175,177,182",0.1,available,False,22/01/2025,12/05/2026
 180,My First Clocks and Time Activity Book (Ages 4–6),9781742153216,12.95,0,12.95,physical,1291,0,"25,29,30,34,53,54,55,59,143,154,175,177,182",0.5,available,False,22/01/2025,13/05/2026
 181,Reading Comprehension and Grammar Workbook for Year 6,9781742153339,12.95,0,12.95,physical,292,0,"24,29,30,33,34,52,88,154,175,177,182",1,available,False,22/01/2025,12/05/2026
-183,Spelling Workbook for Year 3 – Spelling Practice Worksheets,9781742153087,9.95,0,9.95,physical,2814,0,"24,29,30,33,34,52,88,154,175,177,182",1,available,False,22/01/2025,12/05/2026
+183,Spelling Workbook for Year 3 – Spelling Practice Worksheets,9781742153087,9.95,0,9.95,physical,2814,0,"24,29,30,33,34,52,88,154,175,177,182",1,available,False,22/01/2025,13/05/2026
 184,ABC Reading Eggs Teaching Guide Book 3 – Lessons 61–90,9781760200862,29.95,0,29.95,physical,1639,0,"24,29,30,33,52,87,154,175,177,182",0.1,available,False,22/01/2025,12/05/2026
 186,My First Numbers Maths Activity Book (Ages 4–6),9781742153223,12.95,0,12.95,physical,2105,0,"25,29,30,34,53,54,55,59,61,143,154,175,177,182",0.5,available,False,22/01/2025,13/05/2026
 187,Reading Comprehension and Grammar Workbook for Year 5,9781742153322,12.95,0,12.95,physical,2625,0,"24,29,30,33,34,52,88,105,131,154,175,177,182",1,available,False,22/01/2025,12/05/2026
@@ -64,7 +64,7 @@ Product ID,Product Name,SKU,Price,Cost Price,Retail Price,Type,Inventory Level,I
 228,ABC Reading Eggs Rewards Sticker Book,9781742152950,7.95,0,7.95,physical,27,0,"24,29,30,42,70,175,177,179,182",0.1,available,False,22/01/2025,13/05/2026
 229,ABC Mathseeds - Flashcards (Ages 4–6),9781742152189,15.95,0,15.95,physical,100,0,"25,29,30,32,53,54,55,59,85,143,154,175,177,182",0.2,available,False,22/01/2025,12/05/2026
 230,Octopuss Hand Puppet – ABC Reading Eggs Critter (Ages 3+),9781742151694,19.95,0,19.95,physical,307,0,"29,30,32,59,60,61,143,154,164,175,177,182",0.29,available,False,22/01/2025,12/05/2026
-233,12-month Program Access Gift E-Voucher to ABC Reading Eggs and ABC Mathseeds,REMS12MTHGVAU,227.99,0,227.99,digital,0,0,"24,25,29,30,50,59,70,76,165,167,175,177,182",0,available,True,22/01/2025,12/05/2026
+233,12-month Program Access Gift E-Voucher to ABC Reading Eggs and ABC Mathseeds,REMS12MTHGVAU,227.99,0,227.99,digital,0,0,"24,25,29,30,50,59,70,76,165,167,175,177,182",0,available,True,22/01/2025,13/05/2026
 235,Pinkipoo Hand Puppet – ABC Reading Eggs Critter (Ages 3+),9781742151700,19.95,0,19.95,physical,239,0,"29,30,32,59,60,61,143,154,164,175,177,182",0.25,available,False,22/01/2025,12/05/2026
 238,Maths Activity Book 6 (Ages 4–6),9781742152882,10.95,0,10.95,physical,2094,0,"25,29,30,34,53,54,55,59,143,154,175,177,182",0.2,available,False,22/01/2025,12/05/2026
 240,My First Vocabulary Activity Book (Ages 5–7),9781742151717,12.95,0,12.95,physical,448,0,"24,29,30,34,51,52,143,154,175,177,182",0.61,available,False,22/01/2025,12/05/2026
@@ -139,17 +139,17 @@ Product ID,Product Name,SKU,Price,Cost Price,Retail Price,Type,Inventory Level,I
 353,Grade 3 Reading Workbook – 200 Essential Reading Skills,9781742153490,19.95,0,19.95,physical,1936,0,"42,43,45,47,49,112,131,160,176,179,184",0,available,False,07/02/2025,13/05/2026
 354,Grade 4 Reading Workbook – 200 Essential Reading Skills,9781742153506,19.95,0,19.95,physical,2248,0,"42,43,45,47,49,112,131,160,176,179,184",0,available,False,07/02/2025,13/05/2026
 355,Grade 5 Reading Workbook – 200 Essential Reading Skills,9781742153513,19.95,0,19.95,physical,1215,0,"42,43,45,47,49,112,131,160,176,179,184",0,available,False,07/02/2025,13/05/2026
-356,Kindergarten Math Workbook – 200 Essential Math Skills,9781742153384,19.95,0,19.95,physical,2929,0,"42,44,45,47,49,114,115,118,131,159,176,179,184",0,available,False,07/02/2025,13/05/2026
+356,Kindergarten Math Workbook – 200 Essential Math Skills,9781742153384,19.95,0,19.95,physical,2928,0,"42,44,45,47,49,114,115,118,131,159,176,179,184",0,available,False,07/02/2025,13/05/2026
 357,Grade 1 Math Workbook – 200 Essential Math Skills,9781742153391,19.95,0,19.95,physical,2935,0,"42,44,45,47,49,115,131,159,176,179,184",0,available,False,07/02/2025,13/05/2026
 358,Grade 2 Math Workbook – 200 Essential Math Skills,9781742153407,19.95,0,19.95,physical,767,0,"42,44,45,47,49,115,131,159,160,176,179,184",0,available,False,07/02/2025,13/05/2026
 359,Reading Eggs -Level 1: Starting Out - Activity Book Set,RE7995SET1,0,0,0,physical,5,0,"42,43,45,46,47,110,111,112,118,125,139,158,159,179",0,available,False,07/02/2025,18/12/2025
 360,Reading Eggs -Level 2: Beginning to Read - Activity Book Set (Ages 5-7),RE7995SET2,0,0,0,physical,9,0,"42,43,45,46,47,111,112,118,125,159,179",0,available,False,07/02/2025,18/12/2025
-361,Reading & Math Essential Skills for Kindergarten Bundle,RMK,0,0,0,physical,57,0,"42,43,44,45,46,47,49,111,112,114,115,118,127,131,159,179,184",0,available,False,07/02/2025,12/05/2026
+361,Reading & Math Essential Skills for Kindergarten Bundle,RMK,0,0,0,physical,57,0,"42,43,44,45,46,47,49,111,112,114,115,118,127,131,159,179,184",0,available,False,07/02/2025,13/05/2026
 362,Reading & Math Essential Skills for First Grade Bundle,RM1,0,0,0,physical,65,0,"42,43,44,45,46,47,49,112,115,127,131,159,179,184",0,available,False,07/02/2025,13/05/2026
 363, Reading & Math Essential Skills for Second Grade Bundle,RM2,0,0,0,physical,78,0,"42,43,44,45,46,47,49,112,115,127,131,159,160,179,184",0,available,False,07/02/2025,12/05/2026
 364,Essential Skills Workbook Family Bundle for Kindergarten + FREE Ultimate Rewards Book,REWBRWBBK,0,0,0,physical,89,0,"42,43,44,45,46,47,49,111,112,114,115,118,127,131,159,179",0,available,False,07/02/2025,12/05/2026
-365,Kindergarten Reading Workbook - 240 Essential Reading Skills,9781742153414,19.95,0,19.95,physical,3308,0,"42,43,45,49,111,112,118,131,159,176,179,184",0,available,False,07/02/2025,13/05/2026
-366,Reading Eggs – Ultimate Rewards Book,9781922887481,13.99,0,13.99,physical,8090,0,"42,43,44,45,47,110,111,112,113,114,115,118,128,139,158,159,160,179,184",0.34,available,False,11/02/2025,13/05/2026
+365,Kindergarten Reading Workbook - 240 Essential Reading Skills,9781742153414,19.95,0,19.95,physical,3307,0,"42,43,45,49,111,112,118,131,159,176,179,184",0,available,False,07/02/2025,13/05/2026
+366,Reading Eggs – Ultimate Rewards Book,9781922887481,13.99,0,13.99,physical,8089,0,"42,43,44,45,47,110,111,112,113,114,115,118,128,139,158,159,160,179,184",0.34,available,False,11/02/2025,13/05/2026
 369,12-month Program Access to Reading Eggs and Mathseeds,REMS12MTHSUB,0,0,0,digital,0,0,"28,35,36,37,89,90,91,92,93,94,106,107,108,168,169,178,181,183",0,available,False,03/03/2025,12/05/2026
 370,12-month Program Access Gift E-Voucher to Reading Eggs and Mathseeds,REMS12MTHGVUK,0,0,0,digital,0,0,"28,35,36,37,89,90,91,106,107,108,138,168,170,178,181,183",0,available,False,03/03/2025,12/05/2026
 371,12-Month Program Access to Reading Eggs & Mathseeds,COM12MTHUS,227.99,0,227.99,digital,0,0,"42,43,44,45,110,111,112,113,114,115,116,118,134,135,136,139,153,171,172,179,184",0,available,True,03/03/2025,13/05/2026
@@ -159,7 +159,7 @@ Product ID,Product Name,SKU,Price,Cost Price,Retail Price,Type,Inventory Level,I
 379,Essential Skills Reading Family Bundle Grade 3 and Grade 4,RM3,10,0,0,physical,0,0,"42,43,45,46,49,112,127,131,160,179,184",0,available,False,18/03/2025,12/05/2026
 380,Essential Skills Reading Family Bundle Grade 4 and Grade 5,RM4,0,0,0,physical,0,0,"42,43,45,46,49,112,127,131,160,179,184",0,available,False,18/03/2025,12/05/2026
 381,12 month Program Access Gift E-Voucher to Reading Eggs and Mathseeds,COM12MTHUSGV,227.99,0,227.99,digital,0,0,"42,43,44,45,110,111,112,113,114,115,116,118,134,135,136,139,171,173,179,184",0,available,False,02/04/2025,12/05/2026
-382,Kindergarten Reading Workbook - 240 Essential Reading Skills - Homeschool,9781742153414-1,19.95,0,19.95,physical,3308,0,"174,179",0,available,False,24/04/2025,13/05/2026
+382,Kindergarten Reading Workbook - 240 Essential Reading Skills - Homeschool,9781742153414-1,19.95,0,19.95,physical,3307,0,"174,179",0,available,False,24/04/2025,13/05/2026
 383,Grade 5 Reading Workbook – 200 Essential Reading Skills - Homeschool,9781742153513-1,19.95,0,19.95,physical,1215,0,"174,179",0,available,False,24/04/2025,13/05/2026
 384,Grade 4 Reading Workbook – 200 Essential Reading Skills - Homeschool,9781742153506-1,19.95,0,19.95,physical,2248,0,"174,179",0,available,False,24/04/2025,13/05/2026
 385,Grade 3 Reading Workbook – 200 Essential Reading Skills - Homeschool,9781742153490-1,19.95,0,19.95,physical,1936,0,"174,179",0,available,False,24/04/2025,13/05/2026
@@ -167,7 +167,7 @@ Product ID,Product Name,SKU,Price,Cost Price,Retail Price,Type,Inventory Level,I
 387,Grade 1 Reading Workbook – 240 Essential Reading Skills - Homeschool,9781742153421-1,19.95,0,19.95,physical,3506,0,"174,179",0,available,False,24/04/2025,13/05/2026
 388,Grade 2 Math Workbook – 200 Essential Math Skills - Homeschool,9781742153407-1,19.95,0,19.95,physical,767,0,"174,179",0,available,False,24/04/2025,13/05/2026
 389,Grade 1 Math Workbook – 200 Essential Math Skills - Homeschool,9781742153391-1,19.95,0,19.95,physical,2935,0,"174,179",0,available,False,24/04/2025,13/05/2026
-390,Kindergarten Math Workbook – 200 Essential Math Skills - Homeschool,9781742153384-1,19.95,0,19.95,physical,2929,0,"174,179",0,available,False,24/04/2025,13/05/2026
+390,Kindergarten Math Workbook – 200 Essential Math Skills - Homeschool,9781742153384-1,19.95,0,19.95,physical,2928,0,"174,179",0,available,False,24/04/2025,13/05/2026
 391,12-Month Program Access to Reading Eggs Homeschool Max,REHSMAX12MUS,299,0,299,digital,0,0,"42,153,171,172,179",0,available,True,02/05/2025,12/05/2026
 392,12-month Program Access to Mathseeds,MS12MTHUS,49.99,0,49.99,digital,0,0,"153,171,172,179",0,available,False,07/05/2025,12/05/2026
 393,12-Month Program Access to Reading Eggs,RE12MTHUS,227.99,0,227.99,digital,0,0,"153,171,172,179",0,available,False,07/05/2025,12/05/2026
