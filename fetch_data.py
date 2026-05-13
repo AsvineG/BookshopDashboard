@@ -293,6 +293,11 @@ else:
 print('\n📦 Fetching orders from BigCommerce...')
 new_orders = bc_get_all_v2('/orders', {'sort': 'id:desc', 'is_deleted': 'false'}, stop_at_id=stop_at_id)
 print(f'  Fetched {len(new_orders)} orders')
+if new_orders:
+    _s = new_orders[0]
+    _dc = _s.get('date_created','MISSING')
+    print(f'  DATE DEBUG raw: {repr(_dc)}')
+    print(f'  DATE DEBUG fmt: {repr(fmt_date(_dc))}')
 
 if new_orders or FULL_REFRESH:
     # For incremental: check existing CSV for orders that already have Product Details
