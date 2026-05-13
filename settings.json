@@ -1434,5 +1434,32 @@
     "comp": "prior",
     "currency": "aud"
   },
+  "currencyRates": [
+    {
+      "code": "GBP",
+      "name": "British Pound",
+      "rate": 2.02
+    },
+    {
+      "code": "USD",
+      "name": "US Dollar",
+      "rate": 1.56
+    },
+    {
+      "code": "EUR",
+      "name": "Euro",
+      "rate": 1.73
+    },
+    {
+      "code": "NZD",
+      "name": "New Zealand Dollar",
+      "rate": 0.9
+    },
+    {
+      "code": "CAD",
+      "name": "Canadian Dollar",
+      "rate": 1.12
+    }
+  ],
   "retailerMargins": {}
 }
