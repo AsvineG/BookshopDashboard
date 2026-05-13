@@ -23,6 +23,13 @@
   },
   "visitors": [
     {
+      "month": "2026-05",
+      "all": 19482,
+      "apac": 10387,
+      "emea": 4359,
+      "amer": 4734
+    },
+    {
       "month": "2024-07",
       "all": 33673,
       "apac": 22277,
@@ -171,10 +178,10 @@
     },
     {
       "month": "2026-04",
-      "all": 51182,
-      "apac": 26843,
-      "emea": 10425,
-      "amer": 13914
+      "all": 54393,
+      "apac": 28841,
+      "emea": 11006,
+      "amer": 14546
     }
   ],
   "bundleMap": {
@@ -1427,47 +1434,5 @@
     "comp": "prior",
     "currency": "aud"
   },
-  "currencyRates": [
-    {
-      "code": "GBP",
-      "name": "British Pound",
-      "rate": 1.86
-    },
-    {
-      "code": "USD",
-      "name": "US Dollar",
-      "rate": 1.38
-    },
-    {
-      "code": "EUR",
-      "name": "Euro",
-      "rate": 1.73
-    },
-    {
-      "code": "NZD",
-      "name": "New Zealand Dollar",
-      "rate": 0.9
-    },
-    {
-      "code": "CAD",
-      "name": "Canadian Dollar",
-      "rate": 1.12
-    },
-    {
-      "code": "SGD",
-      "name": "Singapore Dollar",
-      "rate": 1.18
-    },
-    {
-      "code": "HKD",
-      "name": "Hong Kong Dollar",
-      "rate": 0.2
-    },
-    {
-      "code": "ZAR",
-      "name": "South African Rand",
-      "rate": 0.085
-    }
-  ],
   "retailerMargins": {}
 }
