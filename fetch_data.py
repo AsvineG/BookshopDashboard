@@ -384,10 +384,11 @@ if new_orders or FULL_REFRESH:
     def build_order_row(o):
         oid = o['id']
         items = order_items.get(oid, [])
-        # Currency conversion
+        # Store RAW local currency values — dashboard converts on load using settings rates
+        # This means rate changes in Settings take effect instantly without a full refresh
         _curr = (o.get('currency_code') or 'AUD').upper()
-        _rate = AUD_RATES.get(_curr, 1.0)
-        def _to_aud(v): return str(round(float(v or 0) * _rate, 2))
+        _rate = AUD_RATES.get(_curr, 1.0)  # stored as reference, dashboard uses settings rate
+        def _raw(v): return str(round(float(v or 0), 4))  # keep raw local currency value
         billing = o.get('billing_address') or {}
         # BC V2 returns shipping_addresses as a resource link dict, not inline data
         # Ship method is not directly available without extra API calls
@@ -404,7 +405,7 @@ if new_orders or FULL_REFRESH:
                 name = str(it.get('name', '')).replace('|', '/').replace(',', ' ')
                 sku  = str(it.get('sku', '')).replace(',', ' ')
                 qty  = it.get('quantity', 1)
-                price = float(it.get('price_inc_tax', it.get('base_price', 0)) or 0) * rate
+                price = float(it.get('price_inc_tax', it.get('base_price', 0)) or 0)
                 total_price = round(price * int(qty), 2)
                 parts.append(f"Product Name: {name}, Product SKU: {sku}, Product Qty: {qty}, Product Total Price: {total_price}")
             product_details_str = ' | '.join(parts)
@@ -415,12 +416,13 @@ if new_orders or FULL_REFRESH:
             'Order Date':             fmt_date(o.get('date_created', '')),
             'Order Status':           o.get('status', ''),
             'Channel Name':           ch_name,
-            'Order Total (inc tax)':  _to_aud(o.get('total_inc_tax','0')),
-            'Order Total (ex tax)':   _to_aud(o.get('total_ex_tax','0')),
-            'Exchange Rate':          '1',  # Values pre-converted to AUD
-            'Tax Total':              _to_aud(o.get('total_tax','0')),
-            'Shipping Cost (ex tax)': _to_aud(o.get('shipping_cost_ex_tax','0')),
-            'Coupon Discount':        _to_aud(o.get('coupon_discount','0')),
+            'Order Total (inc tax)':  _raw(o.get('total_inc_tax','0')),
+            'Order Total (ex tax)':   _raw(o.get('total_ex_tax','0')),
+            'Exchange Rate':          str(_rate),  # AUD rate for this currency at time of refresh
+            'Order Currency Code':    _curr,
+            'Tax Total':              _raw(o.get('total_tax','0')),
+            'Shipping Cost (ex tax)': _raw(o.get('shipping_cost_ex_tax','0')),
+            'Coupon Discount':        _raw(o.get('coupon_discount','0')),
             'Coupon Details':         _build_coupon_details(o),
             'Payment Method':         o.get('payment_method', ''),
             'Product Details':        product_details_str,
@@ -434,7 +436,7 @@ if new_orders or FULL_REFRESH:
             'Total Shipped':          o.get('items_shipped', 0),
             'Customer ID':            sha256(billing.get('email', '')),
             'Order Currency Code':    o.get('currency_code', 'AUD'),
-            'Subtotal (ex tax)':      _to_aud(o.get('subtotal_ex_tax', o.get('total_ex_tax','0'))),
+            'Subtotal (ex tax)':      _raw(o.get('subtotal_ex_tax', o.get('total_ex_tax','0'))),
             'Total Quantity':         sum(int(it.get('quantity', 1)) for it in items if isinstance(it, dict)),
         }
 

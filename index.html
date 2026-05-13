@@ -3686,18 +3686,22 @@ function preProcess(cb){
     var end=Math.min(cur+CHUNK,total);
     for(var ii=cur;ii<end;ii++){
       var row=rawO[ii];
-    // Exchange rate: BC stores as AUD per 1 unit of order currency
-    // e.g. GBP order at 1.95 → multiply to get AUD
-    // New API data has rate=1 (pre-converted), manual CSV has real rates
-    var rate=parseFloat(row['Exchange Rate']||1)||1;
+    // Currency conversion — uses SETTINGS.currencyRates for instant rate updates
+    // CSV stores raw local currency (GBP/USD/AUD) + currency code
+    // Dashboard multiplies by settings rate → change rates in Settings = instant update
+    var _currCode=(row['Order Currency Code']||'AUD').toUpperCase();
+    var _settingsRates=getCurrencyRates();
+    var _rateObj=_settingsRates.filter(function(r){return r.code===_currCode;})[0];
+    var rate=_rateObj?_rateObj.rate:(parseFloat(row['Exchange Rate']||1)||1);
     var rawTotal=parseFloat(String(row['Order Total (inc tax)']||0).replace(/[^\d.\-]/g,''))||0;
     var rawExTax=parseFloat(String(row['Order Total (ex tax)']||0).replace(/[^\d.\-]/g,''))||0;
     var rawSubtotal=parseFloat(String(row['Subtotal (ex tax)']||0).replace(/[^\d.\-]/g,''))||0;
     var rawTax=parseFloat(String(row['Tax Total']||0).replace(/[^\d.\-]/g,''))||0;
     var rawShipping=parseFloat(String(row['Shipping Cost (inc tax)']||row['Shipping Cost (ex tax)']||0).replace(/[^\d.\-]/g,''))||0;
-    row._aud=rawTotal*rate;            // Total inc tax in AUD
-    row._audExTax=rawExTax*rate;       // Total ex-tax AUD
-    row._audSubtotal=rawSubtotal*rate; // Product subtotal ex-tax AUD (net revenue)
+    row._curr=_currCode;
+    row._aud=rawTotal*rate;
+    row._audExTax=rawExTax*rate;
+    row._audSubtotal=rawSubtotal*rate;
     row._audTax=rawTax*rate;
     row._audShipping=rawShipping*rate;
     row._shipMethod=(row['Ship Method']||'').trim();
@@ -8503,6 +8507,14 @@ function saveSettings(){
 
 function applySettings(){
   saveSettings();
+  saveSettingsToGitHub();
+  // Re-process orders with updated currency rates instantly
+  if(lO && rawO && rawO.length){
+    preProcess(function(){
+      var cur = document.querySelector('.sb-item.active');
+      if(cur) sTab(cur.dataset.tab, cur);
+    });
+  }
   // Apply default range preference
   var rangeEl = document.getElementById('fR');
   if(rangeEl && SETTINGS.prefs.range){ rangeEl.value = SETTINGS.prefs.range; onRC(); }
