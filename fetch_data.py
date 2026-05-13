@@ -1,5 +1,6 @@
 import requests, csv, hashlib, os, sys, time, re
 from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 STORE_HASH   = os.environ['BC_STORE_HASH']
@@ -293,12 +294,6 @@ else:
 print('\n📦 Fetching orders from BigCommerce...')
 new_orders = bc_get_all_v2('/orders', {'sort': 'id:desc', 'is_deleted': 'false'}, stop_at_id=stop_at_id)
 print(f'  Fetched {len(new_orders)} orders')
-if new_orders:
-    _s = new_orders[0]
-    _dc = _s.get('date_created','MISSING')
-    print(f'  DATE DEBUG raw: {repr(_dc)}')
-    print(f'  DATE DEBUG fmt: {repr(fmt_date(_dc))}')
-
 if new_orders or FULL_REFRESH:
     # For incremental: check existing CSV for orders that already have Product Details
     # Only fetch line items for orders missing them (saves huge time on incremental)
@@ -371,12 +366,10 @@ if new_orders or FULL_REFRESH:
         _rate = AUD_RATES.get(_curr, 1.0)
         def _to_aud(v): return str(round(float(v or 0) * _rate, 2))
         billing = o.get('billing_address') or {}
-        ship_addrs = o.get('shipping_addresses') or []
-        if isinstance(ship_addrs, dict):
-            ship_addrs = list(ship_addrs.values())
+        # BC V2 returns shipping_addresses as a resource link dict, not inline data
+        # Ship method is not directly available without extra API calls
+        # Use empty string - not worth 22k extra API calls
         ship_method = ''
-        if ship_addrs and isinstance(ship_addrs[0], dict):
-            ship_method = ship_addrs[0].get('shipping_method', '')
         # items can be a list (freshly fetched) or a string (from existing CSV)
         if isinstance(items, str):
             product_details_str = items  # already formatted, reuse directly
