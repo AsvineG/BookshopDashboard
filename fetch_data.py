@@ -186,12 +186,26 @@ def validate_no_pii(rows, filename):
                 sys.exit(1)
     print(f'  ✅ {filename}: no PII ({len(rows)} rows)')
 
+# Columns allowed in orders.csv — no PII
+ORDERS_SAFE_COLS = [
+    'Order ID','Order Date','Order Status','Channel Name',
+    'Order Total (inc tax)','Order Total (ex tax)','Exchange Rate',
+    'Tax Total','Shipping Cost (ex tax)','Coupon Discount','Coupon Details',
+    'Payment Method','Product Details','Billing Country','Billing State',
+    'Billing Suburb','Order Source','Order Time','Ship Method',
+    'Date Shipped','Total Shipped','Customer ID','Order Currency Code',
+    'Subtotal (ex tax)','Total Quantity',
+]
+
 def write_csv(filename, rows, reference_rows=None):
     if not rows:
-        print(f'  ⚠️  {filename}: no rows')
+        print(f'  \u26a0\ufe0f  {filename}: no rows')
         return
     all_keys = list(rows[0].keys())
-    if reference_rows:
+    # For orders.csv: only keep safe columns, never inherit PII from reference
+    if filename == 'orders.csv':
+        all_keys = [k for k in ORDERS_SAFE_COLS if k in all_keys or k in rows[0]]
+    elif reference_rows:
         for k in reference_rows[0].keys():
             if k not in all_keys:
                 all_keys.append(k)
