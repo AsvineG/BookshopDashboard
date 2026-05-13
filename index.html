@@ -3793,7 +3793,7 @@ function preProcess(cb){
     row._qty=parseInt(row['Total Quantity']||0)||0;
     row._ref=parseFloat(String(row['Refund Amount']||0).replace(/[^\d.\-]/g,''))||0;
     // _email: use Customer Email (may be hashed by sanitiser — that's fine, hash is consistent)
-    row._email=(row['Customer Email']||row['Billing Email']||'').toLowerCase().trim();
+    row._email=(row['Customer Email']||row['Billing Email']||row['Customer ID']||'').toLowerCase().trim();
     row._name='';
     row._id=String(row['Order ID']||'');
     row._zero=row._aud<0.01||row._excluded;
@@ -10403,7 +10403,7 @@ var CACHE_BUST = '?v=' + Math.floor(Date.now()/300000); // changes every 5 min
 // Clear stale CSV cache on load — ensures fresh data after format changes
 (function(){
   try{
-    var CSV_VERSION = 'v4'; // bump this when CSV format changes
+    var CSV_VERSION = 'v5'; // bump this when CSV format changes
     if(localStorage.getItem('re_csv_version') !== CSV_VERSION){
       ['orders','products','carts','customers','source'].forEach(function(t){
         localStorage.removeItem('re_csv_'+t);

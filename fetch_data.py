@@ -382,7 +382,7 @@ if new_orders or FULL_REFRESH:
             'Channel Name':           ch_name,
             'Order Total (inc tax)':  _to_aud(o.get('total_inc_tax','0')),
             'Order Total (ex tax)':   _to_aud(o.get('total_ex_tax','0')),
-            'Exchange Rate':          str(_rate),
+            'Exchange Rate':          '1',  # Values pre-converted to AUD
             'Tax Total':              _to_aud(o.get('total_tax','0')),
             'Shipping Cost (ex tax)': _to_aud(o.get('shipping_cost_ex_tax','0')),
             'Coupon Discount':        _to_aud(o.get('coupon_discount','0')),
@@ -473,9 +473,6 @@ for c in customers:
         'Total Orders':                         c.get('orders_count', 0),
         'Channel ID':                           channel_ids[0] if channel_ids else 1,
         'Receive Review/Abandoned Cart Emails?': 'Y' if c.get('accepts_product_review_abandoned_cart_emails', True) else 'N',
-        'First Name':                           '',
-        'Last Name':                            '',
-        'Email':                                sha256(c.get('email', '')),
     })
 validate_no_pii(clean_customers, 'customers.csv')
 write_csv('customers.csv', clean_customers)
