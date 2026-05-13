@@ -2844,14 +2844,14 @@ table td:first-child, table th:first-child {
     <div class="g2">
       <div class="card"><div class="ct">Monthly revenue heatmap (AUD)</div><div id="mheat"></div></div>
       <div class="card"><div class="ct">Day &#215; hour order heatmap</div><div id="dheat"></div></div>
-    
-    <div class="g3">
-      <div class="card"><div class="ct">Repeat vs new customers</div><div class="cw h240"><canvas id="cRep"></canvas></div></div>
-      <div class="card"><div class="ct">Customer LTV segments (AUD)</div><div class="tw" id="tLTV" style="max-height:280px;overflow-y:auto"></div></div>
-      <div class="card"><div class="ct">Monthly order volume</div><div class="cw h185"><canvas id="cMon"></canvas></div></div>
     </div>
 
-  </div>
+    <div style="display:grid;grid-template-columns:1fr 1.2fr 1.8fr;gap:16px;margin-bottom:16px">
+      <div class="card"><div class="ct">Repeat vs new customers</div><div class="cw h260"><canvas id="cRep"></canvas></div></div>
+      <div class="card"><div class="ct">Customer LTV segments (AUD)</div><div class="tw" id="tLTV" style="max-height:300px;overflow-y:auto"></div></div>
+      <div class="card"><div class="ct">Monthly order volume</div><div class="cw h260"><canvas id="cMon"></canvas></div></div>
+    </div>
+
   </div>
 
 
@@ -3793,7 +3793,7 @@ function preProcess(cb){
     row._qty=parseInt(row['Total Quantity']||0)||0;
     row._ref=parseFloat(String(row['Refund Amount']||0).replace(/[^\d.\-]/g,''))||0;
     // _email: use Customer Email (may be hashed by sanitiser — that's fine, hash is consistent)
-    row._email=(row['Customer Email']||row['Billing Email']||row['Customer ID']||'').toLowerCase().trim();
+    row._email=(row['Customer Email']||row['Billing Email']||'').toLowerCase().trim();
     row._name='';
     row._id=String(row['Order ID']||'');
     row._zero=row._aud<0.01||row._excluded;
@@ -10403,7 +10403,7 @@ var CACHE_BUST = '?v=' + Math.floor(Date.now()/300000); // changes every 5 min
 // Clear stale CSV cache on load — ensures fresh data after format changes
 (function(){
   try{
-    var CSV_VERSION = 'v5'; // bump this when CSV format changes
+    var CSV_VERSION = 'v4'; // bump this when CSV format changes
     if(localStorage.getItem('re_csv_version') !== CSV_VERSION){
       ['orders','products','carts','customers','source'].forEach(function(t){
         localStorage.removeItem('re_csv_'+t);
