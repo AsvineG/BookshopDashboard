@@ -1432,33 +1432,34 @@
   "prefs": {
     "range": "fytd",
     "comp": "prior",
-    "currency": "aud"
+    "currency": "aud",
+    "theme": "light"
   },
   "currencyRates": [
     {
       "code": "GBP",
       "name": "British Pound",
-      "rate": 1.86
+      "rate": 1.865
     },
     {
       "code": "USD",
       "name": "US Dollar",
-      "rate": 1.56
+      "rate": 1.379
     },
     {
       "code": "EUR",
       "name": "Euro",
-      "rate": 1.73
+      "rate": 1.616
     },
     {
       "code": "NZD",
       "name": "New Zealand Dollar",
-      "rate": 0.9
+      "rate": 0.818
     },
     {
       "code": "CAD",
       "name": "Canadian Dollar",
-      "rate": 1.12
+      "rate": 1.007
     }
   ],
   "retailerMargins": {}
