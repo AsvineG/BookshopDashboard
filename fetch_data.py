@@ -103,6 +103,8 @@ def safe_get(url, params=None, retries=3):
                 continue
             if r.status_code == 204 or not r.text.strip():
                 return None
+            if r.status_code == 404:
+                return None
             r.raise_for_status()
             return r.json()
         except requests.exceptions.JSONDecodeError:
@@ -401,25 +403,32 @@ products = bc_get_all_v3('/catalog/products', {
     'include': 'variants,custom_fields,images',
 })
 
-# Fetch channel assignments for all products in parallel (tells us which
-# storefront each product is listed on — key for regional gap analysis)
-print('  Fetching channel assignments...')
-def fetch_channel_assignments(pid):
-    data = safe_get(f'{BASE_V3}/catalog/products/{pid}/channel-assignments')
-    if data and data.get('data'):
-        return pid, [a.get('channel_id') for a in data['data']]
-    return pid, []
-
+# Fetch channel assignments in bulk (single call, much faster)
+# Correct endpoint: /v3/catalog/products/channel-assignments (NOT per-product)
+print('  Fetching channel assignments (bulk)...')
 prod_channels = {}
-with ThreadPoolExecutor(max_workers=8) as ex:
-    futures = {ex.submit(fetch_channel_assignments, p['id']): p['id'] for p in products}
-    done = 0
-    for future in as_completed(futures):
-        pid, channels = future.result()
-        prod_channels[pid] = channels
-        done += 1
-        if done % 50 == 0 or done == len(products):
-            print(f'    {done}/{len(products)} channel assignments fetched')
+try:
+    page = 1
+    while True:
+        data = safe_get(f'{BASE_V3}/catalog/products/channel-assignments', {'limit': 250, 'page': page})
+        if not data or not data.get('data'):
+            break
+        for a in data['data']:
+            pid = a.get('product_id')
+            ch  = a.get('channel_id')
+            if pid and ch:
+                if pid not in prod_channels:
+                    prod_channels[pid] = []
+                prod_channels[pid].append(ch)
+        total_pages = data.get('meta', {}).get('pagination', {}).get('total_pages', 1)
+        print(f'    Page {page}/{total_pages}: {len(data["data"])} assignments')
+        if page >= total_pages:
+            break
+        page += 1
+    print(f'  ✅ Channel assignments loaded for {len(prod_channels)} products')
+except Exception as e:
+    print(f'  ⚠️  Channel assignments failed ({e}) — defaulting to all storefronts')
+    prod_channels = {}
 
 clean_products = []
 for p in products:
