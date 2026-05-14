@@ -2472,6 +2472,33 @@ function rGrowth(orders){
   },50);
 }
 
+// ── Price list helpers (used in Products tab) ─────────────────────────────
+function buildPLLookup() {
+  var map = {};
+  if(!rawPL || !rawPL.length) return map;
+  rawPL.forEach(function(r) {
+    var sku  = (r['SKU']||'').trim();
+    var curr = (r['Currency']||'AUD').toUpperCase();
+    var price= parseFloat(r['Price']||0)||0;
+    var sale = parseFloat(r['Sale Price']||0)||0;
+    if(!sku||!price) return;
+    if(!map[sku]) map[sku]={};
+    if(!map[sku][curr]||price<map[sku][curr].price)
+      map[sku][curr]={price:price,salePrice:sale};
+  });
+  return map;
+}
+
+function plPriceCell(lookup, sku, curr) {
+  var e = lookup[sku] && lookup[sku][curr];
+  if(!e||!e.price) return '<td class="num text-muted">—</td>';
+  var sym = {AUD:'A$',USD:'US$',GBP:'£',NZD:'NZ$',CAD:'C$'}[curr]||curr;
+  var disp = (e.salePrice&&e.salePrice<e.price)
+    ? '<s class="text-muted" style="font-size:10px">'+sym+e.price.toFixed(2)+'</s><span class="text-amb bold"> '+sym+e.salePrice.toFixed(2)+'</span>'
+    : sym+e.price.toFixed(2);
+  return '<td class="num">'+disp+'</td>';
+}
+
 // ── Products ───────────────────────────────────────────────────────────────
 function rProd(orders){
   var el=document.getElementById('panel-products');
@@ -2493,6 +2520,11 @@ function rProd(orders){
   var bunProds=prods.filter(function(p){return p.type==='bundle';});
   var isbnProds=prods.filter(function(p){return p.type==='isbn';});
 
+
+  // Build price lookup for this render from rawPL
+  var plLookup = buildPLLookup();
+  var hasPL    = Object.keys(plLookup).length > 0;
+
   el.innerHTML='<div class="g3 mb14">'+
     kpiCard('Total Products',prods.length.toString(),'across all types','var(--c-brand)')+
     kpiCard('Top Product',prods[0]?prods[0].name.slice(0,28):'—',prods[0]?audFmt(prods[0].rev)+' · '+pctFmt(totalRev?prods[0].rev/totalRev*100:0)+' of revenue':'','var(--c-grn)')+
@@ -2512,8 +2544,12 @@ function rProd(orders){
       '<button class="pill" id="ptIsbn" onclick="filterProdTable(\'isbn\',this)">📚 ISBN ('+isbnProds.length+')</button>'+
     '</div>'+
   '</div>'+
+
+
   '<div class="tbl-wrap" id="prodTableWrap"><table class="tbl" id="prodTable">'+
-    '<thead><tr><th>Product</th><th>SKU</th><th>Type</th><th class="r">Revenue</th><th class="r">Share</th><th class="r">Qty</th><th class="r">🇦🇺</th><th class="r">🇬🇧</th><th class="r">🇺🇸</th></tr></thead>'+
+    '<thead><tr><th>Product</th><th>SKU</th><th>Type</th><th class="r">Revenue</th><th class="r">Share</th><th class="r">Qty</th><th class="r">🇦🇺</th><th class="r">🇬🇧</th><th class="r">🇺🇸</th>'+
+    (hasPL?'<th class="r" style="color:var(--c-brand)">🇦🇺 AUD</th><th class="r" style="color:var(--c-pur)">🇬🇧 GBP</th><th class="r" style="color:var(--c-grn)">🇺🇸 USD</th>':'')+
+    '</tr></thead>'+
     '<tbody>'+prods.slice(0,50).map(function(p,i){
       var tc={digital:'blu',bundle:'pur',isbn:'org'};
       return '<tr data-type="'+p.type+'">'+
@@ -2522,10 +2558,11 @@ function rProd(orders){
         '<td>'+tag(p.type,tc[p.type]||'neu')+'</td>'+
         '<td class="num">'+audFmt(p.rev)+'</td>'+
         '<td class="num text-muted">'+pctFmt(totalRev?p.rev/totalRev*100:0)+'</td>'+
-        '<td class="num">'+p.qty.toLocaleString()+'</td>'+
+        '<td class="num">'+p.qty.toLocaleString('en-AU')+'</td>'+
         '<td class="num">'+p.regions.au+'</td>'+
         '<td class="num">'+p.regions.uk+'</td>'+
         '<td class="num">'+p.regions.us+'</td>'+
+        (hasPL?plPriceCell(plLookup,p.sku,'AUD')+plPriceCell(plLookup,p.sku,'GBP')+plPriceCell(plLookup,p.sku,'USD'):'')+
       '</tr>';
     }).join('')+'</tbody></table></div></div>';
 
@@ -5684,46 +5721,61 @@ function buildBundleMapFromModifiers() {
   });
 
   // Build the final map: bundleSku → [ componentIsbn, ... ]
-  // Use only the default option from each modifier slot
+  // For each slot: try default option first, fall back to first option.
+  // Resolution order: product_id from value_data → name match → ISBN-13 in label.
   var bMap = {};
   Object.entries(byBundle).forEach(function(e) {
     var bundleSku = e[0];
     var slots = e[1];
     var isbns = [];
 
-    Object.values(slots).forEach(function(options) {
-      // Pick the default option for this slot
-      var chosen = options.find(function(o) { return o.isDef; }) || options[0];
-      if(!chosen) return;
-
-      // Try to resolve to an ISBN SKU
+    function resolveOption(opt) {
+      if(!opt) return null;
       var isbn = null;
 
-      // 1. Value Data — BC returns {"product_id": 123} for pick_list options
-      if(chosen.valData) {
+      // 1. value_data → {"product_id": 123}
+      if(opt.valData && opt.valData !== '""' && opt.valData !== "''") {
         try {
-          var vdObj = JSON.parse(chosen.valData);
-          var vdId  = String(vdObj.product_id || vdObj.productId || '');
-          if(vdId && idLookup[vdId]) isbn = idLookup[vdId];
-        } catch(e) {
-          // Fallback: extract any number sequence
-          var vd = chosen.valData.replace(/[^0-9]/g,'');
-          if(vd && idLookup[vd]) isbn = idLookup[vd];
+          var vdObj = JSON.parse(opt.valData);
+          if(vdObj && typeof vdObj === 'object') {
+            var vdId = String(vdObj.product_id || vdObj.productId || vdObj.id || '');
+            if(vdId && idLookup[vdId]) isbn = idLookup[vdId];
+          }
+        } catch(ex) {
+          var digits = opt.valData.replace(/[^0-9]/g,'');
+          if(digits.length >= 3 && idLookup[digits]) isbn = idLookup[digits];
         }
       }
 
-      // 2. Match by name
+      // 2. Exact name match (case-insensitive)
       if(!isbn) {
-        var nm = chosen.label.toLowerCase().trim();
+        var nm = opt.label.toLowerCase().trim();
         if(nameLookup[nm]) isbn = nameLookup[nm];
       }
 
-      // 3. Extract ISBN-13 from label if embedded
+      // 3. Partial name match — strip age/year suffixes like "(Ages 5–7)"
       if(!isbn) {
-        var m = chosen.label.match(/\b(\d{13})\b/);
-        if(m) isbn = m[1];
+        var nmClean = opt.label.replace(/\s*\([^)]+\)\s*$/,'').toLowerCase().trim();
+        if(nameLookup[nmClean]) isbn = nameLookup[nmClean];
       }
 
+      // 4. ISBN-13 embedded in the label
+      if(!isbn) {
+        var m13 = opt.label.match(/\b(\d{13})\b/);
+        if(m13) isbn = m13[1];
+      }
+
+      return isbn;
+    }
+
+    Object.values(slots).forEach(function(options) {
+      // Try default first, then each option in order
+      var candidates = options.slice().sort(function(a,b){ return b.isDef - a.isDef; });
+      var isbn = null;
+      for(var ci=0; ci<candidates.length; ci++) {
+        isbn = resolveOption(candidates[ci]);
+        if(isbn) break;
+      }
       if(isbn && !isbns.includes(isbn)) isbns.push(isbn);
     });
 
