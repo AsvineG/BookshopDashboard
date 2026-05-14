@@ -1,7 +1,7 @@
-import requests, csv, hashlib, os, sys, time, re
+import requests, csv, hashlib, os, sys, time, re, json
 from datetime import datetime, timedelta, timezone
-from email.utils import parsedate_to_datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from email.utils import parsedate_to_datetime
 
 STORE_HASH   = os.environ['BC_STORE_HASH']
 CLIENT_ID    = os.environ['BC_CLIENT_ID']
@@ -17,7 +17,7 @@ HEADERS = {
     'Accept': 'application/json',
 }
 
-# ── Country to channel mapping ────────────────────────────────────────────────
+# ── Country → channel mapping ─────────────────────────────────────────────────
 COUNTRY_CHANNEL = {
     'united states': 'Reading Eggs USA', 'usa': 'Reading Eggs USA',
     'us': 'Reading Eggs USA', 'canada': 'Reading Eggs USA',
@@ -37,34 +37,22 @@ COUNTRY_CHANNEL = {
     'india': 'Reading Eggs AU', 'philippines': 'Reading Eggs AU',
 }
 
-# AUD exchange rates — loaded from settings.json (configured in dashboard Settings → Currency Rates)
-# Falls back to hardcoded defaults if settings.json not found or currency not configured
+# ── AUD exchange rates ────────────────────────────────────────────────────────
 AUD_RATES = {
-    'AUD': 1.0,
-    'GBP': 1.88,   # updated 13 May 2026
-    'USD': 1.40,   # updated 13 May 2026
-    'EUR': 1.58,   # updated 13 May 2026
-    'NZD': 0.93,   # updated 13 May 2026
-    'CAD': 1.02,   # updated 13 May 2026
-    'SGD': 1.08,   # updated 13 May 2026
-    'HKD': 0.20,
-    'ZAR': 0.077,  # updated 13 May 2026
-    'INR': 0.017,  # updated 13 May 2026
+    'AUD': 1.0, 'GBP': 2.02, 'USD': 1.56, 'EUR': 1.73,
+    'NZD': 0.90, 'CAD': 1.12, 'SGD': 1.18, 'HKD': 0.20,
+    'ZAR': 0.085, 'INR': 0.019,
 }
 try:
-    import json
     if os.path.exists('settings.json'):
         with open('settings.json','r',encoding='utf-8') as _sf:
             _settings = json.load(_sf)
-        _rates = _settings.get('currencyRates', [])
-        for _r in _rates:
+        for _r in _settings.get('currencyRates', []):
             _code = (_r.get('code') or '').upper()
             _rate = float(_r.get('rate') or 0)
             if _code and _rate > 0:
                 AUD_RATES[_code] = _rate
-        print(f'  Exchange rates loaded from settings.json: {AUD_RATES}')
-    else:
-        print(f'  Using default exchange rates (no settings.json found)')
+        print(f'  Exchange rates loaded from settings.json')
 except Exception as e:
     print(f'  Using default exchange rates ({e})')
 
@@ -75,19 +63,15 @@ def sha256(v):
     if not v: return ''
     return hashlib.sha256(str(v).strip().lower().encode()).hexdigest()[:16]
 
-from datetime import timezone, timedelta
-
-AEST = timezone(timedelta(hours=10))  # Use AEST (UTC+10) consistently for all dates
+AEST = timezone(timedelta(hours=10))
 
 def parse_bc_date(s):
     if not s: return None
     s = str(s).strip()
-    # Try ISO format first (V3 API): "2026-05-11T08:30:00+00:00"
     try:
         return datetime.fromisoformat(s.replace('Z', '+00:00'))
     except:
         pass
-    # Try RFC 2822 format (V2 API): "Mon, 11 May 2026 08:30:00 +0000"
     try:
         return parsedate_to_datetime(s)
     except:
@@ -97,7 +81,6 @@ def parse_bc_date(s):
 def fmt_date(s):
     dt = parse_bc_date(s)
     if not dt: return ''
-    # Convert to AEST so orders placed at 9am Sydney don't show as yesterday
     if dt.tzinfo is not None:
         dt = dt.astimezone(AEST)
     return dt.strftime('%d/%m/%Y')
@@ -143,15 +126,13 @@ def bc_get_all_v2(endpoint, params=None, stop_at_id=None):
             filtered = []
             done = False
             for item in batch:
-                item_id = int(item.get('id', 0))
-                if item_id <= stop_at_id:
+                if int(item.get('id', 0)) <= stop_at_id:
                     done = True
                     break
                 filtered.append(item)
             results.extend(filtered)
             print(f'  Page {page}: {len(batch)} fetched, {len(filtered)} new (total: {len(results)})')
             if done:
-                print(f'  Reached existing orders — stopping.')
                 break
         else:
             results.extend(batch)
@@ -187,26 +168,12 @@ def validate_no_pii(rows, filename):
                 sys.exit(1)
     print(f'  ✅ {filename}: no PII ({len(rows)} rows)')
 
-# Columns allowed in orders.csv — no PII
-ORDERS_SAFE_COLS = [
-    'Order ID','Order Date','Order Status','Channel Name',
-    'Order Total (inc tax)','Order Total (ex tax)','Exchange Rate',
-    'Tax Total','Shipping Cost (ex tax)','Coupon Discount','Coupon Details',
-    'Payment Method','Product Details','Billing Country','Billing State',
-    'Billing Suburb','Order Source','Order Time','Ship Method',
-    'Date Shipped','Total Shipped','Customer ID','Order Currency Code',
-    'Subtotal (ex tax)','Total Quantity',
-]
-
 def write_csv(filename, rows, reference_rows=None):
     if not rows:
-        print(f'  \u26a0\ufe0f  {filename}: no rows')
+        print(f'  ⚠️  {filename}: no rows')
         return
     all_keys = list(rows[0].keys())
-    # For orders.csv: only keep safe columns, never inherit PII from reference
-    if filename == 'orders.csv':
-        all_keys = [k for k in ORDERS_SAFE_COLS if k in all_keys or k in rows[0]]
-    elif reference_rows:
+    if reference_rows:
         for k in reference_rows[0].keys():
             if k not in all_keys:
                 all_keys.append(k)
@@ -222,25 +189,16 @@ def read_csv(filename):
     with open(filename, 'r', encoding='utf-8') as f:
         return list(csv.DictReader(f))
 
-# ── Channel map from BC API ───────────────────────────────────────────────────
+# ── Channel map ───────────────────────────────────────────────────────────────
 CHANNEL_MAP = {
-    1: 'Reading Eggs AU',
-    2: 'Reading Eggs UK',
-    3: 'Reading Eggs USA',
-    1692460: 'Reading Eggs USA',   # US storefront variant
-    1692461: 'Reading Eggs UK',    # UK storefront variant
-    1692941: 'Reading Eggs USA',   # US storefront variant
-    1707575: 'Reading Eggs AU',    # Facebook AU → AU
-    1707576: 'Reading Eggs AU',    # Facebook Analytics AU → AU
-    1723482: 'Reading Eggs AU',    # Facebook Analytics AU → AU
-    1724452: 'Reading Eggs AU',    # Google AU
-    1747993: 'Reading Eggs USA',   # Google USA
-    1747994: 'Reading Eggs UK',    # Google UK
-    1823086: 'Reading Eggs AU',    # Meta AU
-    1835881: 'Reading Eggs AU',    # Google AU
-    1837891: 'Reading Eggs USA',   # Google USA
-    1837898: 'Reading Eggs UK',    # Google UK
-    1837908: 'Reading Eggs USA',   # Microsoft USA
+    1: 'Reading Eggs AU', 2: 'Reading Eggs UK', 3: 'Reading Eggs USA',
+    1692460: 'Reading Eggs USA', 1692461: 'Reading Eggs UK',
+    1692941: 'Reading Eggs USA', 1707575: 'Reading Eggs AU',
+    1707576: 'Reading Eggs AU', 1723482: 'Reading Eggs AU',
+    1724452: 'Reading Eggs AU', 1747993: 'Reading Eggs USA',
+    1747994: 'Reading Eggs UK', 1823086: 'Reading Eggs AU',
+    1835881: 'Reading Eggs AU', 1837891: 'Reading Eggs USA',
+    1837898: 'Reading Eggs UK', 1837908: 'Reading Eggs USA',
 }
 try:
     ch_data = safe_get(f'{BASE_V3}/channels', {'limit': 250})
@@ -248,24 +206,21 @@ try:
         for ch in ch_data['data']:
             ch_id = ch.get('id')
             ch_name = ch.get('name', '') or ch.get('type', '')
-            # Don't override our known channels 1,2,3 — they're correctly mapped
             if ch_id and ch_name and ch_id not in (1, 2, 3):
                 CHANNEL_MAP[ch_id] = ch_name
-        print(f'  Channels: {CHANNEL_MAP}')
 except Exception as e:
     print(f'  Channel lookup failed: {e}')
 
-# ── Read existing data ────────────────────────────────────────────────────────
+# ── Existing data ─────────────────────────────────────────────────────────────
 existing_orders = read_csv('orders.csv')
 print(f'\n📋 Existing orders.csv: {len(existing_orders)} rows')
 
 max_existing_id = 0
-modified_since = None  # datetime cutoff for date_modified fetch
+stop_at_id = None
 
 if FULL_REFRESH:
     print('🔄 Full refresh — fetching all orders')
 elif existing_orders:
-    # Find highest existing Order ID (for new orders)
     for row in existing_orders:
         try:
             oid = int(row.get('Order ID', 0))
@@ -274,72 +229,43 @@ elif existing_orders:
         except:
             pass
     if max_existing_id > 0:
-        # Fetch orders modified in last 30 days — catches shipment updates on ANY order
-        # regardless of how old the original order is
-        modified_since = datetime.now(timezone.utc) - timedelta(days=30)
-        print(f'⚡ Incremental mode:')
-        print(f'   → New orders: ID > {max_existing_id}')
-        print(f'   → Updated orders: modified in last 30 days (catches shipments, status changes)')
+        cutoff_date = datetime.now() - timedelta(days=7)
+        recent_cutoff_id = 0
+        for row in existing_orders:
+            try:
+                row_date = datetime.strptime(row.get('Order Date', ''), '%d/%m/%Y')
+                if row_date >= cutoff_date:
+                    oid = int(row.get('Order ID', 0))
+                    if oid < recent_cutoff_id or recent_cutoff_id == 0:
+                        recent_cutoff_id = oid
+            except:
+                pass
+        stop_at_id = (recent_cutoff_id - 1) if recent_cutoff_id > 0 else max_existing_id
+        print(f'⚡ Incremental — fetching orders with ID > {stop_at_id}')
 else:
-    print('📋 No existing data — first run, fetching all orders')
+    print('📋 No existing data — first run')
 
 # ── 1. Orders ─────────────────────────────────────────────────────────────────
-print('\n📦 Fetching orders from BigCommerce...')
+print('\n📦 Fetching orders...')
+new_orders = bc_get_all_v2('/orders', {'sort': 'id:desc', 'is_deleted': 'false'}, stop_at_id=stop_at_id)
+print(f'  Fetched {len(new_orders)} orders')
 
-if FULL_REFRESH or not existing_orders:
-    # Fetch everything
-    new_orders = bc_get_all_v2('/orders', {'sort': 'id:desc', 'is_deleted': 'false'})
-    print(f'  Fetched {len(new_orders)} orders (full)')
-else:
-    # Pass 1: New orders (ID > max_existing_id)
-    print(f'  Pass 1: New orders (ID > {max_existing_id})...')
-    new_by_id = bc_get_all_v2('/orders',
-        {'sort': 'id:desc', 'is_deleted': 'false'},
-        stop_at_id=max_existing_id)
-    print(f'  Pass 1 result: {len(new_by_id)} new orders')
-
-    # Pass 2: Recently modified orders (last 30 days, sorted by date_modified)
-    # This catches shipment updates, status changes on ANY existing order
-    print(f'  Pass 2: Orders modified in last 30 days...')
-    modified_str = modified_since.strftime('%Y-%m-%dT%H:%M:%S') + '+00:00'
-    modified_orders = bc_get_all_v2('/orders',
-        {'sort': 'date_modified:desc', 'is_deleted': 'false',
-         'min_date_modified': modified_str},
-        stop_at_id=None)
-    print(f'  Pass 2 result: {len(modified_orders)} modified orders')
-
-    # Merge both passes — deduplicate by Order ID
-    seen_ids = set()
-    new_orders = []
-    for o in new_by_id + modified_orders:
-        oid = o['id']
-        if oid not in seen_ids:
-            seen_ids.add(oid)
-            new_orders.append(o)
-    print(f'  Total unique orders to process: {len(new_orders)}')
 if new_orders or FULL_REFRESH:
-    # For incremental: check existing CSV for orders that already have Product Details
-    # Only fetch line items for orders missing them (saves huge time on incremental)
     existing_details = {}
     if existing_orders and not FULL_REFRESH:
         for row in existing_orders:
             oid = str(row.get('Order ID',''))
-            pd = row.get('Product Details','')
+            pd  = row.get('Product Details','')
             if oid and pd and 'Product Name:' in pd:
                 existing_details[oid] = pd
 
-    orders_needing_items = [o for o in new_orders
-                            if str(o['id']) not in existing_details]
-    orders_with_details  = [o for o in new_orders
-                            if str(o['id']) in existing_details]
+    orders_needing_items = [o for o in new_orders if str(o['id']) not in existing_details]
+    orders_with_details  = [o for o in new_orders if str(o['id']) in existing_details]
 
-    print(f'  Fetching line items for {len(orders_needing_items)} orders '
-          f'({len(orders_with_details)} already have details)...')
-
+    print(f'  Fetching line items for {len(orders_needing_items)} orders...')
     order_items = {}
-    # Pre-populate from existing CSV
     for o in orders_with_details:
-        order_items[o['id']] = existing_details[str(o['id'])]  # store as string, handled below
+        order_items[o['id']] = existing_details[str(o['id'])]
 
     completed = 0
 
@@ -358,14 +284,11 @@ if new_orders or FULL_REFRESH:
                     order_items[futures[future]] = []
                 completed += 1
                 if completed % 500 == 0 or completed == len(orders_needing_items):
-                    pct = completed/len(orders_needing_items)*100
-                    print(f'    {completed}/{len(orders_needing_items)} done ({pct:.0f}%)')
+                    print(f'    {completed}/{len(orders_needing_items)} done ({completed/len(orders_needing_items)*100:.0f}%)')
 
     print('  ✅ Line items done')
 
     def _build_coupon_details(o):
-        # Build coupon details string matching BC export format
-        # Dashboard parser looks for: "Coupon Code: XXXX"
         coupons = o.get('coupons') or []
         if not coupons:
             discount = float(o.get('coupon_discount', 0) or 0)
@@ -382,47 +305,44 @@ if new_orders or FULL_REFRESH:
         return ' | '.join(parts)
 
     def build_order_row(o):
-        oid = o['id']
+        oid   = o['id']
         items = order_items.get(oid, [])
-        # Store RAW local currency values — dashboard converts on load using settings rates
-        # This means rate changes in Settings take effect instantly without a full refresh
         _curr = (o.get('currency_code') or 'AUD').upper()
-        _rate = AUD_RATES.get(_curr, 1.0)  # stored as reference, dashboard uses settings rate
-        def _raw(v): return str(round(float(v or 0), 4))  # keep raw local currency value
-        billing = o.get('billing_address') or {}
-        # BC V2 returns shipping_addresses as a resource link dict, not inline data
-        # Ship method is not directly available without extra API calls
-        # Use empty string - not worth 22k extra API calls
+        _rate = AUD_RATES.get(_curr, 1.0)
+        def _to_aud(v): return str(round(float(v or 0) * _rate, 2))
+        billing    = o.get('billing_address') or {}
+        ship_addrs = o.get('shipping_addresses') or []
+        if isinstance(ship_addrs, dict):
+            ship_addrs = list(ship_addrs.values())
         ship_method = ''
-        # items can be a list (freshly fetched) or a string (from existing CSV)
+        if ship_addrs and isinstance(ship_addrs[0], dict):
+            ship_method = ship_addrs[0].get('shipping_method', '')
         if isinstance(items, str):
-            product_details_str = items  # already formatted, reuse directly
+            product_details_str = items
         else:
             parts = []
-            rate = AUD_RATES.get((o.get('currency_code') or 'AUD').upper(), 1.0)
             for it in items:
                 if not isinstance(it, dict): continue
-                name = str(it.get('name', '')).replace('|', '/').replace(',', ' ')
-                sku  = str(it.get('sku', '')).replace(',', ' ')
-                qty  = it.get('quantity', 1)
-                price = float(it.get('price_inc_tax', it.get('base_price', 0)) or 0)
+                name  = str(it.get('name', '')).replace('|', '/').replace(',', ' ')
+                sku   = str(it.get('sku', '')).replace(',', ' ')
+                qty   = it.get('quantity', 1)
+                price = float(it.get('price_inc_tax', it.get('base_price', 0)) or 0) * _rate
                 total_price = round(price * int(qty), 2)
                 parts.append(f"Product Name: {name}, Product SKU: {sku}, Product Qty: {qty}, Product Total Price: {total_price}")
             product_details_str = ' | '.join(parts)
-        ch_id = o.get('channel_id', 1)
+        ch_id   = o.get('channel_id', 1)
         ch_name = CHANNEL_MAP.get(ch_id, derive_channel(billing.get('country', ''), ch_id))
         return {
             'Order ID':               str(oid),
             'Order Date':             fmt_date(o.get('date_created', '')),
             'Order Status':           o.get('status', ''),
             'Channel Name':           ch_name,
-            'Order Total (inc tax)':  _raw(o.get('total_inc_tax','0')),
-            'Order Total (ex tax)':   _raw(o.get('total_ex_tax','0')),
-            'Exchange Rate':          str(_rate),  # AUD rate for this currency at time of refresh
-            'Order Currency Code':    _curr,
-            'Tax Total':              _raw(o.get('total_tax','0')),
-            'Shipping Cost (ex tax)': _raw(o.get('shipping_cost_ex_tax','0')),
-            'Coupon Discount':        _raw(o.get('coupon_discount','0')),
+            'Order Total (inc tax)':  _to_aud(o.get('total_inc_tax','0')),
+            'Order Total (ex tax)':   _to_aud(o.get('total_ex_tax','0')),
+            'Exchange Rate':          str(_rate),
+            'Tax Total':              _to_aud(o.get('total_tax','0')),
+            'Shipping Cost (ex tax)': _to_aud(o.get('shipping_cost_ex_tax','0')),
+            'Coupon Discount':        _to_aud(o.get('coupon_discount','0')),
             'Coupon Details':         _build_coupon_details(o),
             'Payment Method':         o.get('payment_method', ''),
             'Product Details':        product_details_str,
@@ -436,20 +356,19 @@ if new_orders or FULL_REFRESH:
             'Total Shipped':          o.get('items_shipped', 0),
             'Customer ID':            sha256(billing.get('email', '')),
             'Order Currency Code':    o.get('currency_code', 'AUD'),
-            'Subtotal (ex tax)':      _raw(o.get('subtotal_ex_tax', o.get('total_ex_tax','0'))),
+            'Subtotal (ex tax)':      _to_aud(o.get('subtotal_ex_tax', o.get('total_ex_tax','0'))),
             'Total Quantity':         sum(int(it.get('quantity', 1)) for it in items if isinstance(it, dict)),
         }
 
     new_rows = [build_order_row(o) for o in new_orders]
 
-    # Merge with existing
     if existing_orders and not FULL_REFRESH:
         new_ids = {str(r['Order ID']) for r in new_rows}
         kept = [r for r in existing_orders if str(r.get('Order ID', '')) not in new_ids]
         clean_orders = new_rows + kept
         try: clean_orders.sort(key=lambda r: int(r.get('Order ID', 0)), reverse=True)
         except: pass
-        print(f'  Merged: {len(new_rows)} new/updated + {len(kept)} kept = {len(clean_orders)} total')
+        print(f'  Merged: {len(new_rows)} new + {len(kept)} kept = {len(clean_orders)} total')
     else:
         try: new_rows.sort(key=lambda r: int(r.get('Order ID', 0)), reverse=True)
         except: pass
@@ -458,7 +377,6 @@ if new_orders or FULL_REFRESH:
     validate_no_pii(clean_orders, 'orders.csv')
     write_csv('orders.csv', clean_orders, reference_rows=existing_orders if existing_orders else None)
 
-    # Rebuild sources from merged orders
     print('\n📊 Rebuilding sources.csv...')
     clean_sources = [{'order_id': r['Order ID'], 'order_date': r['Order Date'],
                       'channel_id': r['Channel Name'],
@@ -469,52 +387,155 @@ if new_orders or FULL_REFRESH:
 else:
     print('  No new orders — data already up to date.')
 
-# ── 2. Products ───────────────────────────────────────────────────────────────
-print('\n📚 Fetching products...')
-products = bc_get_all_v3('/catalog/products', {'include': 'variants'})
+# ── 2. Categories (fetch first so we can map IDs → names in products) ─────────
+print('\n🗂️  Fetching categories...')
+categories_raw = bc_get_all_v3('/catalog/categories')
+category_map = {}  # id → name
+for cat in categories_raw:
+    category_map[cat.get('id')] = cat.get('name', '')
+print(f'  {len(category_map)} categories loaded')
+
+# ── 3. Products (enriched) ────────────────────────────────────────────────────
+print('\n📚 Fetching products (enriched)...')
+products = bc_get_all_v3('/catalog/products', {
+    'include': 'variants,custom_fields,images',
+})
+
+# Fetch channel assignments for all products in parallel (tells us which
+# storefront each product is listed on — key for regional gap analysis)
+print('  Fetching channel assignments...')
+def fetch_channel_assignments(pid):
+    data = safe_get(f'{BASE_V3}/catalog/products/{pid}/channel-assignments')
+    if data and data.get('data'):
+        return pid, [a.get('channel_id') for a in data['data']]
+    return pid, []
+
+prod_channels = {}
+with ThreadPoolExecutor(max_workers=8) as ex:
+    futures = {ex.submit(fetch_channel_assignments, p['id']): p['id'] for p in products}
+    done = 0
+    for future in as_completed(futures):
+        pid, channels = future.result()
+        prod_channels[pid] = channels
+        done += 1
+        if done % 50 == 0 or done == len(products):
+            print(f'    {done}/{len(products)} channel assignments fetched')
+
 clean_products = []
 for p in products:
+    pid = p.get('id', '')
+
+    # Category names (resolve IDs → names)
+    cat_ids  = p.get('categories') or []
+    cat_names = ','.join(category_map.get(cid, str(cid)) for cid in cat_ids)
+
+    # Custom fields (flatten to key:value string)
+    custom_fields = p.get('custom_fields') or []
+    custom_str = ' | '.join(f"{cf.get('name','')}: {cf.get('value','')}" for cf in custom_fields if cf.get('name'))
+
+    # Channel assignments → which storefronts
+    channels = prod_channels.get(pid, [])
+    in_au = any(CHANNEL_MAP.get(c,'').endswith('AU')  for c in channels) or 1 in channels
+    in_uk = any(CHANNEL_MAP.get(c,'').endswith('UK')  for c in channels) or 2 in channels
+    in_us = any(CHANNEL_MAP.get(c,'').endswith('USA') for c in channels) or 3 in channels
+
+    # Primary image URL
+    images = p.get('images') or []
+    primary_img = next((img.get('url_thumbnail','') for img in images if img.get('is_thumbnail')), '')
+    if not primary_img and images:
+        primary_img = images[0].get('url_thumbnail','')
+
+    # Variant count and price range
+    variants    = p.get('variants') or []
+    variant_skus = ','.join(v.get('sku','') for v in variants if v.get('sku'))
+    min_var_price = min((float(v.get('price') or p.get('price') or 0) for v in variants), default=0) if variants else 0
+    max_var_price = max((float(v.get('price') or p.get('price') or 0) for v in variants), default=0) if variants else 0
+
     clean_products.append({
-        'Product ID':              p.get('id', ''),
+        # ── Identity ──────────────────────────────────────────────────
+        'Product ID':              pid,
         'Product Name':            p.get('name', ''),
         'SKU':                     p.get('sku', ''),
-        'Price':                   p.get('price', ''),
-        'Cost Price':              p.get('cost_price', ''),
-        'Retail Price':            p.get('retail_price', ''),
         'Type':                    p.get('type', ''),
+        'Brand ID':                p.get('brand_id', ''),
+        'Condition':               p.get('condition', ''),
+
+        # ── Pricing ───────────────────────────────────────────────────
+        'Price':                   p.get('price', ''),
+        'Sale Price':              p.get('sale_price', '') or '',    # current sale price if on promo
+        'Cost Price':              p.get('cost_price', '') or '',    # for real margin calc
+        'Retail Price':            p.get('retail_price', '') or '',
+        'Calculated Price':        p.get('calculated_price', '') or '',  # price after rules
+
+        # ── Sales & traffic ───────────────────────────────────────────
+        'Total Sold':              p.get('total_sold', 0),           # lifetime units sold from BC
+        'View Count':              p.get('view_count', 0),           # storefront page views
+
+        # ── Inventory ─────────────────────────────────────────────────
         'Inventory Level':         p.get('inventory_level', 0),
         'Inventory Warning Level': p.get('inventory_warning_level', 0),
-        'Categories':              ','.join(str(c) for c in (p.get('categories') or [])),
-        'Weight':                  p.get('weight', ''),
+        'Is Visible':              p.get('is_visible', True),        # hidden products won't sell
         'Availability':            p.get('availability', ''),
+        'Weight':                  p.get('weight', ''),
+
+        # ── Catalogue ─────────────────────────────────────────────────
+        'Categories':              cat_names,                        # human-readable names now
+        'Category IDs':            ','.join(str(c) for c in cat_ids),
         'Is Featured':             p.get('is_featured', False),
+        'Custom Fields':           custom_str,
+
+        # ── Channel / storefront assignments ─────────────────────────
+        'In AU Storefront':        'Y' if in_au else 'N',           # KEY: explains regional gaps
+        'In UK Storefront':        'Y' if in_uk else 'N',
+        'In USA Storefront':       'Y' if in_us else 'N',
+        'Assigned Channel IDs':    ','.join(str(c) for c in channels),
+
+        # ── Variants ──────────────────────────────────────────────────
+        'Variant Count':           len(variants),
+        'Variant SKUs':            variant_skus,
+        'Min Variant Price':       round(min_var_price, 2) if min_var_price else '',
+        'Max Variant Price':       round(max_var_price, 2) if max_var_price else '',
+
+        # ── SEO & content ─────────────────────────────────────────────
+        'Page Title':              p.get('page_title', ''),
+        'Meta Description':        p.get('meta_description', '') or '',
+        'Custom URL':              (p.get('custom_url') or {}).get('url', ''),
+        'Primary Image':           primary_img,
+
+        # ── Dates ─────────────────────────────────────────────────────
         'Date Created':            fmt_date(p.get('date_created', '')),
         'Date Modified':           fmt_date(p.get('date_modified', '')),
     })
+
 validate_no_pii(clean_products, 'products.csv')
 write_csv('products.csv', clean_products)
+print(f'  Products enriched with: total_sold, view_count, sale_price, cost_price,')
+print(f'    is_visible, channel_assignments, categories (names), custom_fields, variants')
 
-# ── 3. Customers ──────────────────────────────────────────────────────────────
+# ── 4. Customers ──────────────────────────────────────────────────────────────
 print('\n👥 Fetching customers...')
 customers = bc_get_all_v3('/customers')
 clean_customers = []
 for c in customers:
-    credits = c.get('store_credit_amounts') or []
+    credits    = c.get('store_credit_amounts') or []
     credit_amt = credits[0].get('amount', 0) if credits else 0
     channel_ids = c.get('channel_ids') or [1]
     clean_customers.append({
-        'Customer ID':                          sha256(c.get('email', '')),
-        'Date Joined':                          fmt_date(c.get('date_created', '')),
-        'Date Modified':                        fmt_date(c.get('date_modified', '')),
-        'Store Credit':                         credit_amt,
-        'Total Orders':                         c.get('orders_count', 0),
-        'Channel ID':                           channel_ids[0] if channel_ids else 1,
+        'Customer ID':                           sha256(c.get('email', '')),
+        'Date Joined':                           fmt_date(c.get('date_created', '')),
+        'Date Modified':                         fmt_date(c.get('date_modified', '')),
+        'Store Credit':                          credit_amt,
+        'Total Orders':                          c.get('orders_count', 0),
+        'Channel ID':                            channel_ids[0] if channel_ids else 1,
         'Receive Review/Abandoned Cart Emails?': 'Y' if c.get('accepts_product_review_abandoned_cart_emails', True) else 'N',
+        'First Name':                            '',
+        'Last Name':                             '',
+        'Email':                                 sha256(c.get('email', '')),
     })
 validate_no_pii(clean_customers, 'customers.csv')
 write_csv('customers.csv', clean_customers)
 
-# ── 4. Abandoned carts ────────────────────────────────────────────────────────
+# ── 5. Abandoned carts ────────────────────────────────────────────────────────
 print('\n🛒 Fetching abandoned carts...')
 try:
     carts = bc_get_all_v2('/customers/abandoned_carts')
@@ -543,4 +564,233 @@ try:
 except Exception as e:
     print(f'  ⚠️  Abandoned carts skipped: {e}')
 
+# ── 6. Price Lists ────────────────────────────────────────────────────────────
+print('\n💰 Fetching price lists...')
+try:
+    price_lists_raw = bc_get_all_v3('/pricelists')
+    print(f'  Found {len(price_lists_raw)} price lists')
+
+    if price_lists_raw:
+        # Write the price lists index (name, currency, status)
+        clean_pricelists = []
+        for pl in price_lists_raw:
+            clean_pricelists.append({
+                'Price List ID':   pl.get('id', ''),
+                'Name':            pl.get('name', ''),
+                'Currency Code':   pl.get('currency_code', ''),
+                'Active':          'Y' if pl.get('active', True) else 'N',
+                'Date Created':    fmt_date(pl.get('date_created', '')),
+                'Date Modified':   fmt_date(pl.get('date_modified', '')),
+            })
+        write_csv('pricelists.csv', clean_pricelists)
+
+        # ── Price list records (per-SKU prices for each list) ─────────────
+        print('  Fetching price list records (per-SKU prices)...')
+        all_records = []
+
+        def fetch_pl_records(pl_id, pl_name, currency):
+            """Fetch all price records for one price list."""
+            records = []
+            page = 1
+            while True:
+                data = safe_get(f'{BASE_V3}/pricelists/{pl_id}/records', {
+                    'page': page, 'limit': 250
+                })
+                if not data: break
+                batch = data.get('data', [])
+                if not batch: break
+                for rec in batch:
+                    records.append({
+                        'Price List ID':   pl_id,
+                        'Price List Name': pl_name,
+                        'Currency':        currency,
+                        'SKU':             rec.get('sku', ''),
+                        'Variant ID':      rec.get('variant_id', ''),
+                        'Product ID':      rec.get('product_id', ''),
+                        'Price':           rec.get('price', ''),
+                        'Sale Price':      rec.get('sale_price', '') or '',
+                        'Retail Price':    rec.get('retail_price', '') or '',
+                        'Bulk Pricing':    str(rec.get('bulk_pricing_tiers', '') or ''),
+                    })
+                if page >= data.get('meta', {}).get('pagination', {}).get('total_pages', 1):
+                    break
+                page += 1
+                time.sleep(0.05)
+            return records
+
+        # Fetch all price list records in parallel
+        with ThreadPoolExecutor(max_workers=5) as ex:
+            futures = {
+                ex.submit(fetch_pl_records, pl['id'], pl.get('name',''), pl.get('currency_code','')): pl['id']
+                for pl in price_lists_raw
+            }
+            for future in as_completed(futures):
+                try:
+                    records = future.result()
+                    all_records.extend(records)
+                    print(f'    Price list {futures[future]}: {len(records)} records')
+                except Exception as e:
+                    print(f'    Price list {futures[future]} records failed: {e}')
+
+        if all_records:
+            validate_no_pii(all_records, 'pricelist_records.csv')
+            write_csv('pricelist_records.csv', all_records)
+            print(f'  ✅ {len(all_records)} total price list records across {len(price_lists_raw)} lists')
+        else:
+            print('  ⚠️  No price list records found')
+
+        # ── Price list assignments (which channel/customer group each list applies to) ──
+        print('  Fetching price list assignments...')
+        try:
+            assignments_raw = bc_get_all_v3('/pricelists/assignments')
+            clean_assignments = []
+            for a in assignments_raw:
+                # Build readable description of what this list is assigned to
+                channel_id   = a.get('channel_id', '')
+                customer_grp = a.get('customer_group_id', '')
+                pl_id        = a.get('price_list_id', '')
+                pl_name      = next((p.get('name','') for p in price_lists_raw if p.get('id')==pl_id), '')
+                channel_name = CHANNEL_MAP.get(channel_id, str(channel_id)) if channel_id else 'All channels'
+                clean_assignments.append({
+                    'Price List ID':        pl_id,
+                    'Price List Name':      pl_name,
+                    'Channel ID':           channel_id,
+                    'Channel Name':         channel_name,
+                    'Customer Group ID':    customer_grp,
+                    'Customer Group Name':  a.get('customer_group', {}).get('name', '') if isinstance(a.get('customer_group'), dict) else '',
+                })
+            if clean_assignments:
+                write_csv('pricelist_assignments.csv', clean_assignments)
+                print(f'  ✅ {len(clean_assignments)} price list assignments')
+            else:
+                print('  ℹ️  No explicit assignments (price lists may be applied via customer groups in BC admin)')
+        except Exception as e:
+            print(f'  ⚠️  Price list assignments failed: {e}')
+
+except Exception as e:
+    print(f'  ⚠️  Price lists skipped: {e}')
+
+# ── 7. Product Modifiers (bundle compositions) ────────────────────────────────
+# Modifiers define the pick-list options (Book 1, Book 2...) for each bundle.
+# This tells us exactly which individual books are selectable in each bundle product.
+print('\n📖 Fetching product modifiers (bundle compositions)...')
+try:
+    # Only fetch modifiers for non-ISBN products (bundles/digital that have pick lists)
+    bundle_products = [p for p in products
+                       if not str(p.get('sku','')).strip().isdigit()
+                       or len(str(p.get('sku','')).strip()) != 13]
+
+    print(f'  Fetching modifiers for {len(bundle_products)} non-ISBN products...')
+
+    def fetch_modifiers(pid):
+        data = safe_get(f'{BASE_V3}/catalog/products/{pid}/modifiers')
+        if data and data.get('data'):
+            return pid, data['data']
+        return pid, []
+
+    all_modifiers = []
+    done = 0
+
+    with ThreadPoolExecutor(max_workers=10) as ex:
+        futures = {ex.submit(fetch_modifiers, p['id']): p for p in bundle_products}
+        for future in as_completed(futures):
+            p = futures[future]
+            try:
+                pid, mods = future.result()
+                prod_name = p.get('name', '')
+                prod_sku  = p.get('sku', '')
+                for mod in mods:
+                    mod_name = mod.get('display_name', '') or mod.get('name', '')
+                    mod_type = mod.get('type', '')
+                    # Get option values (the actual book titles in the pick list)
+                    option_values = mod.get('option_values', [])
+                    if option_values:
+                        for ov in option_values:
+                            all_modifiers.append({
+                                'Product ID':       pid,
+                                'Product Name':     prod_name,
+                                'Product SKU':      prod_sku,
+                                'Modifier ID':      mod.get('id', ''),
+                                'Modifier Name':    mod_name,   # e.g. "Book 1", "Book 2"
+                                'Modifier Type':    mod_type,   # e.g. "pick_list"
+                                'Option ID':        ov.get('id', ''),
+                                'Option Label':     ov.get('label', ''),  # e.g. book title
+                                'Is Default':       'Y' if ov.get('is_default', False) else 'N',
+                                'Sort Order':       ov.get('sort_order', 0),
+                                'Value Data':       str(ov.get('value_data', '') or ''),
+                            })
+                    else:
+                        # Modifier with no values (e.g. text field, file upload) — still record it
+                        all_modifiers.append({
+                            'Product ID':       pid,
+                            'Product Name':     prod_name,
+                            'Product SKU':      prod_sku,
+                            'Modifier ID':      mod.get('id', ''),
+                            'Modifier Name':    mod_name,
+                            'Modifier Type':    mod_type,
+                            'Option ID':        '',
+                            'Option Label':     '',
+                            'Is Default':       '',
+                            'Sort Order':       '',
+                            'Value Data':       '',
+                        })
+            except Exception as e:
+                pass
+            done += 1
+            if done % 50 == 0 or done == len(bundle_products):
+                print(f'    {done}/{len(bundle_products)} products checked')
+
+    if all_modifiers:
+        write_csv('product_modifiers.csv', all_modifiers)
+        # Summary: how many products have modifiers
+        prods_with_mods = len(set(m['Product ID'] for m in all_modifiers if m['Option Label']))
+        print(f'  ✅ {len(all_modifiers)} modifier options across {prods_with_mods} products')
+        print(f'  These are your bundle compositions — which books are in each bundle pick list')
+    else:
+        print('  ℹ️  No product modifiers found')
+
+except Exception as e:
+    print(f'  ⚠️  Product modifiers skipped: {e}')
+
+# ── 8. Customer Groups (needed to name price list assignments) ────────────────
+print('\n👤 Fetching customer groups...')
+try:
+    cust_groups_raw = bc_get_all_v2('/customer_groups')
+    clean_groups = []
+    for g in cust_groups_raw:
+        clean_groups.append({
+            'Group ID':           g.get('id', ''),
+            'Group Name':         g.get('name', ''),
+            'Is Default':         'Y' if g.get('is_default', False) else 'N',
+            'Category Access':    g.get('category_access', {}).get('type', ''),
+            'Discount Amount':    g.get('discount_rules', [{}])[0].get('amount', '') if g.get('discount_rules') else '',
+            'Discount Type':      g.get('discount_rules', [{}])[0].get('type', '') if g.get('discount_rules') else '',
+        })
+    if clean_groups:
+        write_csv('customer_groups.csv', clean_groups)
+        print(f'  ✅ {len(clean_groups)} customer groups')
+        # Now enrich pricelist_assignments.csv with group names if we have both
+        if clean_assignments:
+            grp_map = {str(g['Group ID']): g['Group Name'] for g in clean_groups}
+            for a in clean_assignments:
+                if a['Customer Group ID']:
+                    a['Customer Group Name'] = grp_map.get(str(a['Customer Group ID']), '')
+            write_csv('pricelist_assignments.csv', clean_assignments)
+            print('  ✅ Price list assignments enriched with group names')
+    else:
+        print('  ℹ️  No customer groups found')
+except Exception as e:
+    print(f'  ⚠️  Customer groups skipped: {e}')
+
 print('\n✅ All done.')
+print('\nFiles written:')
+print('  orders.csv          — all orders with line items')
+print('  products.csv        — full product catalogue with inventory, views, channel assignments')
+print('  customers.csv       — customer list (PII hashed)')
+print('  sources.csv         — order attribution')
+print('  carts.csv           — abandoned carts (if enabled)')
+print('  pricelists.csv      — your BC price lists')
+print('  pricelist_records.csv    — per-SKU prices for each price list')
+print('  pricelist_assignments.csv — which channels/groups each price list applies to')
+print('  product_modifiers.csv    — bundle compositions (pick list options per product)')
+print('  customer_groups.csv — customer segment definitions')
