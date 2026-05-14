@@ -928,7 +928,7 @@ var GH_REPO     = 'AsvineG/BookshopDashboard';
 var GH_BRANCH   = 'main';
 var GH_RAW      = 'https://raw.githubusercontent.com/' + GH_REPO + '/' + GH_BRANCH + '/';
 var WORKFLOW    = 'refresh-data.yml';
-var CSV_VER     = 'v6';
+var CSV_VER     = 'v7';
 
 // ── State ─────────────────────────────────────────────────────────────────
 var rawO = [], rawP = [], rawC = [], rawCarts = [], rawSrc = [], rawPL = [], rawMod = [];
@@ -5612,6 +5612,10 @@ function removeSpendRow(reg, ri){
 }
 
 
+
+// ── Seed stock data (from historical records — update via BC custom fields) ──
+var SEED_STOCK = {"139READEGG":{"stock":{"au":0,"uk":347},"low":100},"9781742150475":{"stock":{"au":842,"us":245,"uk":808},"low":25},"GETREADYPACK1":{"stock":{"au":391},"low":0},"RE7995PK2":{"stock":{"au":177,"us":0,"uk":347},"low":0},"GETREADYPACK2":{"stock":{"au":0},"low":0},"ABCRE12MTH":{"stock":{"us":0},"low":0},"9781760200848":{"stock":{"au":1192},"low":0},"EGGSPERTSBKPACK":{"stock":{"au":116},"low":0},"MSMEGAPACK":{"stock":{"au":0},"low":0},"ABCREADMATH30":{"stock":{"au":0},"low":25},"RE7995RWB":{"stock":{"au":188,"uk":467},"low":100},"RE7995YR1WB":{"stock":{"au":546,"uk":291},"low":0},"RE7995YR2WB":{"stock":{"au":420,"uk":1042},"low":0},"ABCMS12MTH":{"stock":{"us":0},"low":0},"9781922887474":{"stock":{"au":7989,"uk":100,"us":0},"low":0},"RE7995RWBURB":{"stock":{"au":100,"uk":100,"us":1500},"low":0},"RE7995ACT3":{"stock":{"us":0,"uk":564},"low":0},"GETREADYPACK3":{"stock":{"au":0},"low":20},"9781742151748":{"stock":{"au":2017},"low":0},"9781742150482":{"stock":{"au":378,"us":249,"uk":823},"low":20},"9781742153377":{"stock":{"au":1283},"low":0},"9781742153063":{"stock":{"au":753},"low":0},"9781742150499":{"stock":{"au":2066,"us":203,"uk":755},"low":0},"9781742152905":{"stock":{"au":300},"low":0},"9781742153308":{"stock":{"au":1952},"low":0},"9781742153070":{"stock":{"au":3511},"low":0},"9781760200855":{"stock":{"au":1465},"low":0},"9781742153216":{"stock":{"au":1311},"low":0},"9781742153339":{"stock":{"au":1960},"low":0},"9781742153087":{"stock":{"au":908},"low":0},"9781760200862":{"stock":{"au":1565},"low":0},"9781742153223":{"stock":{"au":1051,"us":0},"low":0},"9781742153322":{"stock":{"au":1042},"low":0},"9781742153094":{"stock":{"au":1393},"low":0},"9781742152134":{"stock":{"au":1422},"low":0},"9781760200879":{"stock":{"au":1554},"low":0},"9781742153230":{"stock":{"au":1566,"us":0},"low":0},"9781742153315":{"stock":{"au":2447},"low":0},"9781742151625":{"stock":{"au":2662},"low":0},"9781742152875":{"stock":{"au":1506},"low":0},"9781742153247":{"stock":{"au":3104},"low":30},"9781742155098":{"stock":{"au":2254},"low":0},"9781742152127":{"stock":{"au":618},"low":0},"9781742151632":{"stock":{"au":471},"low":0},"9781742153117":{"stock":{"au":1016},"low":0},"9781742155104":{"stock":{"au":2299},"low":0},"9781742151649":{"stock":{"au":3118},"low":20},"ABCREMS12MTHSUB":{"stock":{"us":0},"low":0},"9781742155081":{"stock":{"au":2785,"uk":100,"us":1500},"low":0},"9781742152141":{"stock":{"au":1491},"low":0},"9781742151656":{"stock":{"au":2204},"low":0},"9781742155128":{"stock":{"au":885},"low":0},"9781742152158":{"stock":{"au":3113},"low":0},"9781742151663":{"stock":{"au":161,"us":0},"low":0},"9781742155135":{"stock":{"au":3437},"low":0},"9781742152165":{"stock":{"au":186,"us":0},"low":0},"9781742151670":{"stock":{"au":533,"us":0},"low":0},"9781742155111":{"stock":{"au":1997},"low":0},"9781742152172":{"stock":{"au":0},"low":0},"9781742151687":{"stock":{"au":531,"us":0},"low":0},"9781742152950":{"stock":{"au":0,"us":27},"low":0},"9781742152189":{"stock":{"au":1575},"low":0},"9781742151694":{"stock":{"au":285,"us":0},"low":0},"REMS12MTHGVAU":{"stock":{"us":0},"low":0},"9781742151700":{"stock":{"au":161,"us":0},"low":0},"9781742152882":{"stock":{"au":1921},"low":0},"9781742151717":{"stock":{"au":1594},"low":0},"9781742152899":{"stock":{"au":248},"low":0},"9781742151724":{"stock":{"au":1768},"low":0},"9781742151731":{"stock":{"au":2969},"low":0},"9781742150765":{"stock":{"au":1052,"us":88,"uk":423},"low":0},"9781742152912":{"stock":{"au":406},"low":0},"9781742150772":{"stock":{"au":1729,"us":133,"uk":359},"low":30},"9781742152929":{"stock":{"au":463},"low":0},"9781742150789":{"stock":{"au":1500,"us":102,"uk":347},"low":0},"9781742152936":{"stock":{"au":177},"low":0},"9781742151199":{"stock":{"au":3346,"us":59,"uk":773},"low":30},"9781742152943":{"stock":{"au":268},"low":0},"9781742151205":{"stock":{"au":1926,"us":37,"uk":673},"low":25},"9781742153582":{"stock":{"au":6633,"us":3266,"uk":0},"low":0},"9781742151212":{"stock":{"au":3031,"us":33,"uk":667},"low":0},"9781742151229":{"stock":{"au":944,"us":10,"uk":752},"low":20},"9781742151236":{"stock":{"au":1045,"us":51,"uk":789},"low":0},"9781742150154":{"stock":{"au":3129,"us":191,"uk":399},"low":0},"9781742150161":{"stock":{"au":840,"us":196,"uk":571},"low":0},"9781742150178":{"stock":{"au":362,"us":242,"uk":594},"low":0},"9781742150185":{"stock":{"au":681,"us":244,"uk":655},"low":0},"9781742150451":{"stock":{"au":6396,"us":285,"uk":564},"low":0},"9781742150468":{"stock":{"au":1222,"us":243,"uk":749},"low":0},"9781742150758":{"stock":{"au":608,"us":233,"uk":421},"low":0},"9781742155142":{"stock":{"uk":195},"low":0},"9781742155159":{"stock":{"uk":60},"low":0},"9781742155166":{"stock":{"uk":895},"low":0},"9781742155173":{"stock":{"uk":235},"low":0},"9781742155180":{"stock":{"uk":136},"low":0},"9781742155197":{"stock":{"uk":882},"low":0},"RE7995ACT1":{"stock":{"uk":564},"low":0},"RE7995ACT2":{"stock":{"uk":667,"us":0},"low":0},"RE7995PK1":{"stock":{"au":279,"us":0,"uk":399},"low":0},"RE7995FLASH":{"stock":{"uk":755},"low":0},"9781925243628":{"stock":{"au":0,"uk":125},"low":0},"RE7995ACTMBP1":{"stock":{"uk":399},"low":0},"RE7995ACTMBP2":{"stock":{"uk":571},"low":0},"9781925243635":{"stock":{"au":0,"uk":72},"low":0},"9781925243642":{"stock":{"au":0,"uk":78},"low":0},"RE7995ACTMBP3":{"stock":{"uk":594},"low":0},"RE7995BATH":{"stock":{"uk":260},"low":0},"RE7995ACTMBP4":{"stock":{"uk":655},"low":0},"RE7995WATER":{"stock":{"uk":72},"low":0},"RE7995ACTMBP5":{"stock":{"uk":421},"low":0},"RE7995ACTMBP6":{"stock":{"uk":423},"low":0},"RE7995MBP1":{"stock":{"uk":399},"low":0},"RE7995ACTMBP7":{"stock":{"uk":359},"low":0},"RE7995MBP2":{"stock":{"uk":347},"low":0},"RE7995ACTMBP8":{"stock":{"uk":347},"low":0},"RE7995MBP3":{"stock":{"uk":347},"low":0},"9781925243666":{"stock":{"au":0,"uk":285},"low":0},"9781742155067":{"stock":{"uk":710},"low":0},"9781925243673":{"stock":{"au":0,"uk":284},"low":0},"9781922887498":{"stock":{"uk":6845},"low":0},"9781925243680":{"stock":{"au":0,"uk":260},"low":0},"REWBRWBBR":{"stock":{"uk":195},"low":0},"9781925243697":{"stock":{"au":0,"uk":0},"low":0},"REWBRWBBY1":{"stock":{"uk":60},"low":0},"9781925243703":{"stock":{"au":0,"uk":7},"low":0},"REWBRWBBY2":{"stock":{"uk":882},"low":0},"9781925243611":{"stock":{"au":0,"uk":79},"low":0},"RE7995RWBUK":{"stock":{"uk":195},"low":0},"140READEGG":{"stock":{"us":0},"low":0},"REWBRWBBG1":{"stock":{"us":0},"low":0},"REWBRWBBG2":{"stock":{"us":0},"low":0},"9781742153421":{"stock":{"us":3605},"low":0},"REWBRWBBG3":{"stock":{"us":0},"low":0},"9781742153438":{"stock":{"us":1094},"low":0},"REWBRWBBG4":{"stock":{"us":0},"low":0},"9781742153490":{"stock":{"us":2028},"low":0},"9781742153506":{"stock":{"us":2332},"low":0},"9781742153513":{"stock":{"us":1287},"low":0},"9781742153384":{"stock":{"us":3016},"low":0},"9781742153391":{"stock":{"us":3021},"low":0},"9781742153407":{"stock":{"us":1044},"low":0},"RMK":{"stock":{"us":0},"low":0},"RM1":{"stock":{"us":0},"low":0},"RM2":{"stock":{"us":0},"low":0},"REWBRWBBK":{"stock":{"us":0},"low":0},"9781742153414":{"stock":{"us":3405},"low":0},"9781922887481":{"stock":{"us":8167,"au":20},"low":0},"REMS12MTHSUB":{"stock":{"uk":976,"us":0},"low":0},"REMS12MTHGVUK":{"stock":{"uk":981,"us":0},"low":0},"COM12MTHUS":{"stock":{"us":0},"low":0},"9781742153100":{"stock":{"au":1951},"low":0},"RE7995YR1WBUK":{"stock":{"uk":60},"low":0},"RE7995YR2WBUK":{"stock":{"au":649,"uk":882},"low":0},"RM3":{"stock":{"us":0},"low":0},"RM4":{"stock":{"us":0},"low":0},"COM12MTHUSGV":{"stock":{"us":0},"low":0},"9781742153414-1":{"stock":{"us":100},"low":0},"REHSMAX12MUS":{"stock":{"us":0},"low":0},"MS12MTHUS":{"stock":{"us":0},"low":0},"RE12MTHUS":{"stock":{"us":0},"low":0},"140READEGG-E":{"stock":{"us":30},"low":0},"RE7995PK1-E":{"stock":{"au":503,"us":33,"uk":522},"low":0},"RMK-E":{"stock":{"us":116},"low":0},"RM1-E":{"stock":{"us":0},"low":0},"RM2-E":{"stock":{"us":167},"low":0},"RM3-E":{"stock":{"us":0},"low":0},"RM4-E":{"stock":{"us":100},"low":0},"RE7995PK2-E":{"stock":{"au":199,"us":39,"uk":454},"low":0},"9781923253162":{"stock":{"us":2598},"low":0},"9781923253148":{"stock":{"au":1417},"low":0},"9781923253155":{"stock":{"uk":2828},"low":0},"REHSMAX24MUS":{"stock":{"us":0},"low":0},"RE24MTHUS":{"stock":{"us":0},"low":0},"MS24MTHUS":{"stock":{"us":0},"low":0},"COM24MTHUS":{"stock":{"us":0},"low":0},"REWBK5-E":{"stock":{"us":0},"low":0},"MSWBK3-E":{"stock":{"us":0},"low":0},"REMSWBK5-E":{"stock":{"us":0},"low":0},"REMSULTBKB-E":{"stock":{"us":0},"low":0},"RM5":{"stock":{"us":0},"low":0},"RM5-E":{"stock":{"us":0},"low":0},"REMSWBK5":{"stock":{"us":0},"low":0},"REMSULTBKB":{"stock":{"us":0},"low":0},"MSWBK3":{"stock":{"us":0},"low":0},"REWBK5":{"stock":{"us":0},"low":0},"ABCREMS24MTHSUB":{"stock":{"us":0},"low":0},"REMS24MTHSUB":{"stock":{"uk":100,"us":0},"low":0},"9781923253285":{"stock":{"au":3574,"us":1500,"uk":425},"low":0},"9781923253292":{"stock":{"au":1347,"us":1500,"uk":593},"low":0},"9781923253308":{"stock":{"au":823,"us":1500,"uk":614},"low":0},"9781923253315":{"stock":{"au":1135,"us":1500,"uk":672},"low":0},"9781923253322":{"stock":{"au":7148,"us":1500,"uk":611},"low":0},"9781923253339":{"stock":{"au":2943,"us":1500,"uk":789},"low":0},"9781923253346":{"stock":{"au":1358,"us":1500,"uk":840},"low":0},"9781923253353":{"stock":{"au":936,"us":1500,"uk":855},"low":0},"9781923253360":{"stock":{"au":2646,"us":2000,"uk":784},"low":0},"9781923253377":{"stock":{"au":989,"us":1000,"uk":433},"low":0},"9781923253384":{"stock":{"au":1428,"us":1000,"uk":436},"low":0},"9781923253391":{"stock":{"au":2079,"us":1000,"uk":371},"low":0},"9781923253407":{"stock":{"au":1847,"us":1000,"uk":361},"low":0},"9781923253414":{"stock":{"au":3942,"us":1000,"uk":797},"low":0},"9781923253421":{"stock":{"au":2313,"us":1500,"uk":700},"low":0},"9781923253438":{"stock":{"au":3226,"us":1500,"uk":693},"low":0},"9781923253445":{"stock":{"au":1312,"us":1500,"uk":781},"low":0},"9781923253452":{"stock":{"au":1497,"us":1000,"uk":810},"low":0},"9781923253162-1":{"stock":{"us":2704},"low":0},"REGBLMSET001":{"stock":{"au":0},"low":0},"REGBLGMED001":{"stock":{"au":0},"low":0},"REGBLHAT001":{"stock":{"au":0},"low":0},"REGBLSOCKS001":{"stock":{"au":0},"low":0},"REGBLSOCKS002":{"stock":{"au":0},"low":0},"REGBLKR001":{"stock":{"au":0},"low":0},"RE7995ACT3-US":{"stock":{"us":0,"uk":564},"low":0},"RE7995PK2-US":{"stock":{"au":177,"us":0,"uk":347},"low":0}};
+
 // ═══════════════════════════════════════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════════════════════════════════════
@@ -5695,10 +5699,17 @@ function buildBundleMapFromModifiers() {
       // Try to resolve to an ISBN SKU
       var isbn = null;
 
-      // 1. Value Data might be a product ID
+      // 1. Value Data — BC returns {"product_id": 123} for pick_list options
       if(chosen.valData) {
-        var vd = chosen.valData.replace(/[^0-9]/g,'');
-        if(idLookup[vd]) isbn = idLookup[vd];
+        try {
+          var vdObj = JSON.parse(chosen.valData);
+          var vdId  = String(vdObj.product_id || vdObj.productId || '');
+          if(vdId && idLookup[vdId]) isbn = idLookup[vdId];
+        } catch(e) {
+          // Fallback: extract any number sequence
+          var vd = chosen.valData.replace(/[^0-9]/g,'');
+          if(vd && idLookup[vd]) isbn = idLookup[vd];
+        }
       }
 
       // 2. Match by name
@@ -5848,22 +5859,41 @@ function buildStkProducts(velOrders) {
     var isBundle = !isIsbn && !isDigital;
     var type = isDigital?'digital':isBundle?'bundle':'isbn';
 
-    // Stock from custom fields
-    var cfStk = parseStockFromCustomFields(cf);
+    // Stock resolution — 3-tier priority:
+    // 1. BC custom fields (live — if you set regional stock fields in BC admin)
+    // 2. SEED_STOCK (historical data embedded in dashboard — 214 products)
+    // 3. BC inventory_level as last resort for AU only
+    var cfStk  = parseStockFromCustomFields(cf);
+    var seed   = (window.SEED_STOCK && window.SEED_STOCK[sku]) || {};
+    var seedStk= seed.stock || {};
+    var bcInv  = parseInt(p['Inventory Level']||0)||0;
 
-    // Regional stock — custom fields primary, then storefront assignment
     var stock = {};
     REGS.forEach(function(reg) {
       var storefront = {au:'In AU Storefront',uk:'In UK Storefront',us:'In USA Storefront'}[reg];
-      var inStore = p[storefront]==='Y';
-      if(inStore || reg in cfStk) {
-        stock[reg] = (reg in cfStk) ? cfStk[reg] : 0;
+      var inStore    = p[storefront]==='Y';
+      // Tier 1: live custom fields
+      if(reg in cfStk) {
+        stock[reg] = cfStk[reg];
+      }
+      // Tier 2: seed stock (historical manual data)
+      else if(reg in seedStk) {
+        stock[reg] = seedStk[reg];
+      }
+      // Tier 3: BC inventory_level — AU only, non-bundle
+      else if(inStore && reg==='au' && bcInv>0 && !isBundle) {
+        stock[reg] = bcInv;
+      }
+      // In storefront but no stock data = 0
+      else if(inStore) {
+        stock[reg] = 0;
       }
     });
-    // If no storefront data at all, use raw custom fields
-    if(!Object.keys(stock).length && Object.keys(cfStk).length) {
-      stock = Object.assign({}, cfStk);
+    // Fallback: if storefront data missing but seed has stock
+    if(!Object.keys(stock).length && Object.keys(seedStk).length) {
+      stock = Object.assign({}, seedStk);
     }
+    var lowWatermark = seed.low || parseInt(p['Inventory Warning Level']||0)||0;
 
     // Per-region computed data
     var r = {};
@@ -5873,7 +5903,8 @@ function buildStkProducts(velOrders) {
       var v    = (velMap[sku]&&velMap[sku][reg])||{d30:0,d90:0,total:0,via30:0,via90:0};
       var rate = v.d30>0 ? v.d30/30 : v.d90>0 ? v.d90/90 : 0;
       var days = (stk>0&&rate>0) ? Math.round(stk/rate) : (stk>0?9999:0);
-      var status = stk===0?'zero' : days===9999?'ok' : days<=30?'critical' : days<=120?'low' : 'ok';
+      var atWarn = lowWatermark>0 && stk<=lowWatermark;
+      var status = stk===0?'zero' : atWarn?'critical' : days===9999?'ok' : days<=30?'critical' : days<=120?'low' : 'ok';
       r[reg] = {
         stk:stk, status:status, days:days, rate:rate,
         d30:v.d30, d90:v.d90, via30:v.via30, via90:v.via90, total:v.total,
@@ -5967,7 +5998,7 @@ function rStock(orders) {
     '<div class="flex gap8 mb14 flex-wrap">'+
       '<span class="tag '+(modCount?'grn':'amb')+'">'+(modCount?'✓':'⚠')+' Bundle compositions: '+(modCount?bundleMapSize+' bundles from '+modCount+' modifier rows':'Run refresh to load')+'</span>'+
       '<span class="tag '+(plCount?'grn':'amb')+'">'+(plCount?'✓':'⚠')+' Price lists: '+(plCount?plCount+' price records':'Run refresh to load')+'</span>'+
-      '<span class="tag neu">Stock source: Custom Fields</span>'+
+      '<span class="tag grn">Stock source: Seed data (214 products) + Custom Fields</span>'+
     '</div>'+
 
     // ── Regional risk KPI row ──────────────────────────────────────────────

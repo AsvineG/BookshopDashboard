@@ -726,7 +726,7 @@ try:
                                 'Option Label':     ov.get('label', ''),  # e.g. book title
                                 'Is Default':       'Y' if ov.get('is_default', False) else 'N',
                                 'Sort Order':       ov.get('sort_order', 0),
-                                'Value Data':       str(ov.get('value_data', '') or ''),
+                                'Value Data':       json.dumps(ov.get('value_data', '') or ''),
                             })
                     else:
                         # Modifier with no values (e.g. text field, file upload) — still record it
