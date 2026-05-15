@@ -928,7 +928,7 @@ var GH_REPO     = 'AsvineG/BookshopDashboard';
 var GH_BRANCH   = 'main';
 var GH_RAW      = 'https://raw.githubusercontent.com/' + GH_REPO + '/' + GH_BRANCH + '/';
 var WORKFLOW    = 'refresh-data.yml';
-var CSV_VER     = 'v7';
+var CSV_VER     = 'v8';
 
 // ── State ─────────────────────────────────────────────────────────────────
 var rawO = [], rawP = [], rawC = [], rawCarts = [], rawSrc = [], rawPL = [], rawMod = [];
@@ -2474,23 +2474,18 @@ function rGrowth(orders){
 
 // ── Price list helpers (used in Products tab) ─────────────────────────────
 function buildPLLookup() {
-  var map = {};
-  if(!rawPL || !rawPL.length) return map;
-  rawPL.forEach(function(r) {
-    var sku  = (r['SKU']||'').trim();
-    var curr = (r['Currency']||'AUD').toUpperCase();
-    var price= parseFloat(r['Price']||0)||0;
-    var sale = parseFloat(r['Sale Price']||0)||0;
-    if(!sku||!price) return;
-    if(!map[sku]) map[sku]={};
-    if(!map[sku][curr]||price<map[sku][curr].price)
-      map[sku][curr]={price:price,salePrice:sale};
-  });
-  return map;
+  // Reuse the same map built by buildPriceListMap (called in rStock)
+  // If already built, return it directly
+  if(window.PRICE_LIST_MAP && Object.keys(window.PRICE_LIST_MAP).length)
+    return window.PRICE_LIST_MAP;
+  buildPriceListMap();
+  return window.PRICE_LIST_MAP || {};
 }
 
 function plPriceCell(lookup, sku, curr) {
-  var e = lookup[sku] && lookup[sku][curr];
+  // lookup may be PRICE_LIST_MAP or a direct map
+  var skuEntry = (lookup && lookup[sku]) || (window.PRICE_LIST_MAP && window.PRICE_LIST_MAP[sku]);
+  var e = skuEntry && skuEntry[curr];
   if(!e||!e.price) return '<td class="num text-muted">—</td>';
   var sym = {AUD:'A$',USD:'US$',GBP:'£',NZD:'NZ$',CAD:'C$'}[curr]||curr;
   var disp = (e.salePrice&&e.salePrice<e.price)
@@ -5735,16 +5730,64 @@ function buildBundleMapFromModifiers() {
 function buildPriceListMap() {
   window.PRICE_LIST_MAP = {};
   if(!rawPL || !rawPL.length) return;
+
+  // Build product_id → SKU map from rawP as fallback
+  var pidToSku = {};
+  (rawP||[]).forEach(function(p) {
+    var pid = String(p['Product ID']||'').trim();
+    var sku = (p['SKU']||'').trim();
+    if(pid && sku) pidToSku[pid] = sku;
+  });
+
+  // Group records by SKU first, then figure out currency
+  // BC price list has one record per variant per currency
+  // Currency may be in the Currency field, or we infer from price value
+  // Known channel assignments: AU=AUD, UK=GBP, US=USD
+  // For each SKU we expect up to 4 records: AUD, USD, GBP, NZD
+  var bySkuPrice = {}; // sku → [price, ...]
+
   rawPL.forEach(function(r) {
     var sku  = (r['SKU']||'').trim();
-    var curr = (r['Currency']||'AUD').toUpperCase();
+    var pid  = (r['Product ID']||'').trim();
+    var curr = (r['Currency']||'').trim().toUpperCase();
     var price= parseFloat(r['Price']||0)||0;
     var sale = parseFloat(r['Sale Price']||0)||0;
+
+    // Resolve SKU from product ID if not directly available
+    if(!sku && pid) sku = pidToSku[pid] || '';
     if(!sku || !price) return;
-    if(!window.PRICE_LIST_MAP[sku]) window.PRICE_LIST_MAP[sku] = {};
-    // Keep lowest price if multiple entries per currency
-    if(!window.PRICE_LIST_MAP[sku][curr] || price < window.PRICE_LIST_MAP[sku][curr].price)
-      window.PRICE_LIST_MAP[sku][curr] = {price:price, salePrice:sale};
+
+    if(!bySkuPrice[sku]) bySkuPrice[sku] = [];
+    bySkuPrice[sku].push({curr:curr, price:price, salePrice:sale});
+  });
+
+  // For SKUs with known currency, map directly
+  // For SKUs with empty currency, sort prices and assign by typical ranges:
+  // Highest = AUD, then GBP, then NZD, then USD (typically lowest)
+  Object.entries(bySkuPrice).forEach(function(e) {
+    var sku = e[0];
+    var entries = e[1];
+    window.PRICE_LIST_MAP[sku] = {};
+
+    var known   = entries.filter(function(e){ return e.curr; });
+    var unknown = entries.filter(function(e){ return !e.curr; });
+
+    // Map known currencies directly
+    known.forEach(function(e) {
+      var m = window.PRICE_LIST_MAP[sku];
+      if(!m[e.curr] || e.price < m[e.curr].price)
+        m[e.curr] = {price:e.price, salePrice:e.salePrice};
+    });
+
+    // For unknown currency records, sort descending and assign AUD, GBP, NZD, USD
+    if(unknown.length && !known.length) {
+      var sorted = unknown.slice().sort(function(a,b){ return b.price - a.price; });
+      var currOrder = ['AUD','GBP','NZD','USD'];
+      sorted.forEach(function(e, i) {
+        var c = currOrder[i] || ('CUR'+i);
+        window.PRICE_LIST_MAP[sku][c] = {price:e.price, salePrice:e.salePrice};
+      });
+    }
   });
 }
 

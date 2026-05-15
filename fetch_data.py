@@ -599,23 +599,31 @@ try:
 
         def fetch_pl_records(pl_id, pl_name, currency):
             """Fetch all price records for one price list."""
+            # Build product_id → SKU map from already-fetched products
+            pid_sku_map = {str(p.get('id','')): (p.get('sku','') or '') for p in products}
+
             records = []
             page = 1
             while True:
                 data = safe_get(f'{BASE_V3}/pricelists/{pl_id}/records', {
-                    'page': page, 'limit': 250
+                    'page': page, 'limit': 250, 'include': 'currency'
                 })
                 if not data: break
                 batch = data.get('data', [])
                 if not batch: break
                 for rec in batch:
+                    # Currency is per-record in BC (AUD/USD/GBP/NZD/CAD)
+                    rec_currency = rec.get('currency', '') or currency or ''
+                    # Resolve SKU from product_id (BC doesn't return SKU directly)
+                    pid = str(rec.get('product_id', ''))
+                    sku = rec.get('sku', '') or pid_sku_map.get(pid, '')
                     records.append({
                         'Price List ID':   pl_id,
                         'Price List Name': pl_name,
-                        'Currency':        currency,
-                        'SKU':             rec.get('sku', ''),
+                        'Currency':        rec_currency,
+                        'SKU':             sku,
+                        'Product ID':      pid,
                         'Variant ID':      rec.get('variant_id', ''),
-                        'Product ID':      rec.get('product_id', ''),
                         'Price':           rec.get('price', ''),
                         'Sale Price':      rec.get('sale_price', '') or '',
                         'Retail Price':    rec.get('retail_price', '') or '',
