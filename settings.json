@@ -1437,11 +1437,6 @@
   },
   "currencyRates": [
     {
-      "code": "NZD",
-      "name": "New Zealand Dollar",
-      "rate": 0.818
-    },
-    {
       "code": "CAD",
       "name": "Canadian Dollar",
       "rate": 1.007
