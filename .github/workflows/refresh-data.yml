@@ -49,6 +49,7 @@ jobs:
           else
             TIMESTAMP=$(TZ='Australia/Sydney' date '+%Y-%m-%d %H:%M AEST')
             git commit -m "Auto-refresh data — ${TIMESTAMP}"
+            git pull --rebase origin main
             git push
             echo "Committed and pushed."
           fi
