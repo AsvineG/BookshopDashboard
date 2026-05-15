@@ -5699,7 +5699,8 @@ function parseStockFromCustomFields(cfStr) {
 // ── Build bundle map from rawMod (product_modifiers.csv) ──────────────────
 // Returns: { bundleSku: [componentSku, ...] }  (default options only)
 function buildBundleMapFromModifiers() {
-  if(!rawMod || !rawMod.length) return {};
+  if(!rawMod || !rawMod.length){ console.warn('buildBundleMapFromModifiers: rawMod empty'); return {}; }
+  console.log('buildBundleMapFromModifiers: rawMod rows=', rawMod.length);
   // Build productId → SKU lookup
   var idToSku = {};
   (rawP||[]).forEach(function(p) {
@@ -6061,7 +6062,9 @@ function renderStkTable(reg) {
   var lvl   = (document.getElementById('stkFilter-'+reg)||{}).value||'all';
   var typeF = (document.getElementById('stkType-'+reg)||{}).value||'all';
   var doHide= (document.getElementById('stkHide-'+reg)||{}).checked!==false;
-  var bm    = window._activeBundleMap || {};
+  // Rebuild bundle map in case rawMod loaded after initial rStock call
+  var bm = (rawMod&&rawMod.length) ? buildBundleMapFromModifiers() : (window._activeBundleMap||{});
+  if(rawMod&&rawMod.length) window._activeBundleMap = bm;
   var hasPL = rawPL && rawPL.length > 0;
 
   // Filter
