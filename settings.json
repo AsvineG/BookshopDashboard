@@ -1437,11 +1437,6 @@
   },
   "currencyRates": [
     {
-      "code": "GBP",
-      "name": "British Pound",
-      "rate": 1.865
-    },
-    {
       "code": "USD",
       "name": "US Dollar",
       "rate": 1.379
