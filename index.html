@@ -4075,6 +4075,18 @@ function loadAllData(){
         ['spend','margin','visitors','bundleMap','regionMap','prefs','currencyRates','retailerMargins'].forEach(function(k){
           if(data[k]) SETTINGS[k]=data[k];
         });
+        // Normalise visitor fields: older months use apac/emea/amer — map to au/uk/us
+        if(SETTINGS.visitors && SETTINGS.visitors.length){
+          SETTINGS.visitors = SETTINGS.visitors.map(function(v){
+            return {
+              month: v.month,
+              all:   v.all  || 0,
+              au:    v.au   || v.apac || 0,
+              uk:    v.uk   || v.emea || 0,
+              us:    v.us   || v.amer || 0,
+            };
+          });
+        }
         try{localStorage.setItem('re_settings_v2',JSON.stringify(SETTINGS));}catch(e){}
       }
       loadOrdersCSV();
