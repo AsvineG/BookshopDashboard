@@ -505,6 +505,7 @@ if new_orders or FULL_REFRESH:
             'Billing Country':        billing.get('country', ''),
             'Billing State':          billing.get('state', ''),
             'Billing Suburb':         billing.get('city', ''),
+            'Customer Profile':       infer_profile(billing.get('first_name', '') or ''),
             'Order Source':           o.get('order_source') or o.get('external_source', ''),
             'Order Time':             fmt_time(o.get('date_created', '')),
             'Ship Method':            ship_method,
