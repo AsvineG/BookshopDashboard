@@ -37,37 +37,14 @@ COUNTRY_CHANNEL = {
     'india': 'Reading Eggs AU', 'philippines': 'Reading Eggs AU',
 }
 
-# ── AUD exchange rates ────────────────────────────────────────────────────────
-# ── Fetch live exchange rates (AUD base) ──────────────────────────────────────
-# Fallback hardcoded rates used only if live fetch fails
+# ── AUD fallback rates (used only if BC rate field missing) ──────────────────
+# Primary: store_default_to_transactional_exchange_rate from BC order object
+# Fallback: these hardcoded rates for edge cases (e.g. AUD orders = 1.0)
 AUD_RATES = {
-    'AUD': 1.0, 'GBP': 2.02, 'USD': 1.56, 'EUR': 1.73,
-    'NZD': 0.90, 'CAD': 1.12, 'SGD': 1.18, 'HKD': 0.20,
-    'ZAR': 0.085, 'INR': 0.019,
+    'AUD': 1.0, 'GBP': 1.88, 'USD': 1.40, 'EUR': 1.58,
+    'NZD': 0.90, 'CAD': 1.08, 'SGD': 1.05, 'HKD': 0.18,
+    'ZAR': 0.075, 'INR': 0.017,
 }
-try:
-    # open.er-api.com — free, no API key required
-    # Returns rates relative to AUD base: e.g. {"USD": 0.6412, "GBP": 0.4951}
-    # To convert X USD → AUD: X / rates["USD"]  (i.e. X * (1/0.6412))
-    _er = requests.get('https://open.er-api.com/v6/latest/AUD', timeout=10)
-    if _er.status_code == 200:
-        _er_data = _er.json()
-        _er_rates = _er_data.get('rates', {})
-        if _er_rates:
-            # Convert: 1 FOREIGN → N AUD = 1 / rate_from_AUD_base
-            for _code, _rate in _er_rates.items():
-                if _code != 'AUD' and _rate > 0:
-                    AUD_RATES[_code] = round(1.0 / _rate, 6)
-            AUD_RATES['AUD'] = 1.0
-            _fetch_date = _er_data.get('time_last_update_utc', 'unknown')
-            print(f'  ✅ Live exchange rates loaded ({_fetch_date})')
-            print(f'     USD: {AUD_RATES.get("USD","?")} | GBP: {AUD_RATES.get("GBP","?")} | NZD: {AUD_RATES.get("NZD","?")} | CAD: {AUD_RATES.get("CAD","?")}')
-        else:
-            print('  ⚠️  Exchange rate API returned empty rates — using fallback')
-    else:
-        print(f'  ⚠️  Exchange rate API returned {_er.status_code} — using fallback')
-except Exception as e:
-    print(f'  ⚠️  Live exchange rates failed ({e}) — using hardcoded fallback')
 
 def derive_channel(country, channel_id):
     return COUNTRY_CHANNEL.get((country or '').lower().strip(), 'Reading Eggs AU')
@@ -323,16 +300,16 @@ if new_orders or FULL_REFRESH:
         oid   = o['id']
         items = order_items.get(oid, [])
         _curr = (o.get('currency_code') or 'AUD').upper()
-        # Debug: log BC's rate field for first non-AUD orders
-        if _curr != 'AUD' and not hasattr(build_order_row, '_debug_logged'):
-            build_order_row._debug_logged = True
-            print(f'  DEBUG order {o["id"]}: currency={_curr} currency_exchange_rate={o.get("currency_exchange_rate")} store_default_to_transactional_exchange_rate={o.get("store_default_to_transactional_exchange_rate")} total_inc_tax={o.get("total_inc_tax")}')
-        # Use BC's stored exchange rate (rate at time of purchase) — historically accurate
-        # currency_exchange_rate is stored per order by BC
-        # Fall back to our live/hardcoded rates if BC doesn't have it (e.g. AUD orders = 1.0)
-        # Use live AUD_RATES to convert from transaction currency to AUD
-        # BC does not pre-convert totals for this store (all rates return 1.0)
-        _rate = AUD_RATES.get(_curr, 1.0)
+
+        # Convert to AUD using BC's stored transactional exchange rate
+        # store_default_to_transactional_exchange_rate = how many transaction units per 1 AUD
+        # e.g. 0.71 means 1 AUD = 0.71 USD, so USD total / 0.71 = AUD total
+        # Fall back to live AUD_RATES if BC rate not present
+        _bc_fx = float(o.get('store_default_to_transactional_exchange_rate') or 0)
+        if _bc_fx > 0 and _bc_fx != 1.0:
+            _rate = 1.0 / _bc_fx  # AUD per 1 foreign unit
+        else:
+            _rate = AUD_RATES.get(_curr, 1.0)
         def _to_aud(v): return str(round(float(v or 0) * _rate, 2))
         billing    = o.get('billing_address') or {}
         ship_addrs = o.get('shipping_addresses') or []
@@ -363,11 +340,8 @@ if new_orders or FULL_REFRESH:
             'Channel Name':           ch_name,
             'Order Total (inc tax)':  _to_aud(o.get('total_inc_tax','0')),
             'Order Total (ex tax)':   _to_aud(o.get('total_ex_tax','0')),
-            'Exchange Rate':          str(o.get('currency_exchange_rate') or _rate),
-            'Order Total (AUD)':      str(round(
-                                        float(o.get('total_inc_tax') or 0) *
-                                        float(o.get('currency_exchange_rate') or _rate)
-                                      , 2)),
+            'Exchange Rate':          str(round(_rate, 6)),
+            'Order Total (AUD)':      _to_aud(o.get('total_inc_tax','0')),
             'Tax Total':              _to_aud(o.get('total_tax','0')),
             'Shipping Cost (ex tax)': _to_aud(o.get('shipping_cost_ex_tax','0')),
             'Coupon Discount':        _to_aud(o.get('coupon_discount','0')),

@@ -1157,7 +1157,7 @@ function preProcess(cb){
       var currCode = (row['Order Currency Code']||'AUD').toUpperCase();
       var rate = 1;
 
-      var rawTotal   = parseFloat(String(row['Order Total (inc tax)']||0).replace(/[^\d.\-]/g,''))||0;
+      var rawTotal   = parseFloat(String(row['Order Total (AUD)']||row['Order Total (inc tax)']||0).replace(/[^\d.\-]/g,''))||0;
       var rawExTax   = parseFloat(String(row['Order Total (ex tax)']||0).replace(/[^\d.\-]/g,''))||0;
       var rawSubtot  = parseFloat(String(row['Subtotal (ex tax)']||0).replace(/[^\d.\-]/g,''))||0;
       var rawTax     = parseFloat(String(row['Tax Total']||0).replace(/[^\d.\-]/g,''))||0;
