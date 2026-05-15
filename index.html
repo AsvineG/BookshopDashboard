@@ -250,7 +250,7 @@ body {
 }
 .panel {
   position: absolute; inset: 0; overflow-y: auto;
-  padding: 18px; display: none;
+  padding: 20px 24px; display: none;
   scrollbar-width: thin; scrollbar-color: var(--c-border) transparent;
 }
 .panel.active { display: block; }
@@ -2479,17 +2479,17 @@ function rExec(orders){
   function rag(v){ return v==='grn'?'var(--c-grn)':v==='amb'?'var(--c-amb)':'var(--c-red)'; }
   function ragBg(v){ return v==='grn'?'rgba(34,197,94,0.08)':v==='amb'?'rgba(245,158,11,0.08)':'rgba(239,68,68,0.08)'; }
   function pb(pct,col){ var w=Math.min(100,pct||0); return '<div style="background:var(--c-border);border-radius:4px;height:6px;margin-top:6px"><div style="width:'+w+'%;height:100%;border-radius:4px;background:'+col+'"></div></div>'; }
-  function secHdr(t){ return '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;margin:20px 0 10px">'+t+'</div>'; }
+  function secHdr(t){ return '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;margin:28px 0 12px;padding-top:20px;border-top:1px solid var(--c-border)">'+t+'</div>'; }
   function metaRow(l,v,sub){ return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--c-border)"><span style="font-size:12px;color:var(--c-text-2)">'+l+'</span><span style="font-size:13px;font-weight:600">'+v+(sub?'<span style="font-size:11px;color:var(--c-text-3);margin-left:6px">'+sub+'</span>':'')+'</span></div>'; }
 
-  var html2 = '';
+  var html2 = '<div style="max-width:1400px">';
 
   // S1: FY Scorecard
   html2 += secHdr('FY26 Scorecard — always year to date');
   html2 += '<div class="g4 mb14">';
   // Revenue
   var revPct = tgtRevFY>0?fyRev/tgtRevFY*100:null;
-  html2 += '<div class="card">'+
+  html2 += '<div class="card" style="min-height:140px">'+
     '<div class="card-title mb6">FY Revenue</div>'+
     '<div style="font-size:24px;font-weight:800;color:var(--c-brand)">'+audFmt(fyRev)+'</div>'+
     (tgtRevFY>0?'<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">of '+audFmt(tgtRevFY)+' target</div>':'')+
@@ -2587,8 +2587,8 @@ function rExec(orders){
 
   // S4: Customer Quality
   html2 += secHdr('Customer Quality');
-  html2 += '<div class="g4 mb14">';
-  html2 += '<div class="card"><div class="card-title mb6">Repeat Purchase Rate</div>'+
+  html2 += '<div class="g4 mb14" style="align-items:stretch">';
+  html2 += '<div class="card" style="min-height:140px"><div class="card-title mb6">Repeat Purchase Rate</div>'+
     '<div style="font-size:24px;font-weight:800;color:var(--c-brand)">'+pctFmt(repeatRate)+'</div>'+
     '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">'+returning.length.toLocaleString()+' returning of '+allCusts.length.toLocaleString()+' customers</div>'+
     pb(repeatRate,'var(--c-brand)')+
@@ -2653,16 +2653,16 @@ function rExec(orders){
 
   // S7: Growth & Forward-looking
   html2 += secHdr('Growth Indicators');
-  html2 += '<div class="g3 mb14">';
+  html2 += '<div class="g3 mb14" style="align-items:stretch">';
   // Run rate
-  html2 += '<div class="card"><div class="card-title mb8">FY Run Rate Projection</div>'+
+  html2 += '<div class="card" style="min-height:160px"><div class="card-title mb8">FY Run Rate Projection</div>'+
     '<div style="font-size:22px;font-weight:800;color:'+(runRate>=tgtRevFY?'var(--c-grn)':'var(--c-amb)')+'">'+audFmt(runRate)+'</div>'+
     '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">projected FY close at current pace</div>'+
     (tgtRevFY>0?metaRow('vs target',audFmt(tgtRevFY),(runRate>=tgtRevFY?'▲ On track':'▼ '+audFmt(tgtRevFY-runRate)+' short')):'')+
     metaRow('Days elapsed',daysElapsed+' of '+fyTotalDays,monthsLeft+' months left')+
   '</div>';
   // Seasonal index
-  html2 += '<div class="card"><div class="card-title mb8">Seasonal Index</div>'+
+  html2 += '<div class="card" style="min-height:160px"><div class="card-title mb8">Seasonal Index</div>'+
     '<div style="font-size:22px;font-weight:800;color:'+(seasonIdx===null?'var(--c-text-3)':seasonIdx>=100?'var(--c-grn)':'var(--c-amb)')+'">'+
       (seasonIdx!==null?pctFmt(seasonIdx):'—')+
     '</div>'+
@@ -2671,7 +2671,7 @@ function rExec(orders){
     metaRow('Same month LY',audFmt(lyMonthRev),'')+
   '</div>';
   // Fulfilment
-  html2 += '<div class="card"><div class="card-title mb8">Fulfilment</div>'+
+  html2 += '<div class="card" style="min-height:160px"><div class="card-title mb8">Fulfilment</div>'+
     '<div style="font-size:22px;font-weight:800;color:'+(awaitOrds.length>50?'var(--c-red)':awaitOrds.length>20?'var(--c-amb)':'var(--c-grn)')+'">'+awaitOrds.length+'</div>'+
     '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">orders awaiting fulfilment</div>'+
     metaRow('Value',audFmt(awaitRev),'')+
@@ -2680,7 +2680,7 @@ function rExec(orders){
 
   // S8: Top 5 Products
   html2 += secHdr('Top 5 Products by FY Revenue');
-  html2 += '<div class="card mb14">'+
+  html2 += '<div class="card mb14" style="width:100%">'+
     '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
     '<thead><tr>'+
       '<th style="text-align:left;padding:8px;color:var(--c-text-3);font-weight:600;border-bottom:1px solid var(--c-border)">#</th>'+
@@ -2705,10 +2705,11 @@ function rExec(orders){
 
   // S9: Trend chart + Insights
   html2 += '<div class="g-2-1">';
-  html2 += '<div class="card"><div class="card-hdr"><div class="card-title-lg">Monthly Revenue Trend</div></div><div class="cw h240"><canvas id="execTrendC"></canvas></div></div>';
-  html2 += '<div class="card"><div class="card-hdr"><div class="card-title-lg">Top Insights</div></div><div id="execInsBox" style="max-height:280px;overflow-y:auto"></div></div>';
+  html2 += '<div class="card"><div class="card-hdr"><div class="card-title-lg">Monthly Revenue Trend</div></div><div class="cw h300"><canvas id="execTrendC"></canvas></div></div>';
+  html2 += '<div class="card"><div class="card-hdr"><div class="card-title-lg">Top Insights</div></div><div id="execInsBox" style="max-height:340px;overflow-y:auto"></div></div>';
   html2 += '</div>';
 
+  html2 += '</div>';
   el.innerHTML = html2;
 
   setTimeout(function(){
@@ -5661,8 +5662,6 @@ function rScorecard(orders){
 function rForecast(orders){
   var el = document.getElementById('panel-forecast');
   var forecast = (typeof getRevenueForecast==='function') ? getRevenueForecast(rawO) : null;
-  var paid = orders.filter(function(r){return !r._zero;});
-  var totRev = paid.reduce(function(s,r){return s+r._aud;},0);
 
   if(!forecast){
     el.innerHTML =
@@ -5676,46 +5675,91 @@ function rForecast(orders){
     return;
   }
 
-  var nextMonths = forecast.nextMonths || [];
-  var trend      = forecast.trend || 0;
-  var r2         = forecast.r2 || 0;
-  var annualised = forecast.annualised || 0;
+  var eom    = forecast.eomForecast || 0;
+  var cur    = forecast.curMonthRev || 0;
+  var fy26p  = forecast.fy26Projected || 0;
+  var fy26a  = forecast.fy26Actual || 0;
+  var rate   = forecast.runRate || 0;
+  var months = forecast.months || [];
+  var byMonth= forecast.byMonth || {};
+  var fy26M  = forecast.fy26Months || [];
+
+  // FY target for comparison
+  var tgtData = TARGETS && TARGETS.global ? TARGETS.global : {};
+  var fyTgt = fy26M.reduce(function(s,m){return s+(tgtData[m]?tgtData[m].fy26_kpi||0:0);},0);
+  var onTrack = fyTgt>0 ? fy26p >= fyTgt : null;
+
+  // Monthly trend data - last 12 months actual + 3 months projected
+  var now = new Date();
+  var curYM = now.getFullYear()+'-'+(now.getMonth()+1).toString().padStart(2,'0');
+  var histMonths = months.slice(-12);
+  var projMonths = [];
+  var t = new Date(now.getFullYear(), now.getMonth()+1, 1);
+  for(var i=0;i<3;i++){
+    projMonths.push(t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0'));
+    t.setMonth(t.getMonth()+1);
+  }
+  var avg3 = forecast.avg3DailyRate || 0;
 
   el.innerHTML =
     '<div class="g3 mb14">'+
-      kpiCard('Projected Next Month', audFmt(nextMonths[0]||0), 'based on '+forecast.monthCount+'-month trend','var(--c-brand)')+
-      kpiCard('Trend', (trend>=0?'+':'')+pctFmt(trend), trend>=0?'Upward momentum':'Downward trend', trend>=0?'var(--c-grn)':'var(--c-red)')+
-      kpiCard('Annualised Run Rate', audFmt(annualised), 'at current trajectory','var(--c-pur)')+
+      kpiCard('EOM Forecast', audFmt(eom),
+        'vs '+audFmt(cur)+' so far this month (day '+forecast.dayOfMonth+' of '+forecast.daysInMonth+')',
+        'var(--c-brand)')+
+      kpiCard('FY26 Projection', audFmt(fy26p),
+        (fyTgt>0 ? (onTrack?'<span class="delta up">▲ On track vs ':' <span class="delta dn">▼ A$'+audFmt(fyTgt-fy26p)+' short of ')+audFmt(fyTgt)+' target</span>' : 'at current run rate'),
+        onTrack===null?'var(--c-pur)':onTrack?'var(--c-grn)':'var(--c-red)')+
+      kpiCard('Daily Run Rate', audFmt(Math.round(rate)),
+        'avg over last 3 months · '+audFmt(rate*30)+'/mo projected',
+        'var(--c-org)')+
     '</div>'+
+
     '<div class="card mb14">'+
-      '<div class="card-hdr"><div class="card-title-lg">Revenue Forecast — Next 3 Months</div>'+
-        '<span class="text-xs text-muted">R² = '+r2.toFixed(2)+' (model confidence)</span>'+
-      '</div>'+
+      '<div class="card-hdr"><div class="card-title-lg">Revenue — Historical + 3 Month Projection</div></div>'+
       '<div class="cw h280"><canvas id="forecastChart"></canvas></div>'+
     '</div>'+
-    '<div class="alert '+(r2>0.7?'grn':r2>0.4?'amb':'red')+' mb14">'+
-      '<span class="alert-icon">'+(r2>0.7?'✅':r2>0.4?'⚠️':'❌')+'</span>'+
-      '<span class="alert-text"><strong>Model confidence: '+(r2>0.7?'High':'r2>0.4?Medium:Low')+'</strong> (R²='+r2.toFixed(2)+') — '+
-      (r2>0.7?'Forecast is reliable. Use for planning.':r2>0.4?'Moderate fit. Treat as directional guidance.':'High variance in data. Forecast is indicative only.')+
-      '</span>'+
+
+    '<div class="card mb14">'+
+      '<div class="card-hdr"><div class="card-title-lg">FY26 Month by Month</div></div>'+
+      '<div class="tbl-wrap"><table class="tbl">'+
+        '<thead><tr><th>Month</th><th class="r">Actual</th><th class="r">Target</th><th class="r">vs Target</th><th class="r">Status</th></tr></thead>'+
+        '<tbody>'+
+        fy26M.map(function(m){
+          var act = byMonth[m] ? byMonth[m].rev : null;
+          var tgt = tgtData[m] ? tgtData[m].fy26_kpi||0 : 0;
+          var isFuture = m > curYM;
+          var pct = tgt>0&&act!==null ? act/tgt*100 : null;
+          var projRev = isFuture ? (avg3 * new Date(parseInt(m.slice(0,4)),parseInt(m.slice(5)),0).getDate()) : null;
+          return '<tr>'+
+            '<td>'+monthLabel(m)+'</td>'+
+            '<td class="num">'+(act!==null?audFmt(act):(projRev?'<span class="text-muted">~'+audFmt(projRev)+'</span>':'—'))+'</td>'+
+            '<td class="num text-muted">'+(tgt>0?audFmt(tgt):'—')+'</td>'+
+            '<td class="num">'+(pct!==null?'<span class="delta '+(pct>=90?'up':pct>=60?'amb':'dn')+'">'+pctFmt(pct)+'</span>':'—')+'</td>'+
+            '<td>'+(isFuture?'<span class="tag muted">Projected</span>':act!==null?'<span class="tag '+(pct>=90?'grn':pct>=60?'amb':'red')+'">'+pctFmt(pct)+'</span>':'<span class="tag muted">No data</span>')+'</td>'+
+          '</tr>';
+        }).join('')+
+        '</tbody></table>'+
+      '</div>'+
     '</div>';
 
   setTimeout(function(){
-    var histMonths = forecast.histMonths || [];
-    var histRevs   = forecast.histRevs   || [];
-    var projMonths = forecast.projMonths || nextMonths.map(function(_,i){ return 'M+'+(i+1); });
-
+    var histRevs = histMonths.map(function(m){return Math.round(byMonth[m]?byMonth[m].rev:0);});
+    var projRevs = projMonths.map(function(m){
+      var d = new Date(parseInt(m.slice(0,4)),parseInt(m.slice(5)),0).getDate();
+      return Math.round(avg3*d);
+    });
     mkChart('forecastChart',{
-      type:'line',
+      type:'bar',
       data:{
-        labels: histMonths.concat(projMonths),
+        labels: histMonths.concat(projMonths).map(monthLabel),
         datasets:[
-          {label:'Historical',  data:histRevs.concat(new Array(projMonths.length).fill(null)), borderColor:'#2563eb',backgroundColor:'#2563eb15',borderWidth:2,pointRadius:3,fill:true,tension:.35},
-          {label:'Forecast',    data:new Array(histMonths.length).fill(null).concat(nextMonths), borderColor:'#16a34a',backgroundColor:'#16a34a10',borderWidth:2,borderDash:[6,4],pointRadius:4,fill:true,tension:.35},
-        ]
+          {label:'Actual',data:histRevs.concat(new Array(projMonths.length).fill(null)),backgroundColor:'#2563eb88',borderRadius:3},
+          {label:'Projected',data:new Array(histMonths.length).fill(null).concat(projRevs),backgroundColor:'#16a34a55',borderRadius:3,borderDash:[4,4]},
+          (fyTgt>0?{label:'Monthly Target',data:histMonths.concat(projMonths).map(function(m){return tgtData[m]?tgtData[m].fy26_kpi||null:null;}),type:'line',borderColor:'#f59e0b',borderWidth:2,borderDash:[4,4],pointRadius:3,fill:false}:null)
+        ].filter(Boolean)
       },
       options:{responsive:true,maintainAspectRatio:false,animation:false,
-        plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:8}},tooltip:{backgroundColor:'#0f172a',padding:8,cornerRadius:6}},
+        plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:8}}},
         scales:{
           x:{grid:{display:false},ticks:{color:'#64748b',font:{size:10}},border:{display:false}},
           y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#64748b',font:{size:10},callback:function(v){return 'A$'+Math.round(v).toLocaleString('en-AU');}},border:{display:false}}
@@ -5724,14 +5768,6 @@ function rForecast(orders){
     });
   },50);
 }
-
-
-// [end nested script block]
-
-
-
-
-// [merged from nested script block]
 
 function rSrcTable(){
   var orders=fOrders().filter(function(r){return r._source&&r._source!=='Unknown';});

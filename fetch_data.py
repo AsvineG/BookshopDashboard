@@ -280,21 +280,46 @@ if new_orders or FULL_REFRESH:
 
     print('  ✅ Line items done')
 
+    # Fetch coupon details for orders with coupon_discount > 0
+    orders_with_disc = [o for o in new_orders if float(o.get('coupon_discount',0) or 0) > 0]
+    print(f'  Fetching coupon codes for {len(orders_with_disc)} discounted orders...')
+    order_coupons = {}
+
+    def fetch_coupons(oid):
+        data = safe_get(f'{BASE_V2}/orders/{oid}/coupons')
+        return oid, (data if isinstance(data, list) else [])
+
+    if orders_with_disc:
+        with ThreadPoolExecutor(max_workers=10) as ex:
+            futures = {ex.submit(fetch_coupons, o['id']): o['id'] for o in orders_with_disc}
+            for future in as_completed(futures):
+                try:
+                    oid, coupons = future.result()
+                    order_coupons[oid] = coupons
+                except:
+                    pass
+    print(f'  ✅ Coupon codes fetched')
+
     def _build_coupon_details(o):
-        coupons = o.get('coupons') or []
-        if not coupons:
-            discount = float(o.get('coupon_discount', 0) or 0)
-            if discount > 0:
-                return f'Coupon Discount: {discount}'
-            return ''
-        parts = []
-        for cp in coupons:
-            if isinstance(cp, dict):
-                code = cp.get('code', '')
-                discount = cp.get('discount', 0)
-                if code:
-                    parts.append(f'Coupon Code: {code}, Discount: {discount}')
-        return ' | '.join(parts)
+        oid = o['id']
+        # Use separately fetched coupon data (order API doesn't include by default)
+        coupons = order_coupons.get(oid, [])
+        if coupons:
+            parts = []
+            for cp in coupons:
+                if isinstance(cp, dict):
+                    code = cp.get('code', '')
+                    disc = cp.get('discount', 0)
+                    ctype = cp.get('type', '')
+                    if code:
+                        parts.append(f'Coupon Code: {code}, Discount: {disc}, Type: {ctype}')
+            if parts:
+                return ' | '.join(parts)
+        # Fallback: just record the discount amount
+        discount = float(o.get('coupon_discount', 0) or 0)
+        if discount > 0:
+            return f'Coupon Discount: {discount}'
+        return ''
 
     def build_order_row(o):
         oid   = o['id']
