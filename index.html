@@ -990,7 +990,10 @@ body {
 // ── Constants ────────────────────────────────────────────────────────────────
 var GH_REPO     = 'AsvineG/BookshopDashboard';
 var GH_BRANCH   = 'main';
-var GH_RAW      = 'https://raw.githubusercontent.com/' + GH_REPO + '/' + GH_BRANCH + '/';
+var GH_RAW      = 'https://raw.githubusercontent.com/'
+var GH_OWNER    = 'AsvineG';
+var GH_REPO     = 'BookshopDashboard';
+var GH_WORKFLOW = 'save-settings.yml'; + GH_REPO + '/' + GH_BRANCH + '/';
 var WORKFLOW    = 'refresh-data.yml';
 var CSV_VER     = 'v8';
 
@@ -1004,6 +1007,7 @@ var SETTINGS = {
   regionMap: {},
   bundleMap: { au:{}, uk:{}, us:{} },
   currencyRates: null,
+  ghPat: null,
   retailerMargins: {},
   visitors: null,
 };
@@ -1659,14 +1663,21 @@ function updateTopbar(){
   var periodVisitors = 0;
   var visMap2 = {};
   if(SETTINGS.visitors && SETTINGS.visitors.length) {
-    SETTINGS.visitors.forEach(function(v){ visMap2[v.month] = (v.all||0); });
+    // Pick the right field based on active region filter
+    var visCh = filterState.channels;
+    var visField = (visCh.length===1) ? visCh[0] : 'all'; // au, uk, us or all
+    SETTINGS.visitors.forEach(function(v){
+      visMap2[v.month] = (v[visField]||v.all||0);
+    });
   }
   if(periodMonths.length > 0) {
     periodMonths.forEach(function(m){ periodVisitors += (visMap2[m]||0); });
   } else if(range==='all') {
     Object.values(visMap2).forEach(function(v){ periodVisitors += v; });
   }
-  var convRate = (periodVisitors > 0 && cnt > 0) ? (cnt / periodVisitors * 100) : null;
+  // Order count filtered to same region for conversion
+  var cntForConv = ordersAll.length;
+  var convRate = (periodVisitors > 0 && cntForConv > 0) ? (cntForConv / periodVisitors * 100) : null;
 
   document.getElementById('topbarKpis').innerHTML =
     kpiD(audFmt(rev),                   'Revenue',    rev,     prevRev,  'MoM') +
@@ -4050,6 +4061,7 @@ function fetchCSV(filename, cb, fallback){
 }
 
 function loadAllData(){
+  loadSavedSettings(); // restore visitors, margins, spend from localStorage
   clearOldCache();
   setStartup('Loading settings…', 5);
 
@@ -4199,6 +4211,7 @@ function buildSettingsUI(){
     {id:'spend', icon:'📣', label:'Ad Spend'},
     {id:'margin', icon:'💰', label:'Margins'},
     {id:'visitors', icon:'👥', label:'Visitors'},
+    {id:'github',   icon:'🔑', label:'GitHub Sync'},
     {id:'prefs', icon:'⚙️', label:'Preferences'},
     {id:'token', icon:'🔑', label:'GitHub Token'},
   ];
@@ -4338,6 +4351,11 @@ function buildTokenPane(){
     '</div>'+
     '<button class="btn btn-primary" onclick="savePAT()">Save Token</button>'+
     '<div id="patStatus" class="text-sm text-muted mt8"></div>'+
+    '<hr style="margin:20px 0;border:none;border-top:1px solid var(--c-border)">'+
+    '<div class="text-lg bold mb8">Save Settings</div>'+
+    '<div class="text-sm text-muted mb12">Saves visitors, spend, margins and all settings to GitHub so all users see the same data. Requires the token above to be saved first.</div>'+
+    '<button id="saveSettingsBtn" class="btn btn-p" onclick="saveSettingsToGitHub()">💾 Save Settings to GitHub</button>'+
+    '<div class="text-xs text-muted mt8">Triggers a GitHub Actions workflow (~30 seconds to commit).</div>'+
   '</div>';
 }
 
@@ -4396,6 +4414,7 @@ window.updateVis=function(month,field,val){
   var v=SETTINGS.visitors.filter(function(x){return x.month===month;})[0];
   if(!v){v={month:month,all:0,au:0,uk:0,us:0};SETTINGS.visitors.push(v);}
   v[field]=parseInt(val)||0;
+  saveSettings(); // persist immediately to localStorage
 };
 
 function getLast12Months(){
@@ -4420,12 +4439,66 @@ function saveSettings(){
   try{localStorage.setItem('re_settings_v2',JSON.stringify(SETTINGS));}catch(e){}
 }
 
+function saveSettingsToGitHub(){
+  var btn = document.getElementById('saveSettingsBtn');
+  if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
+
+  // Build clean settings payload
+  var payload = {
+    spend:          SETTINGS.spend,
+    margin:         SETTINGS.margin,
+    visitors:       SETTINGS.visitors,
+    bundleMap:      SETTINGS.bundleMap,
+    regionMap:      SETTINGS.regionMap,
+    prefs:          SETTINGS.prefs,
+    currencyRates:  SETTINGS.currencyRates,
+    retailerMargins:SETTINGS.retailerMargins,
+  };
+
+  var settingsJson = JSON.stringify(payload);
+
+  // Trigger GitHub Actions workflow via API
+  fetch('https://api.github.com/repos/'+GH_OWNER+'/'+GH_REPO+'/actions/workflows/'+GH_WORKFLOW+'/dispatches', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + getGithubPAT(),
+      'Accept': 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      ref: 'main',
+      inputs: { settings_json: settingsJson }
+    })
+  })
+  .then(function(r){
+    if(r.status === 204) {
+      // Success
+      saveSettings(); // also save locally
+      if(btn){ btn.disabled=false; btn.textContent='✓ Saved!'; btn.style.background='var(--c-grn)'; }
+      setTimeout(function(){
+        if(btn){ btn.textContent='💾 Save Settings'; btn.style.background=''; }
+      }, 3000);
+    } else {
+      return r.json().then(function(d){
+        throw new Error(d.message || 'HTTP '+r.status);
+      });
+    }
+  })
+  .catch(function(e){
+    if(btn){ btn.disabled=false; btn.textContent='⚠ Error — check PAT'; btn.style.background='var(--c-red)'; }
+    setTimeout(function(){
+      if(btn){ btn.textContent='💾 Save Settings'; btn.style.background=''; }
+    }, 4000);
+    console.error('Settings save failed:', e);
+  });
+}
+
 function loadSavedSettings(){
   try{
     var s=localStorage.getItem('re_settings_v2');
     if(s){
       var p=JSON.parse(s);
-      ['spend','margin','visitors','bundleMap','regionMap','prefs','currencyRates','retailerMargins'].forEach(function(k){if(p[k])SETTINGS[k]=p[k];});
+      ['spend','margin','visitors','bundleMap','regionMap','prefs','currencyRates','retailerMargins','ghPat'].forEach(function(k){if(p[k])SETTINGS[k]=p[k];});
     }
   }catch(e){}
 }
@@ -5800,6 +5873,7 @@ function updateSpendCell(reg, ri, month, val){
   if(!SETTINGS.spend[reg][ri]) SETTINGS.spend[reg][ri] = {platform:'',months:{}};
   if(!SETTINGS.spend[reg][ri].months) SETTINGS.spend[reg][ri].months = {};
   SETTINGS.spend[reg][ri].months[month] = parseFloat(val)||0;
+  saveSettings();
 }
 function updateSpendPlatform(reg, ri, val){
   if(!SETTINGS.spend[reg]) SETTINGS.spend[reg] = [];
