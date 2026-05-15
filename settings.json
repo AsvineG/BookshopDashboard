@@ -1435,12 +1435,6 @@
     "currency": "aud",
     "theme": "light"
   },
-  "currencyRates": [
-    {
-      "code": "CAD",
-      "name": "Canadian Dollar",
-      "rate": 1.007
-    }
-  ],
+  "currencyRates": [],
   "retailerMargins": {}
 }
