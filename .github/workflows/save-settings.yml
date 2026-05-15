@@ -1,0 +1,36 @@
+name: Save Dashboard Settings
+
+on:
+  workflow_dispatch:
+    inputs:
+      settings_json:
+        description: 'Settings JSON payload'
+        required: true
+        type: string
+
+jobs:
+  save:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.SETTINGS_PAT }}
+
+      - name: Write settings.json
+        run: |
+          echo '${{ inputs.settings_json }}' > settings.json
+
+      - name: Commit and push
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add settings.json
+          if git diff --staged --quiet; then
+            echo "No changes to settings."
+          else
+            git commit -m "Update dashboard settings"
+            git pull --rebase origin main
+            git push
+            echo "Settings saved."
+          fi
