@@ -5680,205 +5680,118 @@ var SEED_STOCK = {"139READEGG":{"stock":{"au":0,"uk":347},"low":100},"9781742150
 </script>
 <script>
 // ═══════════════════════════════════════════════════════════════════════════
-// BUNDLE MAP — built from product_modifiers.csv
-// For each bundle: modifier slots → default option → ISBN
-// ═══════════════════════════════════════════════════════════════════════════
-function buildBundleMapFromModifiers() {
-  // rawMod rows: Product SKU, Modifier Name, Option Label, Is Default, Value Data
-  // Strategy: for each bundle product, collect all modifier slots.
-  // The default option for each slot IS the component book.
-  // Value Data may contain the component product ID; Option Label contains the book title.
-  // We match Option Label back to products.csv to get the ISBN SKU.
-
-  if(!rawMod || !rawMod.length) return {};
-
-  // Build name→sku lookup from rawP
-  var nameLookup = {}, idLookup = {};
-  (rawP || []).forEach(function(p) {
-    var nm = (p['Product Name'] || '').toLowerCase().trim();
-    var sk = (p['SKU'] || '').trim();
-    var pid = String(p['Product ID'] || '').trim();
-    if(nm && sk) nameLookup[nm] = sk;
-    if(pid && sk) idLookup[pid] = sk;
-  });
-
-  // Group modifier rows by bundle SKU
-  var byBundle = {};
-  rawMod.forEach(function(row) {
-    var bundleSku = (row['Product SKU'] || '').trim();
-    var modName   = (row['Modifier Name'] || '').trim();   // e.g. "Book 1"
-    var optLabel  = (row['Option Label'] || '').trim();    // e.g. "Beginning to Read..."
-    var isDef     = (row['Is Default'] || '').trim() === 'Y';
-    var valData   = (row['Value Data'] || '').trim();      // may contain component product ID
-
-    if(!bundleSku || !optLabel) return;
-    if(!byBundle[bundleSku]) byBundle[bundleSku] = {};
-    if(!byBundle[bundleSku][modName]) byBundle[bundleSku][modName] = [];
-
-    byBundle[bundleSku][modName].push({
-      label: optLabel, isDef: isDef, valData: valData
-    });
-  });
-
-  // Build the final map: bundleSku → [ componentIsbn, ... ]
-  // For each slot: try default option first, fall back to first option.
-  // Resolution order: product_id from value_data → name match → ISBN-13 in label.
-  var bMap = {};
-  Object.entries(byBundle).forEach(function(e) {
-    var bundleSku = e[0];
-    var slots = e[1];
-    var isbns = [];
-
-    function resolveOption(opt) {
-      if(!opt) return null;
-      var isbn = null;
-
-      // 1. value_data → {"product_id": 123}
-      if(opt.valData && opt.valData !== '""' && opt.valData !== "''") {
-        try {
-          var vdObj = JSON.parse(opt.valData);
-          if(vdObj && typeof vdObj === 'object') {
-            var vdId = String(vdObj.product_id || vdObj.productId || vdObj.id || '');
-            if(vdId && idLookup[vdId]) isbn = idLookup[vdId];
-          }
-        } catch(ex) {
-          var digits = opt.valData.replace(/[^0-9]/g,'');
-          if(digits.length >= 3 && idLookup[digits]) isbn = idLookup[digits];
-        }
-      }
-
-      // 2. Exact name match (case-insensitive)
-      if(!isbn) {
-        var nm = opt.label.toLowerCase().trim();
-        if(nameLookup[nm]) isbn = nameLookup[nm];
-      }
-
-      // 3. Partial name match — strip age/year suffixes like "(Ages 5–7)"
-      if(!isbn) {
-        var nmClean = opt.label.replace(/\s*\([^)]+\)\s*$/,'').toLowerCase().trim();
-        if(nameLookup[nmClean]) isbn = nameLookup[nmClean];
-      }
-
-      // 4. ISBN-13 embedded in the label
-      if(!isbn) {
-        var m13 = opt.label.match(/\b(\d{13})\b/);
-        if(m13) isbn = m13[1];
-      }
-
-      return isbn;
-    }
-
-    Object.values(slots).forEach(function(options) {
-      // Try default first, then each option in order
-      var candidates = options.slice().sort(function(a,b){ return b.isDef - a.isDef; });
-      var isbn = null;
-      for(var ci=0; ci<candidates.length; ci++) {
-        isbn = resolveOption(candidates[ci]);
-        if(isbn) break;
-      }
-      if(isbn && !isbns.includes(isbn)) isbns.push(isbn);
-    });
-
-    if(isbns.length) bMap[bundleSku] = isbns;
-  });
-
-  return bMap;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// STOCK SYSTEM v2 — Regional risk panels + bundle map from modifiers
+// STOCK SYSTEM — bundle min-stock from modifiers + regional prices
 // ═══════════════════════════════════════════════════════════════════════════
 
 var stkActiveRegion = 'all';
 
+// ── Parse Inventory: {au:X,uk:X,us:X} from custom fields ──────────────────
 function parseStockFromCustomFields(cfStr) {
   var stock = {};
   if(!cfStr) return stock;
-  var segs = cfStr.split('|');
-  segs.forEach(function(seg) {
-    seg = seg.trim();
-    var patterns = [
-      { re:/^au\s*stock\s*[:\-]\s*(\d+)/i,    key:'au' },
-      { re:/^stock\s*au\s*[:\-]\s*(\d+)/i,    key:'au' },
-      { re:/^australia\s*[:\-]\s*(\d+)/i,     key:'au' },
-      { re:/^uk\s*stock\s*[:\-]\s*(\d+)/i,    key:'uk' },
-      { re:/^stock\s*uk\s*[:\-]\s*(\d+)/i,    key:'uk' },
-      { re:/^us\s*stock\s*[:\-]\s*(\d+)/i,    key:'us' },
-      { re:/^usa\s*stock\s*[:\-]\s*(\d+)/i,   key:'us' },
-      { re:/^stock\s*us[a]?\s*[:\-]\s*(\d+)/i,key:'us' },
-    ];
-    patterns.forEach(function(p) {
-      var m = seg.match(p.re);
-      if(m && !(p.key in stock)) stock[p.key] = parseInt(m[1]) || 0;
-    });
+  var m = cfStr.match(/Inventory:\s*\{([^}]+)\}/i);
+  if(!m) return stock;
+  m[1].split(',').forEach(function(pair) {
+    var kv = pair.trim().split(':');
+    if(kv.length !== 2) return;
+    var k = kv[0].trim().toLowerCase();
+    var v = parseInt(kv[1].trim());
+    if(!isNaN(v) && (k==='au'||k==='uk'||k==='us')) stock[k] = v;
   });
   return stock;
 }
 
+// ── Build bundle map from rawMod (product_modifiers.csv) ──────────────────
+// Returns: { bundleSku: [componentSku, ...] }  (default options only)
+function buildBundleMapFromModifiers() {
+  if(!rawMod || !rawMod.length) return {};
+  // Build productId → SKU lookup
+  var idToSku = {};
+  (rawP||[]).forEach(function(p) {
+    var pid = String(p['Product ID']||'').trim();
+    var sku = (p['SKU']||'').trim();
+    if(pid && sku) idToSku[pid] = sku;
+  });
+  var bMap = {};
+  rawMod.forEach(function(row) {
+    if((row['Is Default']||'').trim() !== 'Y') return;
+    var bSku = (row['Product SKU']||'').trim();
+    var vd   = (row['Value Data']||'').trim();
+    if(!bSku || !vd) return;
+    try {
+      var obj = JSON.parse(vd);
+      var pid = String(obj.product_id || obj.productId || '');
+      var cSku = idToSku[pid];
+      if(cSku) {
+        if(!bMap[bSku]) bMap[bSku] = [];
+        if(!bMap[bSku].includes(cSku)) bMap[bSku].push(cSku);
+      }
+    } catch(e) {}
+  });
+  return bMap;
+}
+
+// ── Price list lookup ──────────────────────────────────────────────────────
 function buildPriceListMap() {
   window.PRICE_LIST_MAP = {};
   if(!rawPL || !rawPL.length) return;
   rawPL.forEach(function(r) {
-    var sku  = (r['SKU'] || '').trim();
-    var list = (r['Price List Name'] || '').trim();
-    var curr = (r['Currency'] || 'AUD').toUpperCase();
-    var price= parseFloat(r['Price'] || 0) || 0;
-    var sale = parseFloat(r['Sale Price'] || 0) || 0;
-    if(!sku || !list || !price) return;
+    var sku  = (r['SKU']||'').trim();
+    var curr = (r['Currency']||'AUD').toUpperCase();
+    var price= parseFloat(r['Price']||0)||0;
+    var sale = parseFloat(r['Sale Price']||0)||0;
+    if(!sku || !price) return;
     if(!window.PRICE_LIST_MAP[sku]) window.PRICE_LIST_MAP[sku] = {};
-    if(!window.PRICE_LIST_MAP[sku][curr]) window.PRICE_LIST_MAP[sku][curr] = [];
-    window.PRICE_LIST_MAP[sku][curr].push({ list:list, price:price, salePrice:sale });
+    // Keep lowest price if multiple entries per currency
+    if(!window.PRICE_LIST_MAP[sku][curr] || price < window.PRICE_LIST_MAP[sku][curr].price)
+      window.PRICE_LIST_MAP[sku][curr] = {price:price, salePrice:sale};
   });
 }
 
-function getPriceForSku(sku, currency) {
-  var map = window.PRICE_LIST_MAP || {};
-  var entries = (map[sku] && map[sku][currency]) || [];
-  if(!entries.length) return null;
-  return entries.reduce(function(best, e) { return (!best||e.price<best.price)?e:best; }, null);
+function getPLPrice(sku, curr) {
+  var m = window.PRICE_LIST_MAP;
+  return (m && m[sku] && m[sku][curr]) || null;
 }
 
-function fmtCurrPrice(price, curr) {
-  if(!price) return '—';
-  var sym = {AUD:'A$',USD:'US$',GBP:'£',NZD:'NZ$',CAD:'C$'}[curr] || curr+'$';
-  return sym + price.toLocaleString('en-AU', {minimumFractionDigits:2, maximumFractionDigits:2});
+function fmtPLPrice(sku, curr) {
+  var e = getPLPrice(sku, curr);
+  if(!e) return '—';
+  var sym = {AUD:'A$',USD:'US$',GBP:'£',NZD:'NZ$',CAD:'C$'}[curr]||curr;
+  if(e.salePrice && e.salePrice < e.price)
+    return '<s class="text-muted" style="font-size:9px">'+sym+e.price.toFixed(2)+'</s> <strong class="text-amb">'+sym+e.salePrice.toFixed(2)+'</strong>';
+  return sym+e.price.toFixed(2);
 }
 
+// ── Build stock products list ──────────────────────────────────────────────
 function buildStkProducts(velOrders) {
   var products = window.rawP || [];
   var REGS = ['au','uk','us'];
 
-  // Build bundle map from modifiers (live from BC data)
-  var modBundleMap = buildBundleMapFromModifiers();
-  // Merge with any manually set bundle map in SETTINGS
-  var bundleMap = { au:{}, uk:{}, us:{} };
-  REGS.forEach(function(reg) {
-    // modifiers apply to all regions (same bundle, same books)
-    bundleMap[reg] = Object.assign({}, modBundleMap, (SETTINGS.bundleMap && SETTINGS.bundleMap[reg]) || {});
-  });
-  // Store merged map for use in velocity calc
+  // Build bundle component map
+  var bundleMap = buildBundleMapFromModifiers();
   window._activeBundleMap = bundleMap;
 
-  // Velocity: scan orders per region, attribute bundle sales to components
+  // Build stock lookup: sku → {au,uk,us} from custom fields
+  var stkLookup = {};
+  products.forEach(function(p) {
+    var sku = (p['SKU']||'').trim();
+    if(sku) stkLookup[sku] = parseStockFromCustomFields(p['Custom Fields']||'');
+  });
+
+  // Velocity from orders: sku → reg → {d30,d90,total}
   var velMap = {};
   var d30 = new Date(Date.now() - 30*86400000);
   var d90 = new Date(Date.now() - 90*86400000);
-
   function initV(sku) {
     if(!velMap[sku]) velMap[sku] = {
-      au:{d30:0,d90:0,total:0,via30:0,via90:0},
-      uk:{d30:0,d90:0,total:0,via30:0,via90:0},
-      us:{d30:0,d90:0,total:0,via30:0,via90:0},
+      au:{d30:0,d90:0,total:0}, uk:{d30:0,d90:0,total:0}, us:{d30:0,d90:0,total:0}
     };
   }
-
   (velOrders||[]).forEach(function(r) {
     if(!r._date||!r._items||r._zero) return;
     var reg = r._region;
     if(!REGS.includes(reg)) return;
-    var in30 = r._date >= d30;
-    var in90 = r._date >= d90;
-
+    var in30 = r._date >= d30, in90 = r._date >= d90;
     r._items.forEach(function(it) {
       var sku = (it.sku||'').trim();
       var qty = it.qty||1;
@@ -5887,15 +5800,13 @@ function buildStkProducts(velOrders) {
       velMap[sku][reg].total += qty;
       if(in30) velMap[sku][reg].d30 += qty;
       if(in90) velMap[sku][reg].d90 += qty;
-
-      // Propagate bundle → component ISBNs
+      // Propagate bundle velocity to components
       if(it.type==='bundle') {
-        var comps = (bundleMap[reg]||{})[sku] || [];
-        comps.forEach(function(isbn) {
-          initV(isbn);
-          velMap[isbn][reg].total += qty;
-          if(in30) velMap[isbn][reg].via30 += qty;
-          if(in90) velMap[isbn][reg].via90 += qty;
+        (bundleMap[sku]||[]).forEach(function(csku) {
+          initV(csku);
+          velMap[csku][reg].total += qty;
+          if(in30) velMap[csku][reg].d30 += qty;
+          if(in90) velMap[csku][reg].d90 += qty;
         });
       }
     });
@@ -5903,107 +5814,66 @@ function buildStkProducts(velOrders) {
 
   // Build product list
   return products.map(function(p) {
-    var sku  = (p['SKU']||'').trim();
-    var name = p['Product Name']||'';
-    var cf   = p['Custom Fields']||'';
-    var isIsbn   = /^\d{13}$/.test(sku);
-    var isDigital= /12.?month|24.?month|program access|digital/i.test(name);
-    var isBundle = !isIsbn && !isDigital;
-    var type = isDigital?'digital':isBundle?'bundle':'isbn';
+    var sku      = (p['SKU']||'').trim();
+    var name     = p['Product Name']||'';
+    var cf       = p['Custom Fields']||'';
+    var isBundle = cf.includes('Bundle: true');
+    var isIsbn   = /^\d{13}$/.test(sku) || /^\d{13}-\d+$/.test(sku);
+    var isDigital= /isDigital:\s*true/i.test(cf) || /12.?month|24.?month|program access|subscription/i.test(name);
+    var type     = isDigital?'digital':isBundle?'bundle':'isbn';
 
-    // Stock resolution — 3-tier priority:
-    // 1. BC custom fields (live — if you set regional stock fields in BC admin)
-    // 2. SEED_STOCK (historical data embedded in dashboard — 214 products)
-    // 3. BC inventory_level as last resort for AU only
-    var cfStk  = parseStockFromCustomFields(cf);
-    var seed   = (window.SEED_STOCK && window.SEED_STOCK[sku]) || {};
-    var seedStk= seed.stock || {};
-    var bcInv  = parseInt(p['Inventory Level']||0)||0;
-
+    // Stock per region
     var stock = {};
-    REGS.forEach(function(reg) {
-      var storefront = {au:'In AU Storefront',uk:'In UK Storefront',us:'In USA Storefront'}[reg];
-      var inStore    = p[storefront]==='Y';
-      // Tier 1: live custom fields
-      if(reg in cfStk) {
-        stock[reg] = cfStk[reg];
-      }
-      // Tier 2: seed stock (historical manual data)
-      else if(reg in seedStk) {
-        stock[reg] = seedStk[reg];
-      }
-      // Tier 3: BC inventory_level — AU only, non-bundle
-      else if(inStore && reg==='au' && bcInv>0 && !isBundle) {
-        stock[reg] = bcInv;
-      }
-      // In storefront but no stock data = 0
-      else if(inStore) {
-        stock[reg] = 0;
-      }
-    });
-    // Fallback: if storefront data missing but seed has stock
-    if(!Object.keys(stock).length && Object.keys(seedStk).length) {
-      stock = Object.assign({}, seedStk);
+    if(isBundle && bundleMap[sku] && bundleMap[sku].length) {
+      // Bundle stock = min component stock per region
+      REGS.forEach(function(reg) {
+        var vals = [];
+        bundleMap[sku].forEach(function(csku) {
+          var cstk = stkLookup[csku]||{};
+          if(reg in cstk) vals.push(cstk[reg]);
+        });
+        if(vals.length) stock[reg] = Math.min.apply(null, vals);
+      });
+    } else {
+      // ISBN or bundle without modifier data — use own custom field
+      stock = parseStockFromCustomFields(cf);
     }
-    var lowWatermark = seed.low || parseInt(p['Inventory Warning Level']||0)||0;
+
+    // Fallback to SEED_STOCK if no CF stock found
+    if(!Object.keys(stock).length) {
+      var seed = (window.SEED_STOCK && window.SEED_STOCK[sku]);
+      if(seed && seed.stock) stock = Object.assign({}, seed.stock);
+    }
+
+    var lowWatermark = parseInt(p['Inventory Warning Level']||0)||0;
 
     // Per-region computed data
     var r = {};
     REGS.forEach(function(reg) {
       if(!(reg in stock)) return;
       var stk  = stock[reg]||0;
-      var v    = (velMap[sku]&&velMap[sku][reg])||{d30:0,d90:0,total:0,via30:0,via90:0};
+      var v    = (velMap[sku]&&velMap[sku][reg])||{d30:0,d90:0,total:0};
       var rate = v.d30>0 ? v.d30/30 : v.d90>0 ? v.d90/90 : 0;
       var days = (stk>0&&rate>0) ? Math.round(stk/rate) : (stk>0?9999:0);
-      var atWarn = lowWatermark>0 && stk<=lowWatermark;
+      var atWarn = lowWatermark>0 && stk>0 && stk<=lowWatermark;
       var status = stk===0?'zero' : atWarn?'critical' : days===9999?'ok' : days<=30?'critical' : days<=120?'low' : 'ok';
-      r[reg] = {
-        stk:stk, status:status, days:days, rate:rate,
-        d30:v.d30, d90:v.d90, via30:v.via30, via90:v.via90, total:v.total,
-      };
+      r[reg] = {stk:stk, status:status, days:days, rate:rate, d30:v.d30, d90:v.d90, total:v.total};
     });
 
     return {
-      id: p['Product ID']||'', name:name, sku:sku, type:type,
+      id:p['Product ID']||'', name:name, sku:sku, type:type,
       bundle:isBundle, isbn:isIsbn, digital:isDigital,
-      isVisible: p['Is Visible']!=='N',
+      isVisible:p['Is Visible']!=='N',
       stock:stock, r:r,
-      basePrice: parseFloat(p['Price']||0)||0,
-      costPrice: parseFloat(p['Cost Price']||0)||0,
-      salePrice: parseFloat(p['Sale Price']||0)||0,
-      cfStr: cf,
+      basePrice:parseFloat(p['Price']||0)||0,
+      inAU:p['In AU Storefront']==='Y',
+      inUK:p['In UK Storefront']==='Y',
+      inUS:p['In USA Storefront']==='Y',
     };
-  }).filter(function(p){ return !p.digital; }); // exclude digital from stock view
+  }).filter(function(p){ return !p.digital; });
 }
 
-// Apply bundle min-stock after all products built
-function applyBundleMinStock(prods, REGS) {
-  var bm = window._activeBundleMap || {};
-  REGS.forEach(function(reg) {
-    var regMap = bm[reg] || {};
-    prods.filter(function(p){ return p.bundle; }).forEach(function(bp) {
-      var comps = regMap[bp.sku] || [];
-      if(!comps.length) return;
-      var minStk = null;
-      comps.forEach(function(isbn) {
-        var comp = prods.find(function(x){ return x.sku===isbn; });
-        if(!comp || !(reg in comp.stock)) return;
-        var s = comp.stock[reg]||0;
-        if(minStk===null || s<minStk) minStk = s;
-      });
-      if(minStk===null) return;
-      bp.stock[reg] = minStk;
-      if(bp.r[reg]) {
-        bp.r[reg].stk = minStk;
-        var rate = bp.r[reg].rate;
-        var days = (minStk>0&&rate>0)?Math.round(minStk/rate):(minStk>0?9999:0);
-        bp.r[reg].days   = days;
-        bp.r[reg].status = minStk===0?'zero':days===9999?'ok':days<=30?'critical':days<=120?'low':'ok';
-      }
-    });
-  });
-}
-
+// ── Status pill ────────────────────────────────────────────────────────────
 function stkPill(rd) {
   if(!rd) return '<span class="tag neu" style="font-size:9px">—</span>';
   if(rd.stk===0)             return '<span class="tag red" style="font-size:9px">⚠ Out of Stock</span>';
@@ -6017,55 +5887,52 @@ function stkPill(rd) {
 function rStock(orders) {
   var el = document.getElementById('panel-stock');
   if(!lP||!rawP||!rawP.length) {
-    el.innerHTML='<div class="empty"><div class="empty-icon">📦</div><div class="empty-title">No product data</div><div class="empty-desc">Run a full refresh to load products, stock and bundle compositions from BigCommerce</div></div>';
+    el.innerHTML='<div class="empty"><div class="empty-icon">📦</div><div class="empty-title">No product data</div><div class="empty-desc">Run a refresh to load products from BigCommerce</div></div>';
     return;
   }
 
   buildPriceListMap();
   var stkProds = buildStkProducts(rawO);
-  applyBundleMinStock(stkProds, ['au','uk','us']);
   window._stkProducts = stkProds;
 
   var REGS = ['au','uk','us'];
-  var REG_LABEL = {au:'🇦🇺 Australia',uk:'🇬🇧 United Kingdom',us:'🇺🇸 USA'};
+  var hasPL = rawPL && rawPL.length > 0;
+  var hasMod = rawMod && rawMod.length > 0;
 
-  // Summary counts per region
+  // Regional summary stats
   function regStats(reg) {
-    var inReg = stkProds.filter(function(p){ return reg in p.stock; });
+    var inReg = stkProds.filter(function(p){ return reg in p.r; });
     return {
       total:    inReg.length,
       zero:     inReg.filter(function(p){ return (p.r[reg]||{}).status==='zero'; }).length,
       critical: inReg.filter(function(p){ return (p.r[reg]||{}).status==='critical'; }).length,
       low:      inReg.filter(function(p){ return (p.r[reg]||{}).status==='low'; }).length,
-      ok:       inReg.filter(function(p){ var s=(p.r[reg]||{}).status; return s==='ok'; }).length,
     };
   }
 
-  var modCount = rawMod && rawMod.length;
-  var plCount  = rawPL  && rawPL.length;
-  var bundleMapSize = Object.keys(buildBundleMapFromModifiers()).length;
-
-  // Data source status bar
+  // Status bar
   el.innerHTML =
     '<div class="flex gap8 mb14 flex-wrap">'+
-      '<span class="tag '+(modCount?'grn':'amb')+'">'+(modCount?'✓':'⚠')+' Bundle compositions: '+(modCount?bundleMapSize+' bundles from '+modCount+' modifier rows':'Run refresh to load')+'</span>'+
-      '<span class="tag '+(plCount?'grn':'amb')+'">'+(plCount?'✓':'⚠')+' Price lists: '+(plCount?plCount+' price records':'Run refresh to load')+'</span>'+
-      '<span class="tag grn">Stock source: Seed data (214 products) + Custom Fields</span>'+
+      '<span class="tag '+(hasMod?'grn':'red')+'">'+(hasMod?'✓ Bundle compositions loaded':'⚠ product_modifiers.csv missing — run refresh')+'</span>'+
+      '<span class="tag '+(hasPL?'grn':'amb')+'">'+(hasPL?'✓ Price lists loaded':'⚠ Price lists not loaded')+'</span>'+
+      '<span class="tag neu">Stock: BC Custom Fields</span>'+
     '</div>'+
 
-    // ── Regional risk KPI row ──────────────────────────────────────────────
+    // Regional KPI cards
     '<div class="g3 mb14">'+
     REGS.map(function(reg) {
       var s = regStats(reg);
-      var riskColor = s.zero>0||s.critical>0 ? 'var(--c-red)' : s.low>0 ? 'var(--c-amb)' : 'var(--c-grn)';
-      return '<div class="card" style="border-left:4px solid '+riskColor+'">'+
+      var urgent = s.zero + s.critical;
+      var color = urgent>0?'var(--c-red)':s.low>0?'var(--c-amb)':'var(--c-grn)';
+      var regName = {au:'🇦🇺 Australia',uk:'🇬🇧 United Kingdom',us:'🇺🇸 USA'}[reg];
+      return '<div class="card" style="border-left:4px solid '+color+'">'+
         '<div class="flex justify-between items-center mb10">'+
-          '<div class="card-title-lg">'+REG_LABEL[reg]+'</div>'+
+          '<div class="card-title-lg">'+regName+'</div>'+
           '<span class="text-xs text-muted">'+s.total+' products</span>'+
         '</div>'+
-        '<div class="g2 gap8">'+
+        '<div class="g2 gap8 mb10">'+
           '<div style="background:var(--c-red-bg);border-radius:var(--r-md);padding:10px;text-align:center">'+
-            '<div style="font-size:22px;font-weight:800;color:var(--c-red)">'+(s.zero+s.critical)+'</div>'+
+            '<div style="font-size:22px;font-weight:800;color:var(--c-red)">'+urgent+'</div>'+
             '<div class="text-xs text-muted mt2">Out / Order Now</div>'+
           '</div>'+
           '<div style="background:var(--c-amb-bg);border-radius:var(--r-md);padding:10px;text-align:center">'+
@@ -6073,29 +5940,29 @@ function rStock(orders) {
             '<div class="text-xs text-muted mt2">Order Soon</div>'+
           '</div>'+
         '</div>'+
-        '<div class="flex gap8 mt10">'+
-          '<button class="btn btn-sm '+(s.zero+s.critical>0?'btn-danger':'btn-ghost')+'" onclick="switchStkTab(\''+reg+'\');setStkFilter(\''+reg+'\',\'critical\')">'+
-            (s.zero+s.critical>0?'🚨 View '+(s.zero+s.critical)+' urgent':'✓ No urgent')+'</button>'+
-          '<button class="btn btn-ghost btn-sm" onclick="switchStkTab(\''+reg+'\');setStkFilter(\''+reg+'\',\'all\')">View all</button>'+
+        '<div class="flex gap6">'+
+          (urgent>0?'<button class="btn btn-danger btn-sm" onclick="switchStkTab(\''+reg+'\');setStkFilter(\''+reg+'\',\'critical\')">🚨 View '+urgent+'</button>':
+                    '<span class="text-xs text-grn bold">✓ No urgent items</span>')+
+          '<button class="btn btn-ghost btn-sm" onclick="switchStkTab(\''+reg+'\')">View all →</button>'+
         '</div>'+
       '</div>';
     }).join('')+
     '</div>'+
 
-    // ── Tabs ─────────────────────────────────────────────────────────────
-    '<div style="display:flex;gap:0;border-bottom:1px solid var(--c-border);margin-bottom:14px">'+
-      [['all','🌍 All Regions'],['au','🇦🇺 AU'],['uk','🇬🇧 UK'],['us','🇺🇸 USA']].map(function(t){
+    // Tabs
+    '<div style="display:flex;gap:0;border-bottom:2px solid var(--c-border);margin-bottom:14px">'+
+      [['all','🌍 All'],['au','🇦🇺 AU'],['uk','🇬🇧 UK'],['us','🇺🇸 USA']].map(function(t){
         return '<button id="stkTab-'+t[0]+'" onclick="switchStkTab(\''+t[0]+'\')" style="'+
-          'padding:8px 16px;border:none;border-bottom:3px solid transparent;background:none;'+
-          'font-size:12px;font-weight:600;cursor:pointer;color:var(--c-text-3);font-family:inherit">'+
+          'padding:8px 18px;border:none;border-bottom:3px solid transparent;background:none;'+
+          'cursor:pointer;font-size:12px;font-weight:600;color:var(--c-text-3);font-family:inherit;margin-bottom:-2px">'+
           t[1]+'</button>';
       }).join('')+
       '<div style="flex:1"></div>'+
       '<button class="btn btn-ghost btn-sm" onclick="stkExportCSV(stkActiveRegion)">⬇ Export CSV</button>'+
     '</div>'+
 
-    // ── Tab panels ────────────────────────────────────────────────────────
-    [['all','🌍 All Regions'],['au','🇦🇺 AU'],['uk','🇬🇧 UK'],['us','🇺🇸 USA']].map(function(t){
+    // Tab panels
+    [['all'],['au'],['uk'],['us']].map(function(t){
       return '<div id="stkPanel-'+t[0]+'" style="display:none">'+buildStkControls(t[0])+'<div id="stkTable-'+t[0]+'"></div></div>';
     }).join('');
 
@@ -6107,23 +5974,18 @@ function buildStkControls(reg) {
     '<input class="inp" id="stkSearch-'+reg+'" placeholder="Search name / SKU…" oninput="renderStkTable(\''+reg+'\')" style="max-width:180px">'+
     '<select class="sel sel-sm" id="stkFilter-'+reg+'" onchange="renderStkTable(\''+reg+'\')">'+
       '<option value="all">All levels</option>'+
-      '<option value="critical">🚨 Order Now (≤30d)</option>'+
+      '<option value="critical">🚨 Order Now (≤30d or below min)</option>'+
       '<option value="low">⚠ Order Soon (≤120d)</option>'+
       '<option value="zero">Out of stock</option>'+
       '<option value="ok">✓ Healthy</option>'+
     '</select>'+
     '<select class="sel sel-sm" id="stkType-'+reg+'" onchange="renderStkTable(\''+reg+'\')">'+
       '<option value="all">All types</option>'+
-      '<option value="isbn">📚 ISBN only</option>'+
-      '<option value="bundle">🧩 Bundles only</option>'+
-    '</select>'+
-    '<select class="sel sel-sm" id="stkPeriod-'+reg+'" onchange="renderStkTable(\''+reg+'\')">'+
-      '<option value="30">30 day velocity</option>'+
-      '<option value="90" selected>90 day velocity</option>'+
-      '<option value="180">180 day velocity</option>'+
+      '<option value="isbn">📚 ISBN books</option>'+
+      '<option value="bundle">🧩 Bundles</option>'+
     '</select>'+
     '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">'+
-      '<input type="checkbox" id="stkHide-'+reg+'" checked onchange="renderStkTable(\''+reg+'\')"> Hide inactive'+
+      '<input type="checkbox" id="stkHide-'+reg+'" checked onchange="renderStkTable(\''+reg+'\')"> Hide no-stock/no-sales'+
     '</label>'+
     '<span class="text-xs text-muted" id="stkCount-'+reg+'"></span>'+
   '</div>';
@@ -6151,29 +6013,32 @@ function switchStkTab(reg) {
 function renderStkTable(reg) {
   var prods = window._stkProducts; if(!prods) return;
   var REGS  = reg==='all' ? ['au','uk','us'] : [reg];
+  var REG_CURR = {au:'AUD', uk:'GBP', us:'USD'};
   var q     = ((document.getElementById('stkSearch-'+reg)||{}).value||'').toLowerCase();
   var lvl   = (document.getElementById('stkFilter-'+reg)||{}).value||'all';
   var typeF = (document.getElementById('stkType-'+reg)||{}).value||'all';
   var doHide= (document.getElementById('stkHide-'+reg)||{}).checked!==false;
   var bm    = window._activeBundleMap || {};
-  var hasPL = rawPL&&rawPL.length>0;
+  var hasPL = rawPL && rawPL.length > 0;
 
   // Filter
   var filtered = prods.filter(function(p) {
     if(typeF!=='all' && p.type!==typeF) return false;
     if(q && !p.name.toLowerCase().includes(q) && !p.sku.toLowerCase().includes(q)) return false;
-    var inRegs = REGS.filter(function(r){ return r in p.stock; });
+    var inRegs = REGS.filter(function(r){ return r in p.r; });
     if(!inRegs.length) return false;
-    if(doHide && inRegs.every(function(r){ var rd=p.r[r]; return !rd||(!rd.stk&&!rd.total); })) return false;
+    if(doHide && inRegs.every(function(r){
+      var rd=p.r[r]; return !rd||(rd.stk===0 && rd.total===0);
+    })) return false;
     if(lvl==='critical') return REGS.some(function(r){ var s=(p.r[r]||{}).status; return s==='critical'||s==='zero'; });
     if(lvl==='low')      return REGS.some(function(r){ var s=(p.r[r]||{}).status; return s==='low'||s==='critical'||s==='zero'; });
-    if(lvl==='zero')     return REGS.some(function(r){ return (p.r[r]||{}).status==='zero'; });
+    if(lvl==='zero')     return REGS.some(function(r){ return (p.r[r]||{}).stk===0 && (p.r[r]||{}).total>0; });
     if(lvl==='ok')       return REGS.every(function(r){ var s=(p.r[r]||{}).status; return !s||s==='ok'; });
     return true;
   });
 
-  // Sort: worst status first, then fewest days
-  var sOrder = {critical:0,zero:1,low:2,ok:3};
+  // Sort: worst first, then fewest days
+  var sOrder = {critical:0, zero:1, low:2, ok:3};
   filtered.sort(function(a,b) {
     var aw = Math.min.apply(null, REGS.map(function(r){ return sOrder[(a.r[r]||{}).status||'ok']??3; }));
     var bw = Math.min.apply(null, REGS.map(function(r){ return sOrder[(b.r[r]||{}).status||'ok']??3; }));
@@ -6184,127 +6049,107 @@ function renderStkTable(reg) {
   });
 
   var countEl = document.getElementById('stkCount-'+reg);
-  if(countEl) countEl.textContent = filtered.length.toLocaleString()+' products';
+  if(countEl) countEl.textContent = filtered.length.toLocaleString('en-AU')+' products';
 
-  // Currencies from price list
-  var currencies = hasPL ? ['AUD','USD','GBP','NZD','CAD'].filter(function(c){
-    return filtered.some(function(p){ return getPriceForSku(p.sku,c); });
-  }) : ['AUD'];
+  // Table header — each region: Stock | Status | Sold 30d | Days Left | PRICE
+  var thead = '<div class="tbl-wrap"><table class="tbl" style="font-size:11.5px"><thead><tr>'+
+    '<th>#</th><th>Product</th><th>SKU</th><th>Type</th>'+
+    REGS.map(function(r) {
+      var fl = {au:'🇦🇺',uk:'🇬🇧',us:'🇺🇸'}[r];
+      var curr = REG_CURR[r];
+      return '<th class="r">'+fl+' Stock</th><th>Status</th><th class="r">Sold 30d</th><th class="r">Days Left</th>'+
+             (hasPL?'<th class="r">'+curr+' Price</th>':'');
+    }).join('')+
+    '</tr></thead><tbody>';
 
-  // Table header
-  var thReg = REGS.map(function(r){
-    var n={au:'🇦🇺 AU',uk:'🇬🇧 UK',us:'🇺🇸 USA'}[r];
-    return '<th class="r">'+n+' Stock</th><th>Status</th><th class="r">Sold 30d</th><th class="r">Days Left</th>';
-  }).join('');
-  var thPrice = currencies.map(function(c){ return '<th class="r">'+c+'</th>'; }).join('');
-
-  var thead = '<div class="tbl-wrap"><table class="tbl" style="font-size:11.5px">'+
-    '<thead><tr><th>#</th><th>Product</th><th>SKU</th><th>Type</th>'+thReg+thPrice+'</tr></thead><tbody>';
+  // Reorder collector
+  var reorderItems = [];
 
   var tbody = filtered.map(function(p, i) {
-    // Expand row for bundle components
-    var compsHTML = '';
-    if(p.bundle) {
-      var anyComps = REGS.some(function(r){ return (bm[r]||{})[p.sku]&&(bm[r]||{})[p.sku].length; });
-      if(anyComps) {
-        // Collect unique component ISBNs across regions
-        var allComps = {};
-        REGS.forEach(function(r){ ((bm[r]||{})[p.sku]||[]).forEach(function(isbn){ allComps[isbn]=true; }); });
-        var compIsbns = Object.keys(allComps);
-        compsHTML = '<tr id="stkExp-'+i+'" style="display:none">'+
-          '<td colspan="50" style="padding:0">'+
-          '<table style="width:100%;border-collapse:collapse;background:var(--c-surface-2)">'+
-          compIsbns.map(function(isbn) {
-            var comp = prods.find(function(x){ return x.sku===isbn; });
-            if(!comp) return '<tr><td colspan="50" class="text-muted text-xs" style="padding:5px 36px">'+isbn+' — not in catalogue</td></tr>';
-            var regCells = REGS.map(function(r){
-              var rd = comp.r[r];
-              if(!rd) return '<td class="num text-muted" style="font-size:11px">—</td><td></td><td class="num text-muted" style="font-size:11px">—</td><td class="num text-muted" style="font-size:11px">—</td>';
+    // Component expand rows for bundles
+    var compRows = '';
+    var comps = bm[p.sku] || [];
+    if(p.bundle && comps.length) {
+      compRows = '<tr id="stkExp-'+i+'" style="display:none"><td colspan="50" style="padding:0">'+
+        '<table style="width:100%;border-collapse:collapse;background:var(--c-surface-2)">'+
+        comps.map(function(csku) {
+          var cp = (window._stkProducts||[]).find(function(x){ return x.sku===csku; });
+          if(!cp) return '<tr><td colspan="50" class="text-muted text-xs" style="padding:5px 36px">↳ '+csku+' — not in catalogue</td></tr>';
+          return '<tr style="border-top:1px solid var(--c-border)">'+
+            '<td style="width:28px"></td>'+
+            '<td style="padding:5px 8px 5px 24px;font-size:11px;color:var(--c-text-3)">↳ '+cp.name.slice(0,44)+'</td>'+
+            '<td class="mono text-xs text-muted" style="padding:4px 8px">'+csku+'</td>'+
+            '<td></td>'+
+            REGS.map(function(r) {
+              var rd = cp.r[r];
+              if(!rd) return '<td colspan="'+(hasPL?5:4)+'" class="text-muted text-xs r">—</td>';
               var col = rd.stk===0?'var(--c-red)':rd.status==='critical'?'var(--c-red)':rd.status==='low'?'var(--c-amb)':'var(--c-grn)';
-              return '<td class="num" style="font-size:11px;font-weight:700;color:'+col+'">'+rd.stk.toLocaleString('en-AU')+'</td>'+
+              return '<td class="num" style="font-weight:700;color:'+col+';font-size:11px">'+rd.stk.toLocaleString('en-AU')+'</td>'+
                 '<td>'+stkPill(rd)+'</td>'+
                 '<td class="num text-muted" style="font-size:11px">'+rd.d30+'</td>'+
-                '<td class="num text-muted" style="font-size:11px">'+(rd.days===9999||!rd.days?'—':rd.days+'d')+'</td>';
-            }).join('');
-            return '<tr style="border-top:1px solid var(--c-border)">'+
-              '<td style="width:32px"></td>'+
-              '<td style="padding:5px 8px 5px 28px;font-size:11px;color:var(--c-text-3)">↳ '+comp.name.slice(0,40)+'</td>'+
-              '<td class="mono text-xs text-muted" style="padding:4px 8px">'+isbn+'</td>'+
-              '<td></td>'+regCells+
-              currencies.map(function(){ return '<td></td>'; }).join('')+
-            '</tr>';
-          }).join('')+
-          '</table></td></tr>';
-      }
+                '<td class="num text-muted" style="font-size:11px">'+(rd.days===9999||!rd.days?'—':rd.days+'d')+'</td>'+
+                (hasPL?'<td class="num text-muted" style="font-size:11px">'+fmtPLPrice(csku, REG_CURR[r])+'</td>':'');
+            }).join('')+
+          '</tr>';
+        }).join('')+
+        '</table></td></tr>';
     }
 
-    var hasExp = compsHTML.length>0;
-    var regCells = REGS.map(function(r){
+    // Main row
+    var hasExp = comps.length > 0;
+    var regCells = REGS.map(function(r) {
       var rd = p.r[r];
-      if(!rd) return '<td class="num text-muted">—</td><td></td><td class="num text-muted">—</td><td class="num text-muted">—</td>';
+      if(!rd) return '<td class="num text-muted">—</td><td></td><td class="num text-muted">—</td><td class="num text-muted">—</td>'+(hasPL?'<td class="num text-muted">—</td>':'');
       var col = rd.stk===0?'var(--c-red)':rd.status==='critical'?'var(--c-red)':rd.status==='low'?'var(--c-amb)':'var(--c-grn)';
+      var daysStr = rd.days===9999||!rd.days ? '—' : rd.days+'d';
+      // Collect reorder items
+      if((rd.status==='critical'||rd.stk===0) && rd.total>0) {
+        reorderItems.push({name:p.name,sku:p.sku,reg:r,stk:rd.stk,days:rd.days,rate:rd.rate,suggest:Math.round(rd.rate*90)});
+      }
       return '<td class="num" style="font-weight:700;color:'+col+'">'+rd.stk.toLocaleString('en-AU')+'</td>'+
         '<td>'+stkPill(rd)+'</td>'+
         '<td class="num text-muted">'+rd.d30+'</td>'+
-        '<td class="num '+(rd.days!==9999&&rd.days<=30?'text-red bold':rd.days<=120?'text-amb':'text-muted')+'">'+(rd.days===9999||!rd.days?'—':rd.days+'d')+'</td>';
+        '<td class="num '+(rd.days!==9999&&rd.days<=30?'text-red bold':rd.days<=120?'text-amb':'text-muted')+'">'+daysStr+'</td>'+
+        (hasPL?'<td class="num">'+fmtPLPrice(p.sku, REG_CURR[r])+'</td>':'');
     }).join('');
-
-    var priceCells = currencies.map(function(c){
-      if(!hasPL && c==='AUD') return '<td class="num">'+(p.basePrice?fmtCurrPrice(p.basePrice,'AUD'):'—')+'</td>';
-      var e = getPriceForSku(p.sku, c);
-      if(!e) return '<td class="num text-muted">—</td>';
-      if(e.salePrice&&e.salePrice<e.price) return '<td class="num"><s class="text-muted" style="font-size:10px">'+fmtCurrPrice(e.price,c)+'</s> <strong class="text-amb">'+fmtCurrPrice(e.salePrice,c)+'</strong></td>';
-      return '<td class="num">'+fmtCurrPrice(e.price,c)+'</td>';
-    }).join('');
-
-    var typTag = tag(p.type, p.type==='bundle'?'pur':p.type==='isbn'?'grn':'blu');
 
     return '<tr style="cursor:'+(hasExp?'pointer':'default')+'" '+(hasExp?'onclick="stkToggle(this,\'stkExp-'+i+'\')"':'')+'>'+
       '<td class="text-muted text-xs">'+(i+1)+'</td>'+
-      '<td class="bold" style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+p.name+'">'+
-        (hasExp?'<span id="stkArrow-'+i+'" style="font-size:9px;margin-right:4px;color:var(--c-amb)">▶</span>':'')+
+      '<td class="bold" style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+p.name+'">'+
+        (hasExp?'<span id="stkArrow-'+i+'" style="font-size:9px;margin-right:3px;color:var(--c-amb)">▶</span>':'')+
         (p.bundle?'<span class="tag pur" style="font-size:9px;margin-right:3px">BUNDLE</span>':'')+
-        (!p.isVisible?'<span class="tag red" style="font-size:9px;margin-right:3px">HIDDEN</span>':'')+
-        p.name.slice(0,40)+
+        p.name.slice(0,38)+
       '</td>'+
       '<td class="mono text-sm text-muted">'+p.sku+'</td>'+
-      '<td>'+typTag+'</td>'+
-      regCells+priceCells+
-    '</tr>'+compsHTML;
+      '<td>'+tag(p.type,p.type==='bundle'?'pur':p.type==='isbn'?'grn':'blu')+'</td>'+
+      regCells+
+    '</tr>'+compRows;
   }).join('');
 
   // Reorder table
-  var reorderItems = [];
-  filtered.forEach(function(p) {
-    ['au','uk','us'].forEach(function(r) {
-      var rd = p.r[r]; if(!rd||!rd.total) return;
-      if(rd.status==='critical'||rd.stk===0) {
-        reorderItems.push({name:p.name,sku:p.sku,reg:r,stk:rd.stk,days:rd.days,rate:rd.rate,suggest:Math.round(rd.rate*90)});
-      }
-    });
-  });
-
-  var reorderHTML = reorderItems.length ?
-    '<div class="card mt14">'+
+  var reorderHTML = '';
+  if(reorderItems.length) {
+    reorderHTML = '<div class="card mt14">'+
       '<div class="card-hdr"><div class="card-title-lg">🚨 Reorder Recommendations</div>'+
         '<button class="btn btn-ghost btn-sm" onclick="stkExportReorder()">⬇ Export</button></div>'+
       '<div class="tbl-wrap"><table class="tbl"><thead><tr>'+
         '<th>Product</th><th>SKU</th><th>Region</th>'+
-        '<th class="r">Current Stock</th><th class="r">Days Left</th>'+
-        '<th class="r">Rate/day</th><th class="r">Order Qty (90d supply)</th>'+
+        '<th class="r">Stock</th><th class="r">Days Left</th>'+
+        '<th class="r">Rate/day</th><th class="r">Order Qty (90d)</th>'+
       '</tr></thead><tbody>'+
       reorderItems.map(function(o){
         return '<tr>'+
-          '<td class="bold">'+o.name.slice(0,40)+'</td>'+
+          '<td class="bold">'+o.name.slice(0,38)+'</td>'+
           '<td class="mono text-sm">'+o.sku+'</td>'+
           '<td>'+tag(o.reg.toUpperCase(),o.reg==='au'?'au':o.reg==='uk'?'uk':'us')+'</td>'+
           '<td class="num text-red bold">'+o.stk.toLocaleString('en-AU')+'</td>'+
-          '<td class="num '+(o.days<=30?'text-red bold':'text-amb')+'">'+(o.days===9999?'No velocity':o.days+'d')+'</td>'+
+          '<td class="num '+(o.days<=30?'text-red bold':'text-amb')+'">'+(o.days===9999?'No vel.':o.days+'d')+'</td>'+
           '<td class="num text-muted">'+o.rate.toFixed(2)+'/d</td>'+
           '<td class="num bold">'+o.suggest.toLocaleString('en-AU')+'</td>'+
         '</tr>';
       }).join('')+
-      '</tbody></table></div></div>' : '';
+      '</tbody></table></div></div>';
+  }
 
   var tableEl = document.getElementById('stkTable-'+reg);
   if(!tableEl) return;
@@ -6324,31 +6169,43 @@ function stkToggle(tr, childId) {
 function stkExportCSV(reg) {
   var prods=window._stkProducts; if(!prods) return;
   var REGS=reg==='all'?['au','uk','us']:[reg];
-  var RN={au:'AU',uk:'UK',us:'USA'};
+  var REG_CURR={au:'AUD',uk:'GBP',us:'USD'};
   var header=['Product','SKU','Type'];
-  REGS.forEach(function(r){['Stock','Status','Days Left','Sold 30d','Sold 90d','Rate/day'].forEach(function(f){header.push(RN[r]+' '+f);});});
-  ['AUD','USD','GBP','NZD','CAD'].forEach(function(c){header.push(c+' Price');});
+  REGS.forEach(function(r){
+    var rn=r.toUpperCase();
+    header.push(rn+' Stock',rn+' Status',rn+' Days Left',rn+' Sold 30d',rn+' Rate/day',REG_CURR[r]+' Price');
+  });
   var rows=[header];
   prods.forEach(function(p){
+    if(!REGS.some(function(r){ return r in p.r; })) return;
     var row=['"'+p.name.replace(/"/g,'""')+'"',p.sku,p.type];
-    REGS.forEach(function(r){var rd=p.r[r]||{};row.push(rd.stk||0,rd.status||'',rd.days===9999?'—':rd.days||'',rd.d30||0,rd.d90||0,rd.rate?(rd.rate).toFixed(2):0);});
-    ['AUD','USD','GBP','NZD','CAD'].forEach(function(c){var e=getPriceForSku(p.sku,c);row.push(e?e.price:c==='AUD'?p.basePrice:'');});
+    REGS.forEach(function(r){
+      var rd=p.r[r]||{};
+      var e=getPLPrice(p.sku,REG_CURR[r]);
+      row.push(rd.stk||0,rd.status||'',rd.days===9999?'—':rd.days||'',rd.d30||0,rd.rate?(rd.rate).toFixed(2):0,e?e.price:'');
+    });
     rows.push(row);
   });
   var blob=new Blob([rows.map(function(r){return r.join(',');}).join('\n')],{type:'text/csv'});
-  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='stock_'+reg+'_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='stock_'+reg+'_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
 }
 
 function stkExportReorder() {
   var prods=window._stkProducts; if(!prods) return;
-  var rows=[['Product','SKU','Region','Current Stock','Days Left','Rate/day','Order Qty (90d supply)']];
-  prods.forEach(function(p){['au','uk','us'].forEach(function(r){var rd=p.r[r];if(!rd||!rd.total)return;if(rd.status==='critical'||rd.stk===0)rows.push(['"'+p.name.replace(/"/g,'""')+'"',p.sku,r.toUpperCase(),rd.stk,rd.days===9999?'':rd.days,rd.rate.toFixed(2),Math.round(rd.rate*90)]);});});
+  var rows=[['Product','SKU','Region','Stock','Days Left','Rate/day','Order Qty (90d)']];
+  prods.forEach(function(p){
+    ['au','uk','us'].forEach(function(r){
+      var rd=p.r[r]; if(!rd||!rd.total) return;
+      if(rd.status==='critical'||rd.stk===0)
+        rows.push(['"'+p.name.replace(/"/g,'""')+'"',p.sku,r.toUpperCase(),rd.stk,rd.days===9999?'':rd.days,rd.rate.toFixed(2),Math.round(rd.rate*90)]);
+    });
+  });
   var blob=new Blob([rows.map(function(r){return r.join(',');}).join('\n')],{type:'text/csv'});
-  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='reorder_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='reorder_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
 }
 
-</script>
-<script>
 // ═══════════════════════════════════════════════════════════════════════════
 // GROWTH INTELLIGENCE ENGINE
 // 10 revenue-driving features built from existing order data
