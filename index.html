@@ -3304,20 +3304,23 @@ function rCustomers(orders){
 
   // Build profile map from orders (billing first_name — covers guests too)
   // rawO has _profile set per order from billing_address.first_name
+  // Build profileMap — rawC (customers.csv) is primary source
+  // rawO._profile (orders.csv) used as fallback when orders CSV has the column
   var profileMap = {};
+  // First load from rawC (customers.csv — always has profile after refresh)
+  (rawC||[]).forEach(function(c){
+    var id = (c['Customer ID']||'').trim();
+    var prof = (c['Customer Profile']||'Unknown').trim();
+    if(id && prof !== 'Unknown') profileMap[id] = prof;
+  });
+  // Overlay with rawO._profile if available (more accurate — billing name)
   rawO.forEach(function(r){
     var id = r._email;
     var prof = r._profile||'Unknown';
     if(id && prof !== 'Unknown') profileMap[id] = prof;
   });
-  // Attach profile to each customer — order-based takes priority over rawC
-  custs.forEach(function(c){
-    c.profile = profileMap[c.id] || (function(){
-      // Fallback to rawC if available
-      var rc = (rawC||[]).filter(function(x){return x['Customer ID']===c.id;})[0];
-      return rc ? (rc['Customer Profile']||'Unknown') : 'Unknown';
-    })();
-  });
+  // Attach to each customer
+  custs.forEach(function(c){ c.profile = profileMap[c.id] || 'Unknown'; });
 
   var newCusts=custs.filter(function(c){return c.orders.length===1;});
   var repeatCusts=custs.filter(function(c){return c.orders.length>1;});
