@@ -207,6 +207,7 @@ body {
 .topbar-kpis {
   display: flex; flex: 1; height: 100%; overflow: hidden;
   border-right: 1px solid var(--c-border);
+  -webkit-overflow-scrolling: touch;
 }
 .topbar-kpi {
   display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
@@ -251,6 +252,7 @@ body {
 .panel {
   position: absolute; inset: 0; overflow-y: auto;
   padding: 20px 24px; display: none;
+  -webkit-overflow-scrolling: touch; touch-action: pan-y;
   scrollbar-width: thin; scrollbar-color: var(--c-border) transparent;
 }
 .panel.active { display: block; }
@@ -415,7 +417,7 @@ body {
 .span3 { grid-column: span 3; }
 
 /* Chart wrappers */
-.cw { position: relative; width: 100%; }
+.cw { position: relative; width: 100%; overflow: hidden; }
 .h100{height:100px}.h120{height:120px}.h140{height:140px}.h160{height:160px}
 .h180{height:180px}.h200{height:200px}.h220{height:220px}.h240{height:240px}
 .h260{height:260px}.h280{height:280px}.h300{height:300px}.h320{height:320px}
@@ -703,14 +705,7 @@ body {
 /* ══════════════════════════════════════════════════════
    MOBILE
    ══════════════════════════════════════════════════════ */
-@media (max-width: 768px) {
-  .sidebar { display: none; }
-  .g4,.g5,.g6 { grid-template-columns: 1fr 1fr; }
-  .g3 { grid-template-columns: 1fr; }
-  .g-2-1,.g-1-2,.g-3-2,.g-2-3,.g-1-1-2 { grid-template-columns: 1fr; }
-  .topbar-kpis { display: none; }
-  .panel { padding: 12px; }
-}
+
 
 /* ══════════════════════════════════════════════════════
    ANIMATIONS
@@ -777,77 +772,9 @@ body {
 /* ═══════════════════════════════════════════════════
    MOBILE RESPONSIVE — optimised for 390px viewport
 ═══════════════════════════════════════════════════ */
-@media (max-width: 768px) {
-  /* Sidebar — hidden by default, toggled */
-  .sidebar { 
-    position: fixed; left: -220px; top: 0; bottom: 0; z-index: 200;
-    transition: left 0.25s ease; box-shadow: 4px 0 20px rgba(0,0,0,0.15);
-  }
-  .sidebar.open { left: 0; }
-  .sidebar-overlay {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4);
-    z-index: 199;
-  }
-  .sidebar.open ~ .sidebar-overlay { display: block; }
 
-  /* Topbar */
-  .topbar { padding: 0 8px; gap: 4px; }
-  .topbar-brand { min-width: 44px; padding: 0 8px; }
-  .topbar-brand .brand-name { display: none; }
-  .topbar-kpis { overflow-x: auto; scrollbar-width: none; }
-  .topbar-kpis::-webkit-scrollbar { display: none; }
-  .topbar-kpi { min-width: 80px; padding: 0 8px; }
-  .topbar-kpi .kpi-label { font-size: 9px; }
-  .topbar-kpi .kpi-val { font-size: 13px; }
-  .topbar-kpi .kpi-sub { display: none; }
-  .topbar-right { gap: 4px; padding: 0 6px; }
 
-  /* Main content area */
-  .main { margin-left: 0 !important; }
-  .panel { padding: 12px !important; }
 
-  /* Grids — collapse to single column */
-  .g2, .g3, .g4, .g5, .g6,
-  .g-2-1, .g-1-2, .g-3-1, .g-1-3 {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* Cards */
-  .card { padding: 14px !important; }
-  .card-title-lg { font-size: 13px !important; }
-
-  /* Tables — horizontal scroll */
-  .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .tbl { min-width: 500px; }
-
-  /* Topbar filter row */
-  .topbar-filters { flex-wrap: wrap; gap: 4px; padding: 6px 8px; }
-
-  /* KPI cards in panel */
-  .kpi-card { padding: 12px !important; }
-  .kpi-card .kpi-big { font-size: 20px !important; }
-
-  /* Section headers */
-  [style*="max-width:1400px"] { padding: 0 !important; }
-
-  /* Charts — reduce height on mobile */
-  .h300 { height: 200px !important; }
-  .h260 { height: 180px !important; }
-  .h240 { height: 160px !important; }
-  .h220 { height: 160px !important; }
-
-  /* Modal */
-  .modal-box { width: 95vw !important; max-height: 90vh; overflow-y: auto; }
-
-  /* Hide non-essential columns in tables on mobile */
-  .mobile-hide { display: none !important; }
-}
-
-@media (max-width: 480px) {
-  .topbar-kpi { min-width: 70px; }
-  .topbar-kpi .kpi-val { font-size: 12px; }
-  .g2 { grid-template-columns: 1fr 1fr !important; }
-}
 
 /* Mobile menu toggle button */
 .mob-menu-btn {
@@ -856,8 +783,126 @@ body {
   padding: 8px; border-radius: 6px;
   color: var(--c-text-1); font-size: 18px;
 }
+
+
+/* ═══════════════════════════════════════════
+   MOBILE — 390px optimised
+═══════════════════════════════════════════ */
+.mob-menu-btn {
+  display: none;
+  background: none; border: none; cursor: pointer;
+  padding: 8px 10px; font-size: 20px; line-height: 1;
+  color: var(--c-text-1); flex-shrink: 0;
+}
+
+.sidebar-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 199;
+}
+
 @media (max-width: 768px) {
-  .mob-menu-btn { display: flex; align-items: center; justify-content: center; }
+
+  /* Show hamburger */
+  .mob-menu-btn { display: flex; align-items: center; }
+  .topbar-mob-left { display: flex !important; }
+  .topbar-brand { display: none !important; }
+
+  /* Sidebar — slide in from left */
+  .sidebar {
+    position: fixed !important;
+    left: -240px !important;
+    top: 0 !important; bottom: 0 !important;
+    width: 220px !important; min-width: 220px !important;
+    z-index: 200 !important;
+    transition: left 0.25s ease !important;
+    box-shadow: none;
+  }
+  .sidebar.open {
+    left: 0 !important;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.18) !important;
+  }
+
+  /* Main fills full width */
+  .main { width: 100% !important; }
+
+  /* Topbar */
+  .topbar { padding: 0 4px !important; gap: 2px !important; }
+  .topbar-brand { min-width: 36px !important; padding: 0 6px !important; }
+  .topbar-brand .brand-name { display: none !important; }
+  .topbar-kpis {
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .topbar-kpis::-webkit-scrollbar { display: none; }
+  .topbar-kpi { min-width: 72px !important; padding: 0 6px !important; }
+  .topbar-kpi .kpi-label { font-size: 8px !important; }
+  .topbar-kpi .kpi-val { font-size: 12px !important; }
+  .topbar-kpi .kpi-sub { display: none !important; }
+  .topbar-actions { gap: 4px !important; padding: 0 4px !important; }
+
+  /* Panel */
+  .panel { padding: 12px 10px !important; -webkit-overflow-scrolling: touch; }
+
+  /* All grids collapse to 1 col */
+  .g2, .g3, .g4, .g5, .g6,
+  .g-2-1, .g-1-2, .g-3-1, .g-1-3,
+  .g-2-3, .g-3-2, .g-1-1-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Custom inline grids (used in exec S7 etc) */
+  [style*="grid-template-columns:340px"] {
+    grid-template-columns: 1fr !important;
+  }
+  [style*="grid-template-columns: 340px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Cards */
+  .card { padding: 12px !important; }
+
+  /* Tables — horizontal scroll */
+  .tbl-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  table { min-width: 480px !important; }
+
+  /* Charts */
+  .h300 { height: 180px !important; }
+  .h280 { height: 180px !important; }
+  .h260 { height: 160px !important; }
+  .h240 { height: 160px !important; }
+  .h220 { height: 150px !important; }
+  .h200 { height: 140px !important; }
+  .h180 { height: 130px !important; }
+
+  /* Modals */
+  .modal-box, .modal { width: 94vw !important; max-height: 88vh !important; overflow-y: auto !important; }
+
+  /* Stock grid — keep 2 col */
+  .g3.stock-grid { grid-template-columns: 1fr 1fr !important; }
+
+  /* Hide non-essential on mobile */
+  .mobile-hide { display: none !important; }
+}
+
+@media (max-width: 420px) {
+  .topbar-kpi { min-width: 60px !important; }
+  .topbar-actions .sel-sm { display: none !important; }
+}
+
+.topbar-mob-left {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.mob-brand {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-text-1);
+  white-space: nowrap;
 }
 </style>
 </head>
@@ -1014,6 +1059,10 @@ body {
 
     <!-- TOP BAR -->
     <div class="topbar">
+      <div class="topbar-mob-left">
+        <button class="mob-menu-btn" id="mobMenuBtn" onclick="toggleMobMenu()" aria-label="Open menu">☰</button>
+        <span class="mob-brand">📚 Bookshop CC</span>
+      </div>
       <div class="topbar-kpis" id="topbarKpis"></div>
       <div class="topbar-actions">
         <select class="sel sel-sm" id="fRange" onchange="onRangeChange()">
@@ -1871,25 +1920,34 @@ function buildSidebar(){
 function toggleMobMenu(){
   var sb = document.querySelector('.sidebar');
   if(!sb) return;
-  sb.classList.toggle('open');
-  var ov = document.querySelector('.sidebar-overlay');
-  if(!ov){
-    ov = document.createElement('div');
-    ov.className = 'sidebar-overlay';
-    ov.onclick = function(){ sb.classList.remove('open'); };
-    document.body.appendChild(ov);
+  var isOpen = sb.classList.contains('open');
+  if(isOpen){
+    closeMobMenu();
+  } else {
+    sb.classList.add('open');
+    var ov = document.getElementById('sidebarOverlay');
+    if(!ov){
+      ov = document.createElement('div');
+      ov.id = 'sidebarOverlay';
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:199;display:block';
+      ov.onclick = closeMobMenu;
+      document.body.appendChild(ov);
+    } else {
+      ov.style.display = 'block';
+    }
   }
-  ov.style.display = sb.classList.contains('open') ? 'block' : 'none';
+}
+function closeMobMenu(){
+  var sb = document.querySelector('.sidebar');
+  if(sb) sb.classList.remove('open');
+  var ov = document.getElementById('sidebarOverlay');
+  if(ov) ov.style.display = 'none';
 }
 // Close sidebar when nav item clicked on mobile
 document.addEventListener('DOMContentLoaded', function(){
   document.querySelectorAll('.sb-item').forEach(function(btn){
     btn.addEventListener('click', function(){
-      if(window.innerWidth <= 768){
-        document.querySelector('.sidebar').classList.remove('open');
-        var ov = document.querySelector('.sidebar-overlay');
-        if(ov) ov.style.display = 'none';
-      }
+      if(window.innerWidth <= 768){ closeMobMenu(); }
     });
   });
 });
@@ -1917,7 +1975,11 @@ function sTab(id){
   // Render - resolve fn string to actual function
   if(lO && item.fn){
     var fn = window[item.fn];
-    if(fn){ try{ fn(fOrders()); } catch(e){ console.error('Tab error',id,e); } }
+    if(fn){ 
+      setTimeout(function(){
+        try{ fn(fOrders()); } catch(e){ console.error('Tab error',id,e); }
+      }, 50);
+    }
   }
 }
 
@@ -1941,6 +2003,12 @@ function mkChart(id, cfg){
   if(chartInstances[id]){ try{chartInstances[id].destroy();}catch(e){} }
   var el = document.getElementById(id);
   if(!el) return null;
+  // Force canvas to have explicit dimensions so Chart.js can measure properly
+  var parent = el.parentElement;
+  if(parent && parent.offsetHeight > 0){
+    el.style.height = parent.offsetHeight + 'px';
+    el.style.width  = parent.offsetWidth  + 'px';
+  }
   Chart.defaults.font.family = "'Inter', sans-serif";
   Chart.defaults.font.size   = 11;
   Chart.defaults.color       = getComputedStyle(document.documentElement).getPropertyValue('--c-text-3').trim() || '#64748b';
@@ -2593,17 +2661,17 @@ function rExec(orders){
   function rag(v){ return v==='grn'?'var(--c-grn)':v==='amb'?'var(--c-amb)':'var(--c-red)'; }
   function ragBg(v){ return v==='grn'?'rgba(34,197,94,0.08)':v==='amb'?'rgba(245,158,11,0.08)':'rgba(239,68,68,0.08)'; }
   function pb(pct,col){ var w=Math.min(100,pct||0); return '<div style="background:var(--c-border);border-radius:4px;height:6px;margin-top:6px"><div style="width:'+w+'%;height:100%;border-radius:4px;background:'+col+'"></div></div>'; }
-  function secHdr(t){ return '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;margin:28px 0 12px;padding-top:20px;border-top:1px solid var(--c-border)">'+t+'</div>'; }
+  function secHdr(t){ return '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;margin:18px 0 10px;padding-top:16px;border-top:1px solid var(--c-border)">'+t+'</div>'; }
   function metaRow(l,v,sub){ return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--c-border)"><span style="font-size:12px;color:var(--c-text-2)">'+l+'</span><span style="font-size:13px;font-weight:600">'+v+(sub?'<span style="font-size:11px;color:var(--c-text-3);margin-left:6px">'+sub+'</span>':'')+'</span></div>'; }
 
-  var html2 = '<div style="max-width:1400px">';
+  var html2 = '<div style="width:100%">';
 
   // S1: FY Scorecard
   html2 += secHdr('FY26 Scorecard — always year to date');
   html2 += '<div class="g4 mb14">';
   // Revenue
   var revPct = tgtRevFY>0?fyRev/tgtRevFY*100:null;
-  html2 += '<div class="card" style="min-height:140px">'+
+  html2 += '<div class="card" style="min-height:0">'+
     '<div class="card-title mb6">FY Revenue</div>'+
     '<div style="font-size:24px;font-weight:800;color:var(--c-brand)">'+audFmt(fyRev)+'</div>'+
     (tgtRevFY>0?'<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">of '+audFmt(tgtRevFY)+' target</div>':'')+
@@ -2702,7 +2770,7 @@ function rExec(orders){
   // S4: Customer Quality
   html2 += secHdr('Customer Quality');
   html2 += '<div class="g4 mb14" style="align-items:stretch">';
-  html2 += '<div class="card" style="min-height:140px"><div class="card-title mb6">Repeat Purchase Rate</div>'+
+  html2 += '<div class="card" style="min-height:0"><div class="card-title mb6">Repeat Purchase Rate</div>'+
     '<div style="font-size:24px;font-weight:800;color:var(--c-brand)">'+pctFmt(repeatRate)+'</div>'+
     '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">'+returning.length.toLocaleString()+' returning of '+allCusts.length.toLocaleString()+' customers</div>'+
     pb(repeatRate,'var(--c-brand)')+
@@ -2751,7 +2819,458 @@ function rExec(orders){
   '</div>';
   html2 += '<div class="card"><div class="card-title mb8">Margin & Discounts</div>'+
     metaRow('Est. GP Margin',fyGpPct!==null?pctFmt(fyGpPct):'—','')+
-    metaRow('Discount rate',pctFmt(discPct),'of orders'),
+    metaRow('Discount rate',pctFmt(discPct),'of orders')+
+    metaRow('Avg discount depth',pctFmt(discDepth),'avg per discounted order')+
+    metaRow('Refund rate',pctFmt(refRate),'of revenue')+
+  '</div>';
+  html2 += '</div>';
+
+  // S6: Risk Flags
+  html2 += secHdr('Risk Flags');
+  html2 += '<div class="mb14" style="display:flex;flex-direction:column;gap:6px">';
+  flags.forEach(function(f){
+    html2 += '<div style="padding:10px 14px;border-radius:8px;background:'+ragBg(f.c)+';border-left:3px solid '+rag(f.c)+';font-size:12px;font-weight:500">'+(f.c==='red'?'🔴':f.c==='amb'?'🟡':'🟢')+' '+f.t+'</div>';
+  });
+  html2 += '</div>';
+
+  // S7+S8+S9: Unified bottom section — full width grid
+  // Row 1: Growth cards (3) + Top 5 table — side by side, equal height
+  html2 += secHdr('Growth Indicators & Top Products');
+  html2 += '<div style="display:grid;grid-template-columns:340px 1fr;gap:14px;margin-bottom:14px">';
+
+  // Left: 3 stacked growth cards
+  html2 += '<div style="display:flex;flex-direction:column;gap:14px">';
+
+  html2 += '<div class="card" style="flex:1">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
+      '<div class="card-title" style="font-size:11px">FY RUN RATE</div>'+
+      '<span style="font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;background:'+(runRate>=tgtRevFY?'rgba(34,197,94,0.12)':'rgba(245,158,11,0.12)')+';color:'+(runRate>=tgtRevFY?'var(--c-grn)':'var(--c-amb)')+'">'+
+        (runRate>=tgtRevFY?'On Track':'Below Target')+
+      '</span>'+
+    '</div>'+
+    '<div style="font-size:24px;font-weight:900;color:'+(runRate>=tgtRevFY?'var(--c-grn)':'var(--c-amb)')+'">'+audFmt(runRate)+'</div>'+
+    '<div style="font-size:10px;color:var(--c-text-3);margin:2px 0 8px">projected FY close at current pace</div>'+
+    '<div style="height:3px;border-radius:2px;background:var(--c-border);margin-bottom:8px">'+
+      '<div style="height:100%;border-radius:2px;width:'+Math.min(100,tgtRevFY>0?runRate/tgtRevFY*100:0)+'%;background:'+(runRate>=tgtRevFY?'var(--c-grn)':'var(--c-amb)')+'"></div>'+
+    '</div>'+
+    metaRow('vs target',audFmt(tgtRevFY),(runRate>=tgtRevFY?'▲ On track':'▼ '+audFmt(tgtRevFY-runRate)+' short'))+
+    metaRow('Elapsed',daysElapsed+' / '+fyTotalDays+'d',monthsLeft+' mo left')+
+  '</div>';
+
+  html2 += '<div class="card" style="flex:1">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
+      '<div class="card-title" style="font-size:11px">SEASONAL INDEX</div>'+
+      '<span style="font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;background:'+(seasonIdx===null?'rgba(100,116,139,0.12)':seasonIdx>=100?'rgba(34,197,94,0.12)':'rgba(245,158,11,0.12)')+';color:'+(seasonIdx===null?'var(--c-text-3)':seasonIdx>=100?'var(--c-grn)':'var(--c-amb)')+'">'+
+        (seasonIdx===null?'No LY':seasonIdx>=100?'Above LY':'Below LY')+
+      '</span>'+
+    '</div>'+
+    '<div style="font-size:24px;font-weight:900;color:'+(seasonIdx===null?'var(--c-text-3)':seasonIdx>=100?'var(--c-grn)':'var(--c-amb)')+'">'+
+      (seasonIdx!==null?pctFmt(seasonIdx):'—')+
+    '</div>'+
+    '<div style="font-size:10px;color:var(--c-text-3);margin:2px 0 8px">this month vs same month LY</div>'+
+    metaRow('This month',audFmt(curMonthRev),'')+
+    metaRow('Same month LY',audFmt(lyMonthRev),'')+
+  '</div>';
+
+  html2 += '<div class="card" style="flex:1">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
+      '<div class="card-title" style="font-size:11px">FULFILMENT QUEUE</div>'+
+      '<span style="font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;background:'+(awaitOrds.length>50?'rgba(239,68,68,0.12)':awaitOrds.length>20?'rgba(245,158,11,0.12)':'rgba(34,197,94,0.12)')+';color:'+(awaitOrds.length>50?'var(--c-red)':awaitOrds.length>20?'var(--c-amb)':'var(--c-grn)')+'">'+
+        (awaitOrds.length>50?'High':awaitOrds.length>20?'Monitor':'Clear')+
+      '</span>'+
+    '</div>'+
+    '<div style="font-size:24px;font-weight:900;color:'+(awaitOrds.length>50?'var(--c-red)':awaitOrds.length>20?'var(--c-amb)':'var(--c-grn)')+'">'+awaitOrds.length+'</div>'+
+    '<div style="font-size:10px;color:var(--c-text-3);margin:2px 0 8px">orders awaiting fulfilment</div>'+
+    metaRow('Queue value',audFmt(awaitRev),'')+
+    metaRow('Avg value',awaitOrds.length?audFmt(awaitRev/awaitOrds.length):'—','')+
+  '</div>';
+
+  html2 += '</div>'; // end left col
+
+  // Right: Top 5 products table — fills remaining width
+  html2 += '<div class="card">'+
+    '<div style="font-size:11px;font-weight:700;color:var(--c-text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px">Top 5 Products by FY Revenue</div>'+
+    '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+    '<thead><tr style="border-bottom:2px solid var(--c-border)">'+
+      '<th style="text-align:left;padding:6px 8px;color:var(--c-text-3);font-weight:600;width:24px">#</th>'+
+      '<th style="text-align:left;padding:6px 8px;color:var(--c-text-3);font-weight:600">Product</th>'+
+      '<th style="text-align:left;padding:6px 8px;color:var(--c-text-3);font-weight:600">SKU</th>'+
+      '<th style="text-align:right;padding:6px 8px;color:var(--c-text-3);font-weight:600">Revenue</th>'+
+      '<th style="text-align:right;padding:6px 8px;color:var(--c-text-3);font-weight:600">Qty</th>'+
+      '<th style="text-align:right;padding:6px 8px;color:var(--c-text-3);font-weight:600;min-width:100px">% of FY</th>'+
+    '</tr></thead><tbody>'+
+    top5.map(function(p,i){
+      var pct = fyRev>0?p.rev/fyRev*100:0;
+      var colors=['#2563eb','#7c3aed','#059669','#d97706','#dc2626'];
+      return '<tr style="border-bottom:1px solid var(--c-border)">'+
+        '<td style="padding:10px 8px;color:var(--c-text-3);font-weight:700">'+(i+1)+'</td>'+
+        '<td style="padding:10px 8px;font-weight:600;max-width:200px">'+p.name.slice(0,45)+'</td>'+
+        '<td style="padding:10px 8px;color:var(--c-text-3);font-family:monospace;font-size:10px">'+p.sku+'</td>'+
+        '<td style="padding:10px 8px;text-align:right;font-weight:800">'+audFmt(p.rev)+'</td>'+
+        '<td style="padding:10px 8px;text-align:right;color:var(--c-text-3)">'+p.qty+'</td>'+
+        '<td style="padding:10px 8px;text-align:right">'+
+          '<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px">'+
+            '<div style="width:50px;height:5px;border-radius:3px;background:var(--c-border);overflow:hidden">'+
+              '<div style="height:100%;width:'+Math.min(100,pct*10)+'%;background:'+colors[i]+';border-radius:3px"></div>'+
+            '</div>'+
+            '<span style="font-weight:700;color:'+colors[i]+'">'+pctFmt(pct)+'</span>'+
+          '</div>'+
+        '</td>'+
+      '</tr>';
+    }).join('')+
+    '</tbody></table>'+
+  '</div>';
+
+  html2 += '</div>'; // end growth+top5 grid
+
+  // Row 2: Trend chart (2/3) + Insights (1/3) — full width
+  html2 += '<div class="g-2-1" style="margin-bottom:14px">';
+  html2 += '<div class="card"><div class="card-hdr"><div class="card-title-lg">Monthly Revenue Trend</div></div><div class="cw h280"><canvas id="execTrendC"></canvas></div></div>';
+  html2 += '<div class="card"><div class="card-hdr"><div class="card-title-lg">Top Insights</div></div><div id="execInsBox" style="max-height:320px;overflow-y:auto"></div></div>';
+  html2 += '</div>';
+  el.innerHTML = html2;
+
+  setTimeout(function(){
+    // Trend chart
+    var execMonths = Object.keys((function(){var m={};rawO.filter(function(r){return !r._excluded&&!r._zero;}).forEach(function(r){if(r._month)m[r._month]=1;});return m;}())).sort();
+    var execFY = execMonths.filter(function(m){return m>='2025-07';});
+    mkChart('execTrendC',{
+      type:'bar',
+      data:{
+        labels: execFY.map(monthLabel),
+        datasets:[{
+          label:'Revenue',
+          data: execFY.map(function(m){
+            return Math.round(rawO.filter(function(r){return !r._excluded&&!r._zero&&r._month===m;}).reduce(function(s,r){return s+r._aud;},0));
+          }),
+          backgroundColor:'#2563eb88',
+          borderRadius:4
+        }]
+      },
+      options:{
+        animation:false,
+        responsive:true,
+        maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return 'A$'+Math.round(ctx.raw).toLocaleString('en-AU');}}}},
+        scales:{
+          x:{grid:{display:false},ticks:{color:'#64748b',font:{size:10}},border:{display:false}},
+          y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#64748b',font:{size:10},callback:function(v){return 'A$'+(v/1000).toFixed(0)+'K';}},border:{display:false}}
+        }
+      }
+    });
+  }, 200);
+}
+
+
+function rExec(orders){
+  var el = document.getElementById('panel-exec');
+
+  // ── Always use FY to date regardless of filter ───────────────────────────
+  var ytdMonths = getYTDMonths();
+  var now = new Date();
+  var fyStart = now.getMonth()>=6 ? new Date(now.getFullYear(),6,1) : new Date(now.getFullYear()-1,6,1);
+  var fyOrders = rawO.filter(function(r){
+    return !r._excluded && !r._zero && r._date && r._date>=fyStart;
+  });
+  var fyAllOrders = rawO.filter(function(r){
+    return !r._excluded && r._date && r._date>=fyStart;
+  }); // includes free orders for count/conv
+
+  // ── FY last year same period ──────────────────────────────────────────────
+  var lyFyStart = new Date(fyStart.getFullYear()-1, 6, 1);
+  var daysSoFar = Math.floor((now - fyStart)/86400000);
+  var lyPeriodEnd = new Date(lyFyStart.getTime() + daysSoFar*86400000 + 86399999);
+  var lyFyOrders = rawO.filter(function(r){
+    return !r._excluded && !r._zero && r._date && r._date>=lyFyStart && r._date<=lyPeriodEnd;
+  });
+
+  // ── Core FY metrics ───────────────────────────────────────────────────────
+  var fyRev   = fyOrders.reduce(function(s,r){return s+r._aud;},0);
+  var fyCnt   = fyAllOrders.length;
+  var fyLyRev = lyFyOrders.reduce(function(s,r){return s+r._aud;},0);
+  var fyLyCnt = lyFyOrders.length;
+  var fyAov   = fyOrders.length ? fyRev/fyOrders.length : 0;
+  var fyLyAov = lyFyOrders.length ? fyLyRev/lyFyOrders.length : 0;
+  var fyGp    = (typeof calcGrossProfit==='function') ? calcGrossProfit(fyOrders) : null;
+  var fyGpPct = (fyGp!==null&&fyRev>0) ? fyGp/fyRev*100 : null;
+
+  // ── Full FY targets ───────────────────────────────────────────────────────
+  var allFyMonths = [];
+  var t = new Date(fyStart.getFullYear(), fyStart.getMonth(), 1);
+  while(t.getFullYear()<fyStart.getFullYear()+1 || t.getMonth()<6){
+    allFyMonths.push(monthKey(t)); t.setMonth(t.getMonth()+1);
+    if(allFyMonths.length>12) break;
+  }
+  var tgtData   = TARGETS && TARGETS.global ? TARGETS.global : {};
+  var tgtRevFY  = allFyMonths.reduce(function(s,m){return s+(tgtData[m]?tgtData[m].fy26_kpi||0:0);},0);
+  var tgtOrdFY  = allFyMonths.reduce(function(s,m){return s+(tgtData[m]?tgtData[m].fy26_kpi_orders||0:0);},0);
+  var tgtLyRevFY= allFyMonths.reduce(function(s,m){return s+(tgtData[m]?tgtData[m].fy25_rev||0:0);},0);
+
+  // ── Run rate projection ───────────────────────────────────────────────────
+  var daysElapsed = Math.max(1, Math.floor((now - fyStart)/86400000));
+  var fyTotalDays = 365;
+  var runRate = fyRev / daysElapsed * fyTotalDays;
+  var monthsLeft = Math.max(0, 12 - ytdMonths.length);
+
+  // ── Regional FY ───────────────────────────────────────────────────────────
+  function fyRegData(reg, tgtKey) {
+    var ro = fyOrders.filter(function(r){return r._region===reg;});
+    var rv = ro.reduce(function(s,r){return s+r._aud;},0);
+    var rt = TARGETS && TARGETS[tgtKey] ? TARGETS[tgtKey] : {};
+    var tgt = allFyMonths.reduce(function(s,m){return s+(rt[m]?rt[m].fy26_kpi||0:0);},0);
+    var ly  = allFyMonths.reduce(function(s,m){return s+(rt[m]?rt[m].fy25_rev||0:0);},0);
+    var pct = tgt>0 ? rv/tgt*100 : null;
+    var rag = pct===null?'muted':pct>=90?'grn':pct>=60?'amb':'red';
+    return {rev:rv, tgt:tgt, ly:ly, pct:pct, rag:rag, cnt:ro.length};
+  }
+  var auD = fyRegData('au','apac');
+  var ukD = fyRegData('uk','emea');
+  var usD = fyRegData('us','amer');
+
+  // ── Visitors & conversion ─────────────────────────────────────────────────
+  var visMap2={};
+  if(SETTINGS.visitors) SETTINGS.visitors.forEach(function(v){visMap2[v.month]={all:v.all||0,au:v.au||0,uk:v.uk||0,us:v.us||0};});
+  var fyVis={all:0,au:0,uk:0,us:0};
+  ytdMonths.forEach(function(m){if(visMap2[m]){fyVis.all+=visMap2[m].all;fyVis.au+=visMap2[m].au;fyVis.uk+=visMap2[m].uk;fyVis.us+=visMap2[m].us;}});
+  var fyConv = fyVis.all>0 ? fyCnt/fyVis.all*100 : null;
+  var fyRpv  = fyVis.all>0 ? fyRev/fyVis.all : null;
+  // LY conv from TARGETS
+  var lyConv = allFyMonths.reduce(function(s,m){return s+(tgtData[m]?tgtData[m].fy25_cr||0:0);},0)/Math.max(1,allFyMonths.filter(function(m){return tgtData[m]&&tgtData[m].fy25_cr;}).length)*100;
+
+  // ── Customer quality ──────────────────────────────────────────────────────
+  var custOrders={};
+  fyOrders.forEach(function(r){if(r._email){if(!custOrders[r._email])custOrders[r._email]=[];custOrders[r._email].push(r._aud);}});
+  var allCusts = Object.keys(custOrders);
+  var returning = allCusts.filter(function(e){return custOrders[e].length>1;});
+  var newCusts  = allCusts.filter(function(e){return custOrders[e].length===1;});
+  var repeatRate = allCusts.length>0 ? returning.length/allCusts.length*100 : 0;
+  var ltv = allCusts.length>0 ? fyRev/allCusts.length : 0;
+  var retRev = returning.reduce(function(s,e){return s+custOrders[e].reduce(function(a,b){return a+b;},0);},0);
+  var newRev  = newCusts.reduce(function(s,e){return s+custOrders[e][0];},0);
+  var avgFreq = allCusts.length>0 ? fyOrders.length/allCusts.length : 0;
+
+  // ── Basket composition ────────────────────────────────────────────────────
+  var bDigRev=0,bPhyRev=0,bBunRev=0,bDigCnt=0,bPhyCnt=0,bBunCnt=0;
+  fyOrders.forEach(function(r){
+    var bt=r._basketType;
+    if(bt==='digital'){bDigRev+=r._aud;bDigCnt++;}
+    else if(bt==='bundle'){bBunRev+=r._aud;bBunCnt++;}
+    else{bPhyRev+=r._aud;bPhyCnt++;}
+  });
+
+  // ── Risk signals ──────────────────────────────────────────────────────────
+  var refOrders = rawO.filter(function(r){return (r._status||'').toLowerCase().includes('refund')&&r._date&&r._date>=fyStart;});
+  var refRev = refOrders.reduce(function(s,r){return s+parseFloat(r._aud||0);},0);
+  var refRate = fyRev>0 ? refRev/(fyRev+refRev)*100 : 0;
+
+  var discOrders = fyOrders.filter(function(r){return r._audCoup>0;});
+  var discDepth = discOrders.length>0 ? discOrders.reduce(function(s,r){return s+r._audCoup/r._aud*100;},0)/discOrders.length : 0;
+  var discPct = fyOrders.length>0 ? discOrders.length/fyOrders.length*100 : 0;
+
+  var esaFyOrders = fyOrders.filter(function(r){return r._esa;});
+  var esaFyRev = esaFyOrders.reduce(function(s,r){return s+r._aud;},0);
+  var esaPct = fyRev>0 ? esaFyRev/fyRev*100 : 0;
+
+  var awaitOrds = rawO.filter(function(r){return r._awaiting;});
+  var awaitRev  = awaitOrds.reduce(function(s,r){return s+r._aud;},0);
+
+  // ── Top 5 products ────────────────────────────────────────────────────────
+  var prodRev={};
+  fyOrders.forEach(function(r){
+    (r._items||[]).forEach(function(it){
+      if(!it.sku||it.type==='digital') return;
+      if(!prodRev[it.sku]) prodRev[it.sku]={sku:it.sku,name:it.name||it.sku,rev:0,qty:0};
+      prodRev[it.sku].rev += it.audPrice||0;
+      prodRev[it.sku].qty += it.qty||1;
+    });
+  });
+  var top5 = Object.values(prodRev).sort(function(a,b){return b.rev-a.rev;}).slice(0,5);
+
+  // ── Risk flags ────────────────────────────────────────────────────────────
+  var flags=[];
+  if(tgtRevFY>0&&fyRev/tgtRevFY<0.7&&monthsLeft<=3) flags.push({c:'red',t:'Target gap: '+pctFmt(fyRev/tgtRevFY*100)+' achieved with '+monthsLeft+' months left'});
+  if(auD.pct!==null&&auD.pct<60) flags.push({c:'red',t:'AU is '+pctFmt(auD.pct)+' of FY target — A$'+Math.round(auD.tgt-auD.rev).toLocaleString()+' gap'});
+  if(ukD.pct!==null&&ukD.pct<60) flags.push({c:'red',t:'UK is '+pctFmt(ukD.pct)+' of FY target — A$'+Math.round(ukD.tgt-ukD.rev).toLocaleString()+' gap'});
+  if(usD.pct!==null&&usD.pct<60) flags.push({c:'red',t:'USA is '+pctFmt(usD.pct)+' of FY target — A$'+Math.round(usD.tgt-usD.rev).toLocaleString()+' gap'});
+  if(esaPct>40) flags.push({c:'amb',t:'ESA dependency: '+pctFmt(esaPct)+' of FY revenue — concentration risk'});
+  if(refRate>3) flags.push({c:'amb',t:'Refund rate elevated at '+pctFmt(refRate)+' of revenue'});
+  if(discDepth>20) flags.push({c:'amb',t:'Avg discount depth '+pctFmt(discDepth)+' on '+pctFmt(discPct)+' of orders — margin pressure'});
+  if(!flags.length) flags.push({c:'grn',t:'No critical risk flags — business on track'});
+
+  // ── Monthly MoM trend ─────────────────────────────────────────────────────
+  var momMonths={};
+  rawO.filter(function(r){return !r._zero;}).forEach(function(r){if(r._month)momMonths[r._month]=(momMonths[r._month]||0)+1;});
+  var last6m = Object.keys(momMonths).sort().slice(-6);
+
+  // ── Seasonal index ────────────────────────────────────────────────────────
+  var curMonthRev = fyOrders.filter(function(r){return r._month===monthKey(now);}).reduce(function(s,r){return s+r._aud;},0);
+  var lyMonthKey  = (now.getFullYear()-1)+'-'+(String(now.getMonth()+1).padStart(2,'0'));
+  var lyMonthRev  = rawO.filter(function(r){return !r._zero&&r._month===lyMonthKey;}).reduce(function(s,r){return s+r._aud;},0);
+  var seasonIdx   = lyMonthRev>0 ? curMonthRev/lyMonthRev*100 : null;
+
+  // ── Build HTML ────────────────────────────────────────────────────────────
+  function rag(v){ return v==='grn'?'var(--c-grn)':v==='amb'?'var(--c-amb)':'var(--c-red)'; }
+  function ragBg(v){ return v==='grn'?'rgba(34,197,94,0.08)':v==='amb'?'rgba(245,158,11,0.08)':'rgba(239,68,68,0.08)'; }
+  function pb(pct,col){ var w=Math.min(100,pct||0); return '<div style="background:var(--c-border);border-radius:4px;height:6px;margin-top:6px"><div style="width:'+w+'%;height:100%;border-radius:4px;background:'+col+'"></div></div>'; }
+  function secHdr(t){ return '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;margin:18px 0 10px;padding-top:16px;border-top:1px solid var(--c-border)">'+t+'</div>'; }
+  function metaRow(l,v,sub){ return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--c-border)"><span style="font-size:12px;color:var(--c-text-2)">'+l+'</span><span style="font-size:13px;font-weight:600">'+v+(sub?'<span style="font-size:11px;color:var(--c-text-3);margin-left:6px">'+sub+'</span>':'')+'</span></div>'; }
+
+  var html2 = '<div style="width:100%">';
+
+  // S1: FY Scorecard
+  html2 += secHdr('FY26 Scorecard — always year to date');
+  html2 += '<div class="g4 mb14">';
+  // Revenue
+  var revPct = tgtRevFY>0?fyRev/tgtRevFY*100:null;
+  html2 += '<div class="card" style="min-height:0">'+
+    '<div class="card-title mb6">FY Revenue</div>'+
+    '<div style="font-size:24px;font-weight:800;color:var(--c-brand)">'+audFmt(fyRev)+'</div>'+
+    (tgtRevFY>0?'<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">of '+audFmt(tgtRevFY)+' target</div>':'')+
+    (revPct!==null?pb(revPct,revPct>=90?'var(--c-grn)':revPct>=60?'var(--c-amb)':'var(--c-red)'):'') +
+    '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px">'+
+      '<span style="color:var(--c-text-3)">LY: '+audFmt(fyLyRev)+'</span>'+
+      (revPct!==null?'<span style="font-weight:700;color:'+(revPct>=90?'var(--c-grn)':revPct>=60?'var(--c-amb)':'var(--c-red)')+'">'+pctFmt(revPct)+' of target</span>':'')+
+    '</div>'+
+    (runRate>0&&tgtRevFY>0?'<div style="font-size:11px;color:var(--c-text-3);margin-top:4px;padding-top:6px;border-top:1px solid var(--c-border)">Run rate: '+audFmt(runRate)+' projected</div>':'')+
+  '</div>';
+  // Orders
+  var ordPct = tgtOrdFY>0?fyCnt/tgtOrdFY*100:null;
+  html2 += '<div class="card">'+
+    '<div class="card-title mb6">FY Orders</div>'+
+    '<div style="font-size:24px;font-weight:800;color:var(--c-pur)">'+fyCnt.toLocaleString('en-AU')+'</div>'+
+    (tgtOrdFY>0?'<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">of '+tgtOrdFY.toLocaleString()+' target</div>':'')+
+    (ordPct!==null?pb(ordPct,ordPct>=90?'var(--c-grn)':ordPct>=60?'var(--c-amb)':'var(--c-red)'):'') +
+    '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px">'+
+      '<span style="color:var(--c-text-3)">LY: '+fyLyCnt.toLocaleString()+'</span>'+
+      (ordPct!==null?'<span style="font-weight:700;color:'+(ordPct>=90?'var(--c-grn)':ordPct>=60?'var(--c-amb)':'var(--c-red)')+'">'+pctFmt(ordPct)+' of target</span>':'')+
+    '</div>'+
+  '</div>';
+  // AOV
+  html2 += '<div class="card">'+
+    '<div class="card-title mb6">AOV</div>'+
+    '<div style="font-size:24px;font-weight:800;color:var(--c-org)">'+audFmt(fyAov)+'</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">FY year to date</div>'+
+    '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px">'+
+      '<span style="color:var(--c-text-3)">LY: '+audFmt(fyLyAov)+'</span>'+
+      deltaBadge(fyAov,fyLyAov)+
+    '</div>'+
+  '</div>';
+  // Gross Profit
+  html2 += '<div class="card">'+
+    '<div class="card-title mb6">Est. Gross Profit</div>'+
+    '<div style="font-size:24px;font-weight:800;color:var(--c-grn)">'+(fyGp!==null?audFmt(fyGp):'Set margins')+'</div>'+
+    (fyGpPct!==null?'<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">'+pctFmt(fyGpPct)+' GP margin</div>':'')+
+    (fyGp!==null?pb(fyGpPct||0,'var(--c-grn)'):'') +
+  '</div>';
+  html2 += '</div>';
+
+  // S2: Regional scoreboard
+  html2 += secHdr('Regional Scorecard');
+  html2 += '<div class="g3 mb14">';
+  [{d:auD,n:'🇦🇺 AU',col:'var(--c-brand)'},{d:ukD,n:'🇬🇧 UK',col:'var(--c-pur)'},{d:usD,n:'🇺🇸 USA',col:'var(--c-grn)'}].forEach(function(rd){
+    var d=rd.d,pct=d.pct||0;
+    html2 += '<div class="card" style="border-left:3px solid '+rag(d.rag)+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+        '<div style="font-weight:700;font-size:13px">'+rd.n+'</div>'+
+        '<div style="font-size:11px;font-weight:700;color:'+rag(d.rag)+'">'+pctFmt(pct)+' of target</div>'+
+      '</div>'+
+      '<div style="font-size:20px;font-weight:800;color:'+rd.col+'">'+audFmt(d.rev)+'</div>'+
+      pb(pct,rag(d.rag))+
+      '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:var(--c-text-3)">'+
+        '<span>Target: '+audFmt(d.tgt)+'</span>'+
+        '<span>Gap: '+audFmt(Math.max(0,d.tgt-d.rev))+'</span>'+
+      '</div>'+
+      '<div style="font-size:11px;color:var(--c-text-3);margin-top:4px">LY: '+audFmt(d.ly)+' · '+d.cnt.toLocaleString()+' orders</div>'+
+    '</div>';
+  });
+  html2 += '</div>';
+
+  // S3: Conversion & Traffic
+  html2 += secHdr('Conversion & Traffic');
+  html2 += '<div class="g3 mb14">';
+  // Global funnel
+  html2 += '<div class="card">'+
+    '<div class="card-title mb8">Global Funnel</div>'+
+    metaRow('Visitors (FY)',fyVis.all>0?fyVis.all.toLocaleString('en-AU'):'Not set','')+
+    metaRow('Orders',fyCnt.toLocaleString('en-AU'),'')+
+    metaRow('Conversion',fyConv!==null?pctFmt(fyConv):'—','LY avg: '+pctFmt(lyConv))+
+    metaRow('Revenue per Visitor',fyRpv!==null?audFmt(fyRpv):'—','')+
+    metaRow('Revenue',audFmt(fyRev),'')+
+  '</div>';
+  // Per region
+  html2 += '<div class="card">'+
+    '<div class="card-title mb8">Conversion by Region</div>';
+  [{reg:'au',label:'🇦🇺 AU',d:auD,vis:fyVis.au},{reg:'uk',label:'🇬🇧 UK',d:ukD,vis:fyVis.uk},{reg:'us',label:'🇺🇸 USA',d:usD,vis:fyVis.us}].forEach(function(r){
+    var conv = r.vis>0 ? r.d.cnt/r.vis*100 : null;
+    var rpv  = r.vis>0 ? r.d.rev/r.vis : null;
+    html2 += metaRow(r.label,(conv!==null?pctFmt(conv):'—')+' conv',(rpv!==null?audFmt(rpv)+' RPV':'no visitor data'));
+  });
+  html2 += '</div>';
+  // ESA
+  html2 += '<div class="card" style="border-left:3px solid '+(esaPct>40?'var(--c-red)':esaPct>25?'var(--c-amb)':'var(--c-grn)')+'">'+
+    '<div class="card-title mb8">ESA Dependency</div>'+
+    '<div style="font-size:24px;font-weight:800;color:'+(esaPct>40?'var(--c-red)':esaPct>25?'var(--c-amb)':'var(--c-grn)')+'">'+pctFmt(esaPct)+'</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">of FY revenue from ESA</div>'+
+    pb(esaPct,esaPct>40?'var(--c-red)':esaPct>25?'var(--c-amb)':'var(--c-grn)')+
+    metaRow('ESA Revenue',audFmt(esaFyRev),esaFyOrders.length+' orders')+
+    metaRow('Non-ESA',audFmt(fyRev-esaFyRev),'')+
+    (esaPct>40?'<div style="font-size:11px;color:var(--c-red);margin-top:8px;padding:6px;background:rgba(239,68,68,0.08);border-radius:6px">⚠️ Concentration risk — over 40% dependency</div>':'')+
+  '</div>';
+  html2 += '</div>';
+
+  // S4: Customer Quality
+  html2 += secHdr('Customer Quality');
+  html2 += '<div class="g4 mb14" style="align-items:stretch">';
+  html2 += '<div class="card" style="min-height:0"><div class="card-title mb6">Repeat Purchase Rate</div>'+
+    '<div style="font-size:24px;font-weight:800;color:var(--c-brand)">'+pctFmt(repeatRate)+'</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">'+returning.length.toLocaleString()+' returning of '+allCusts.length.toLocaleString()+' customers</div>'+
+    pb(repeatRate,'var(--c-brand)')+
+  '</div>';
+  html2 += '<div class="card"><div class="card-title mb6">Customer LTV</div>'+
+    '<div style="font-size:24px;font-weight:800;color:var(--c-pur)">'+audFmt(ltv)+'</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">avg revenue per customer FY</div>'+
+    metaRow('Avg order freq',avgFreq.toFixed(1)+'x','')+
+  '</div>';
+  html2 += '<div class="card"><div class="card-title mb6">New vs Returning</div>'+
+    '<div style="display:flex;gap:16px;margin-top:8px">'+
+      '<div><div style="font-size:18px;font-weight:700;color:var(--c-grn)">'+pctFmt(newCusts.length/Math.max(1,allCusts.length)*100)+'</div><div style="font-size:11px;color:var(--c-text-3)">New</div></div>'+
+      '<div><div style="font-size:18px;font-weight:700;color:var(--c-brand)">'+pctFmt(returning.length/Math.max(1,allCusts.length)*100)+'</div><div style="font-size:11px;color:var(--c-text-3)">Returning</div></div>'+
+    '</div>'+
+    metaRow('New rev',audFmt(newRev),pctFmt(fyRev>0?newRev/fyRev*100:0))+
+    metaRow('Returning rev',audFmt(retRev),pctFmt(fyRev>0?retRev/fyRev*100:0))+
+  '</div>';
+  html2 += '<div class="card"><div class="card-title mb6">Order Frequency</div>'+
+    '<div style="font-size:24px;font-weight:800;color:var(--c-org)">'+avgFreq.toFixed(1)+'x</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">avg orders per customer FY</div>'+
+    metaRow('1-time buyers',newCusts.length.toLocaleString(),'')+
+    metaRow('Multi-buyers',returning.length.toLocaleString(),'')+
+  '</div>';
+  html2 += '</div>';
+
+  // S5: Basket & Margin
+  html2 += secHdr('Basket Composition & Margin');
+  html2 += '<div class="g3 mb14">';
+  var bTotal = bDigRev+bPhyRev+bBunRev||1;
+  html2 += '<div class="card"><div class="card-title mb8">Revenue Mix</div>'+
+    metaRow('📱 Digital',audFmt(bDigRev),pctFmt(bDigRev/bTotal*100))+
+    metaRow('📚 Physical',audFmt(bPhyRev),pctFmt(bPhyRev/bTotal*100))+
+    metaRow('📦 Bundle',audFmt(bBunRev),pctFmt(bBunRev/bTotal*100))+
+    '<div style="margin-top:10px">'+
+      '<div style="height:8px;border-radius:4px;overflow:hidden;display:flex">'+
+        '<div style="width:'+pctFmt(bDigRev/bTotal*100)+';background:var(--c-brand)"></div>'+
+        '<div style="width:'+pctFmt(bPhyRev/bTotal*100)+';background:var(--c-grn)"></div>'+
+        '<div style="width:'+pctFmt(bBunRev/bTotal*100)+';background:var(--c-pur)"></div>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+  html2 += '<div class="card"><div class="card-title mb8">AOV by Type</div>'+
+    metaRow('Digital AOV',bDigCnt>0?audFmt(bDigRev/bDigCnt):'—',bDigCnt+' orders')+
+    metaRow('Physical AOV',bPhyCnt>0?audFmt(bPhyRev/bPhyCnt):'—',bPhyCnt+' orders')+
+    metaRow('Bundle AOV',bBunCnt>0?audFmt(bBunRev/bBunCnt):'—',bBunCnt+' orders')+
+  '</div>';
+  html2 += '<div class="card"><div class="card-title mb8">Margin & Discounts</div>'+
+    metaRow('Est. GP Margin',fyGpPct!==null?pctFmt(fyGpPct):'—','')+
+    metaRow('Discount rate',pctFmt(discPct),'of orders')+
     metaRow('Avg discount depth',pctFmt(discDepth),'avg per discounted order')+
     metaRow('Refund rate',pctFmt(refRate),'of revenue')+
   '</div>';
@@ -2874,6 +3393,7 @@ function rExec(orders){
   },50);
 }
 
+
 function rOv(orders){
   var el=document.getElementById('panel-overview');
   var prev=getPrevOrders(orders);
@@ -2906,56 +3426,7 @@ function rOv(orders){
     '<div class="card"><div class="card-title mb10">Orders by Day of Week</div><div class="cw h180"><canvas id="ovDow"></canvas></div></div>'+
   '</div>';
 
-  // ── Customer Profile section ─────────────────────────────────────────────
-  (function(){
-    var mums = custs.filter(function(c){return c.profile==='Mum';});
-    var dads = custs.filter(function(c){return c.profile==='Dad';});
-    var unkn = custs.filter(function(c){return c.profile==='Unknown';});
-    var mumRev = mums.reduce(function(s,c){return s+c.rev;},0);
-    var dadRev = dads.reduce(function(s,c){return s+c.rev;},0);
-    var mumAov = mums.length ? mumRev/mums.reduce(function(s,c){return s+c.orders.length;},0) : 0;
-    var dadAov = dads.length ? dadRev/dads.reduce(function(s,c){return s+c.orders.length;},0) : 0;
-    var total = custs.length||1;
-    el.innerHTML += '<div style="margin:20px 0 10px;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;padding-top:16px;border-top:1px solid var(--c-border)">Customer Profile</div>'+
-      '<div class="g4 mb14">'+
-        '<div class="card" style="border-left:3px solid #ec4899">'+
-          '<div class="card-title mb6">👩 Mums</div>'+
-          '<div style="font-size:22px;font-weight:800;color:#ec4899">'+mums.length.toLocaleString()+'</div>'+
-          '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">'+pctFmt(mums.length/total*100)+' of customers</div>'+
-          '<div style="margin-top:8px;font-size:11px">'+
-            '<div style="display:flex;justify-content:space-between"><span style="color:var(--c-text-3)">Revenue</span><span style="font-weight:600">'+audFmt(mumRev)+'</span></div>'+
-            '<div style="display:flex;justify-content:space-between"><span style="color:var(--c-text-3)">AOV</span><span style="font-weight:600">'+audFmt(mumAov)+'</span></div>'+
-          '</div>'+
-        '</div>'+
-        '<div class="card" style="border-left:3px solid #3b82f6">'+
-          '<div class="card-title mb6">👨 Dads</div>'+
-          '<div style="font-size:22px;font-weight:800;color:#3b82f6">'+dads.length.toLocaleString()+'</div>'+
-          '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">'+pctFmt(dads.length/total*100)+' of customers</div>'+
-          '<div style="margin-top:8px;font-size:11px">'+
-            '<div style="display:flex;justify-content:space-between"><span style="color:var(--c-text-3)">Revenue</span><span style="font-weight:600">'+audFmt(dadRev)+'</span></div>'+
-            '<div style="display:flex;justify-content:space-between"><span style="color:var(--c-text-3)">AOV</span><span style="font-weight:600">'+audFmt(dadAov)+'</span></div>'+
-          '</div>'+
-        '</div>'+
-        '<div class="card">'+
-          '<div class="card-title mb6">❓ Unknown</div>'+
-          '<div style="font-size:22px;font-weight:800;color:var(--c-text-3)">'+unkn.length.toLocaleString()+'</div>'+
-          '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">'+pctFmt(unkn.length/total*100)+' unidentified</div>'+
-          '<div style="font-size:11px;color:var(--c-text-3);margin-top:8px">Name not in dictionary or missing first name</div>'+
-        '</div>'+
-        '<div class="card">'+
-          '<div class="card-title mb6">📊 Mum vs Dad Split</div>'+
-          '<div style="height:8px;border-radius:4px;overflow:hidden;display:flex;margin:8px 0">'+
-            '<div style="width:'+pctFmt((mums.length+dads.length)>0?mums.length/(mums.length+dads.length)*100:50)+';background:#ec4899"></div>'+
-            '<div style="flex:1;background:#3b82f6"></div>'+
-          '</div>'+
-          '<div style="display:flex;justify-content:space-between;font-size:11px">'+
-            '<span style="color:#ec4899;font-weight:600">'+pctFmt((mums.length+dads.length)>0?mums.length/(mums.length+dads.length)*100:0)+' Mum</span>'+
-            '<span style="color:#3b82f6;font-weight:600">'+pctFmt((mums.length+dads.length)>0?dads.length/(mums.length+dads.length)*100:0)+' Dad</span>'+
-          '</div>'+
-          '<div style="font-size:11px;color:var(--c-text-3);margin-top:8px">of identified customers</div>'+
-        '</div>'+
-      '</div>';
-  })();
+
 
   setTimeout(function(){
     // Trend
@@ -2972,18 +3443,18 @@ function rOv(orders){
     var payMap={};
     orders.forEach(function(r){payMap[r._pay]=(payMap[r._pay]||0)+r._aud;});
     var topPays=Object.entries(payMap).sort(function(a,b){return b[1]-a[1];}).slice(0,6);
-    donutChart('ovPay',topPays.map(function(p){return p[0];}),topPays.map(function(p){return Math.round(p[1]);}),null);
+    donutChart('ovPay',topPays.map(function(p){return p[0];}),topPays.map(function(p){return Math.round(p[1]);}),null,{animation:false});
 
     // Mix donut
     var digR=0,bunR=0,isbnR=0;
     orders.forEach(function(r){r._items.forEach(function(i){if(i.type==='digital')digR+=i.audPrice;else if(i.type==='bundle')bunR+=i.audPrice;else isbnR+=i.audPrice;});});
-    donutChart('ovMix',['💻 Digital','🧩 Bundle','📚 ISBN'],[Math.round(digR),Math.round(bunR),Math.round(isbnR)],['#2563eb','#7c3aed','#ea580c']);
+    donutChart('ovMix',['💻 Digital','🧩 Bundle','📚 ISBN'],[Math.round(digR),Math.round(bunR),Math.round(isbnR)],['#2563eb','#7c3aed','#ea580c'],{animation:false});
 
     // DOW bar
     var dowLabels=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], dowRevs=[0,0,0,0,0,0,0];
     orders.forEach(function(r){if(r._dow>=0)dowRevs[r._dow]+=r._aud;});
     barChart('ovDow',dowLabels,[{label:'Revenue',data:dowRevs.map(Math.round),backgroundColor:'#7c3aedcc'}],{animation:false,scales:{y:{ticks:{callback:function(v){return 'A$'+(v/1000).toFixed(0)+'K';}}}}});;
-  },50);
+  },200);
 }
 
 // ── Regional ───────────────────────────────────────────────────────────────
@@ -5845,10 +6316,31 @@ function addRefreshLog(msg, type){
 
 // ── Report modal ───────────────────────────────────────────────────────────
 function openReportModal(){
+  // Populate month selector
+  var sel = document.getElementById('reportMonth');
+  if(sel && sel.options.length === 0){
+    var months = [
+      {v:'2025-07',l:'July 2025'},{v:'2025-08',l:'August 2025'},
+      {v:'2025-09',l:'September 2025'},{v:'2025-10',l:'October 2025'},
+      {v:'2025-11',l:'November 2025'},{v:'2025-12',l:'December 2025'},
+      {v:'2026-01',l:'January 2026'},{v:'2026-02',l:'February 2026'},
+      {v:'2026-03',l:'March 2026'},{v:'2026-04',l:'April 2026'},
+      {v:'2026-05',l:'May 2026'},{v:'2026-06',l:'June 2026'}
+    ];
+    months.forEach(function(m){
+      var opt = document.createElement('option');
+      opt.value = m.v; opt.textContent = m.l;
+      if(m.v === '2026-05') opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+  var st = document.getElementById('reportStatus');
+  if(st){ st.textContent = ''; }
+
   var m=document.getElementById('reportModal');
   if(!m){console.error('reportModal not found');return;}
-  var sel=document.getElementById('rptMonthSel');
-  if(!sel){console.error('rptMonthSel not found');return;}
+  var sel=document.getElementById('reportMonth');
+  if(!sel){console.error('reportMonth not found');return;}
   sel.innerHTML='';
   var MO=[{v:'2025-07',l:'July 2025'},{v:'2025-08',l:'August 2025'},{v:'2025-09',l:'September 2025'},{v:'2025-10',l:'October 2025'},{v:'2025-11',l:'November 2025'},{v:'2025-12',l:'December 2025'},{v:'2026-01',l:'January 2026'},{v:'2026-02',l:'February 2026'},{v:'2026-03',l:'March 2026'},{v:'2026-04',l:'April 2026'},{v:'2026-05',l:'May 2026'},{v:'2026-06',l:'June 2026'}];
   var now=new Date(),prev=new Date(now.getFullYear(),now.getMonth()-1,1);
@@ -5968,9 +6460,21 @@ function buildDocxContent(dash, excel, monthKey){
   return lines.join('\n');
 }
 
-function runReportGeneration(){
-  var monthKey = document.getElementById('rptMonthSel').value;
-  var st = document.getElementById('rptStatus');
+function generateMonthEndReport(){
+  var monthSel = document.getElementById('reportMonth');
+  var regionSel = document.getElementById('reportRegion');
+  var st = document.getElementById('reportStatus');
+  if(!monthSel || !monthSel.value){
+    if(st){ st.textContent = '⚠ Please select a month first.'; st.style.color='var(--c-red)'; }
+    return;
+  }
+  runReportGeneration(monthSel.value, regionSel ? regionSel.value : 'global');
+}
+
+function runReportGeneration(monthKey, region){
+  region = region || 'global';
+  if(!monthKey) monthKey = (document.getElementById('reportMonth')||{}).value || '';
+  var st = document.getElementById('reportStatus') || document.getElementById('rptStatus');
   st.textContent = 'Generating report…'; st.style.color = 'var(--c-text-2)';
   
   setTimeout(function(){
@@ -5978,20 +6482,37 @@ function runReportGeneration(){
       var dash = extractDashboardData(monthKey);
       var content = buildDocxContent(dash, null, monthKey);
       
-      // Create downloadable text file
-      var blob = new Blob([content], {type: 'text/plain'});
-      var url  = URL.createObjectURL(blob);
-      var a    = document.createElement('a');
+      // Show report in modal (file:// safe — no Blob download needed)
       var parts = monthKey.split('-');
       var moNames = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      a.href = url;
-      a.download = 'BookshopReport_' + moNames[parseInt(parts[1])] + parts[0] + '.txt';
-      document.body.appendChild(a); a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      var fname = 'BookshopReport_' + moNames[parseInt(parts[1])] + parts[0] + '.txt';
       
-      st.textContent = '✅ Report downloaded successfully';
-      st.style.color = 'var(--c-grn)';
+      // Try download if hosted (not file://)
+      if(window.location.protocol !== 'file:'){
+        var blob = new Blob([content], {type: 'text/plain'});
+        var url  = URL.createObjectURL(blob);
+        var a    = document.createElement('a');
+        a.href = url; a.download = fname;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+      
+      // Always show preview in modal
+      var prev = document.getElementById('rptPreviewBox');
+      if(!prev){
+        prev = document.createElement('div');
+        prev.id = 'rptPreviewBox';
+        prev.style.cssText = 'margin-top:12px;max-height:260px;overflow-y:auto;background:var(--c-surface-2);border-radius:8px;padding:12px;border:1px solid var(--c-border)';
+        var modalBody = (document.getElementById('reportModal')||{}).querySelector && document.getElementById('reportModal').querySelector('.modal-body');
+        if(modalBody) modalBody.appendChild(prev);
+      }
+      prev.innerHTML = '<pre style="font-size:10px;line-height:1.5;white-space:pre-wrap;color:var(--c-text-1);font-family:monospace;margin:0">'+content+'</pre>';
+      
+      var msg = window.location.protocol === 'file:' ? '✅ Report ready — preview below' : '✅ Downloaded: '+fname;
+      st.textContent = msg; st.style.color = 'var(--c-grn)';
+      var st2 = document.getElementById('reportStatus');
+      if(st2){ st2.textContent = msg; st2.style.color='var(--c-grn)'; }
       
       // Also show preview in modal
       var prev = document.getElementById('rptPreview');
@@ -6002,6 +6523,8 @@ function runReportGeneration(){
     } catch(e) {
       st.textContent = 'Error: ' + e.message;
       st.style.color = 'var(--c-red)';
+      var st2 = document.getElementById('reportStatus');
+      if(st2){ st2.textContent = '❌ '+e.message; st2.style.color='var(--c-red)'; }
       console.error('Report generation error:', e);
     }
   }, 100);
