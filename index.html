@@ -1255,6 +1255,7 @@ function preProcess(cb){
       // Channel & region
       row._ch     = normChannel(row['Channel Name']||'');
       row._region = chRegion(row._ch);
+      row._state  = (row['Billing State']||'').trim();
 
       // Status
       row._status = row['Order Status']||'Unknown';
@@ -3848,157 +3849,520 @@ function rDelivery(orders){
 }
 // ── ESA Deep Dive ──────────────────────────────────────────────────────────
 function rESA(orders){
-  var el=document.getElementById('panel-esa');
+  var el = document.getElementById('panel-esa');
 
-  var esaOrds    = orders.filter(function(r){return r._esa;});
-  var orgOrds    = orders.filter(function(r){return !r._esa;});
-  var usOrds     = orders.filter(function(r){return r._region==='us';});
-  var esaUS      = usOrds.filter(function(r){return r._esa;});
-  var nonEsaUS   = usOrds.filter(function(r){return !r._esa;});
+  // ── Data constants ──────────────────────────────────────────────────────
+  var now     = new Date();
+  var fy26s   = new Date(2025,6,1); // Jul 1 2025
+  var fy25s   = new Date(2024,6,1); // Jul 1 2024
+  var fy25e   = new Date(2025,5,30,23,59,59);
+  var ALLOWED_STATES_ESA = {
+    'Arizona':1,'Florida':1,'Utah':1,'Arkansas':1,'Texas':1,'Iowa':1,
+    'New Hampshire':1,'North Carolina':1,'Tennessee':1,'West Virginia':1,
+    'Wyoming':1,'Alabama':1,'Georgia':1,'Indiana':1,'Louisiana':1,
+    'Mississippi':1,'Montana':1,'Missouri':1,'Oklahoma':1,'South Carolina':1
+  };
+  var AZ_QUARTERS = [
+    {q:'Q1',label:'Jul–Sep',start:new Date(now.getFullYear()-1+(now.getMonth()<6?0:0),6,1),col:'#2563eb'},
+    {q:'Q2',label:'Oct–Dec',start:new Date(now.getFullYear()-1+(now.getMonth()<6?0:0),9,1),col:'#7c3aed'},
+    {q:'Q3',label:'Jan–Mar',start:new Date(now.getFullYear()-(now.getMonth()<6?1:0),0,1),col:'#059669'},
+    {q:'Q4',label:'Apr–Jun',start:new Date(now.getFullYear()-(now.getMonth()<6?1:0),3,1),col:'#d97706'},
+  ];
 
-  var esaRev     = esaOrds.reduce(function(s,r){return s+r._aud;},0);
-  var orgRev     = orgOrds.reduce(function(s,r){return s+r._aud;},0);
-  var totalRev   = orders.reduce(function(s,r){return s+r._aud;},0)||1;
-  var usTotal    = usOrds.reduce(function(s,r){return s+r._aud;},0)||1;
-  var esaUSRev   = esaUS.reduce(function(s,r){return s+r._aud;},0);
-  var nonEsaUSRev= nonEsaUS.reduce(function(s,r){return s+r._aud;},0);
-  var esaAov     = esaOrds.length ? esaRev/esaOrds.length : 0;
-  var orgAov     = orgOrds.length ? orgRev/orgOrds.length : 0;
-  var esaPct     = esaRev/totalRev*100;
+  // ── All orders base ─────────────────────────────────────────────────────
+  var allPaid  = rawO.filter(function(r){return !r._excluded&&!r._zero;});
+  var esaAll   = rawO.filter(function(r){return r._esa&&!r._excluded;});
+  var esaPaid  = esaAll.filter(function(r){return !r._zero;});
+  var nonEsa   = allPaid.filter(function(r){return !r._esa;});
 
-  // Original currency totals
-  var esaUSD=0, esaGBP=0, esaAUD=0;
-  esaOrds.forEach(function(r){
-    var c=(r['Order Currency Code']||'AUD').toUpperCase();
-    var raw=parseFloat(String(r['Order Total (inc tax)']||0).replace(/[^0-9.\-]/g,''))||0;
-    if(c==='USD') esaUSD+=raw;
-    else if(c==='GBP') esaGBP+=raw;
-    else esaAUD+=r._aud;
+  // ── Core metrics ────────────────────────────────────────────────────────
+  var esaRev   = esaPaid.reduce(function(s,r){return s+r._aud;},0);
+  var nonRev   = nonEsa.reduce(function(s,r){return s+r._aud;},0);
+  var totRev   = esaRev+nonRev||1;
+  var esaAov   = esaPaid.length?esaRev/esaPaid.length:0;
+  var nonAov   = nonEsa.length?nonRev/nonEsa.length:0;
+  var esaPct   = esaRev/totRev*100;
+
+  // ── Account map ─────────────────────────────────────────────────────────
+  var acctMap  = {};
+  esaAll.forEach(function(r){
+    var id=r._email; if(!id)return;
+    if(!acctMap[id]) acctMap[id]={id:id,orders:[],rev:0,state:r._state||'',firstDate:r._date,lastDate:r._date,freeOrds:0};
+    if(r._zero) acctMap[id].freeOrds++;
+    else{ acctMap[id].orders.push(r); acctMap[id].rev+=r._aud; }
+    if(r._date){
+      if(!acctMap[id].firstDate||r._date<acctMap[id].firstDate) acctMap[id].firstDate=r._date;
+      if(!acctMap[id].lastDate||r._date>acctMap[id].lastDate) acctMap[id].lastDate=r._date;
+    }
   });
+  var accts    = Object.values(acctMap).filter(function(a){return a.orders.length>0;});
+  var repeat   = accts.filter(function(a){return a.orders.length>1;});
+  var oneTime  = accts.filter(function(a){return a.orders.length===1;});
 
-  // Top ESA products
-  var esaProds={};
-  esaOrds.forEach(function(r){
-    r._items.forEach(function(it){
-      if(!esaProds[it.name]) esaProds[it.name]={name:it.name,qty:0,rev:0,type:it.type};
-      esaProds[it.name].qty+=it.qty; esaProds[it.name].rev+=it.audPrice;
+  // ── Average reorder interval ────────────────────────────────────────────
+  var intervals=[];
+  repeat.forEach(function(a){
+    var dates=a.orders.map(function(o){return o._date;}).filter(Boolean).sort(function(a,b){return a-b;});
+    for(var i=1;i<dates.length;i++) intervals.push((dates[i]-dates[i-1])/86400000);
+  });
+  var avgInterval = intervals.length ? Math.round(intervals.reduce(function(s,v){return s+v;},0)/intervals.length) : 90;
+
+  // ── Lapsed + due + at-risk ──────────────────────────────────────────────
+  var lapsed=[],due=[],atRisk=[];
+  accts.forEach(function(a){
+    var hasFY25 = a.orders.some(function(o){return o._date&&o._date>=fy25s&&o._date<fy26s;});
+    var hasFY26 = a.orders.some(function(o){return o._date&&o._date>=fy26s;});
+    if(hasFY25&&!hasFY26) lapsed.push(a);
+    if(a.lastDate){
+      var daysSince=(now-a.lastDate)/86400000;
+      a.daysSince=Math.round(daysSince);
+      if(daysSince>avgInterval*0.8&&daysSince<=avgInterval*2) due.push(a);
+      if(daysSince>avgInterval*2) atRisk.push(a);
+    }
+  });
+  lapsed.sort(function(a,b){return b.rev-a.rev;});
+  due.sort(function(a,b){return b.rev-a.rev;});
+
+  // ── FY comparison ───────────────────────────────────────────────────────
+  var esaFY26 = esaPaid.filter(function(r){return r._date&&r._date>=fy26s;});
+  var esaFY25 = esaPaid.filter(function(r){return r._date&&r._date>=fy25s&&r._date<fy26s;});
+  var esaRevFY26 = esaFY26.reduce(function(s,r){return s+r._aud;},0);
+  var esaRevFY25 = esaFY25.reduce(function(s,r){return s+r._aud;},0);
+  var esaGrowth  = esaRevFY25>0?(esaRevFY26-esaRevFY25)/esaRevFY25*100:null;
+
+  // ── Repeat / conversion ─────────────────────────────────────────────────
+  var repeatRate = accts.length?repeat.length/accts.length*100:0;
+  var nonRepeatRate = (function(){
+    var nm={};
+    nonEsa.forEach(function(r){if(r._email){if(!nm[r._email])nm[r._email]=0;nm[r._email]++;}});
+    var na=Object.keys(nm);
+    return na.length?Object.values(nm).filter(function(v){return v>1;}).length/na.length*100:0;
+  })();
+
+  // ── Time to second order ────────────────────────────────────────────────
+  var timeToSecond = repeat.filter(function(a){return a.orders.length>=2;}).map(function(a){
+    var dates=a.orders.map(function(o){return o._date;}).filter(Boolean).sort(function(a,b){return a-b;});
+    return (dates[1]-dates[0])/86400000;
+  });
+  var avgT2 = timeToSecond.length?Math.round(timeToSecond.reduce(function(s,v){return s+v;},0)/timeToSecond.length):0;
+
+  // ── State breakdown ─────────────────────────────────────────────────────
+  var stateMap={};
+  esaPaid.forEach(function(r){
+    var s=r._state||'Unknown';
+    if(!stateMap[s]) stateMap[s]={state:s,rev:0,cnt:0,esaProg:!!ALLOWED_STATES_ESA[s]};
+    stateMap[s].rev+=r._aud; stateMap[s].cnt++;
+  });
+  var states=Object.values(stateMap).sort(function(a,b){return b.rev-a.rev;});
+
+  // ── Product mix ─────────────────────────────────────────────────────────
+  var esaSkuMap={},nonSkuMap={};
+  function addSkus(orders,map){
+    orders.forEach(function(r){
+      (r._items||[]).forEach(function(it){
+        if(!it.sku) return;
+        // Skip ISBN component books — these are inside bundles, not standalone ESA products
+        if(/^9781|^9782/.test(it.sku)) return;
+        if(!map[it.sku]) map[it.sku]={sku:it.sku,name:it.name||it.sku,cnt:0,rev:0};
+        map[it.sku].cnt+=(it.qty||1);
+        map[it.sku].rev+=(it.audPrice||0)*(it.qty||1);
+      });
     });
-  });
-  var esaProdArr=Object.values(esaProds).sort(function(a,b){return b.rev-a.rev;});
+  }
+  addSkus(esaPaid,esaSkuMap);
+  addSkus(nonEsa,nonSkuMap);
+  var esaTop = Object.values(esaSkuMap).sort(function(a,b){return b.cnt-a.cnt;}).slice(0,10);
+  var esaDominant = Object.values(esaSkuMap).filter(function(s){
+    var nonCnt=nonSkuMap[s.sku]?nonSkuMap[s.sku].cnt:0;
+    return s.cnt>10&&s.cnt/(s.cnt+nonCnt)>0.6;
+  }).sort(function(a,b){return b.cnt-a.cnt;});
+  var esaMissing = Object.values(nonSkuMap).filter(function(s){
+    return s.cnt>20&&(!esaSkuMap[s.sku]||esaSkuMap[s.sku].cnt/s.cnt<0.1);
+  }).sort(function(a,b){return b.cnt-a.cnt;}).slice(0,8);
 
-  // Monthly US ESA vs non-ESA
-  var usMonths={};
-  usOrds.forEach(function(r){
-    if(!r._month) return;
-    if(!usMonths[r._month]) usMonths[r._month]={esa:0,noesa:0,esaCnt:0};
-    if(r._esa){usMonths[r._month].esa+=r._aud; usMonths[r._month].esaCnt++;}
-    else usMonths[r._month].noesa+=r._aud;
-  });
-  var usMonthKeys=Object.keys(usMonths).sort();
+  // ── Items per order ─────────────────────────────────────────────────────
+  var esaItemCounts=esaPaid.map(function(r){return (r._items||[]).length;}).filter(function(v){return v>0;});
+  var avgEsaItems=esaItemCounts.length?esaItemCounts.reduce(function(s,v){return s+v;},0)/esaItemCounts.length:0;
+  var esaHigh=accts.filter(function(a){return a.rev/Math.max(1,a.orders.length)>150;});
 
-  // ESA trend all regions
-  var esaTrendMap={};
-  esaOrds.forEach(function(r){if(r._month) esaTrendMap[r._month]=(esaTrendMap[r._month]||0)+r._aud;});
-  var esaTrendKeys=Object.keys(esaTrendMap).sort();
+  // ── Monthly trend ───────────────────────────────────────────────────────
+  var esaMonthly={},nonMonthly={};
+  esaPaid.forEach(function(r){if(r._month)esaMonthly[r._month]=(esaMonthly[r._month]||0)+r._aud;});
+  nonEsa.forEach(function(r){if(r._month)nonMonthly[r._month]=(nonMonthly[r._month]||0)+r._aud;});
+  var allMonths=Object.keys(Object.assign({},esaMonthly,nonMonthly)).sort().slice(-18);
 
-  // State breakdown (US ESA)
-  var esaStates={};
-  esaUS.forEach(function(r){
-    var s=r._st||'Unknown';
-    if(!esaStates[s]) esaStates[s]={state:s,rev:0,cnt:0};
-    esaStates[s].rev+=r._aud; esaStates[s].cnt++;
-  });
-  var esaStateArr=Object.values(esaStates).sort(function(a,b){return b.rev-a.rev;});
+  // ── Auto recommendations ────────────────────────────────────────────────
+  var recs=[];
+  if(lapsed.length>0) recs.push({c:'red',t:lapsed.length+' lapsed FY25 accounts have not reordered in FY26. Arizona Q1 funds release July 1 — contact before July 15.',a:'Export lapsed list & email campaign'});
+  if(due.length>0) recs.push({c:'amb',t:due.length+' accounts are past their avg reorder window ('+avgInterval+' days). They are due to reorder.',a:'Priority outreach — they are warm'});
+  recs.push({c:'amb',t:'Texas ESA launches July 2026. You have '+stateMap['Texas']?.cnt+' TX orders. Ensure ClassWallet vendor approval before June 30.',a:'Contact ClassWallet to register TX'});
+  if(esaMissing.length>0) recs.push({c:'grn',t:'Top '+esaMissing.length+' products popular with non-ESA buyers but rarely bought by ESA families — cross-sell opportunity.',a:'Build ESA-specific bundle with these SKUs'});
+  if(esaHigh.length>0) recs.push({c:'grn',t:esaHigh.length+' high-value accounts (avg order >A$150) — likely multi-child or special needs families with $28k annual budgets.',a:'Target with premium bundle offer'});
+  if(repeatRate<20) recs.push({c:'red',t:'Only '+repeatRate.toFixed(1)+'% of ESA accounts reorder. Industry benchmark is 30%+. Retention is the fastest growth lever.',a:'Launch post-purchase email sequence at day '+Math.round(avgInterval*0.7)});
 
-  var depAlert='';
-  if(esaPct>40) depAlert='<div class="alert amb mb14"><span class="alert-icon">⚠️</span><span class="alert-text"><strong>ESA dependency alert:</strong> ESA is '+pctFmt(esaPct)+' of revenue — concentration risk tied to government program timing. Build organic channels to diversify.</span></div>';
-  else if(esaPct<5&&esaOrds.length>0) depAlert='<div class="alert blu mb14"><span class="alert-icon">💡</span><span class="alert-text">ESA is only '+pctFmt(esaPct)+' of revenue. ESA orders average '+audFmt(esaAov)+' AOV — significant upside from growing this channel.</span></div>';
+  // ── Helpers ─────────────────────────────────────────────────────────────
+  function rag(c){return c==='red'?'var(--c-red)':c==='amb'?'var(--c-amb)':'var(--c-grn)';}
+  function ragBg(c){return c==='red'?'rgba(239,68,68,0.08)':c==='amb'?'rgba(245,158,11,0.08)':'rgba(34,197,94,0.08)';}
+  function secHdr(t){return '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;margin:24px 0 12px;padding-top:20px;border-top:1px solid var(--c-border)">'+t+'</div>';}
+  function metaRow(l,v,sub){return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--c-border)"><span style="font-size:12px;color:var(--c-text-2)">'+l+'</span><span style="font-size:13px;font-weight:600">'+v+(sub?'<span style="font-size:11px;color:var(--c-text-3);margin-left:6px">'+sub+'</span>':'')+'</span></div>';}
 
-  var currBand='';
-  if(esaUSD>0) currBand+='<div><div class="text-xs text-muted mb4">USD</div><div style="font-size:20px;font-weight:800;color:var(--c-text)">$'+Math.round(esaUSD).toLocaleString()+'</div></div>';
-  if(esaGBP>0) currBand+='<div><div class="text-xs text-muted mb4">GBP</div><div style="font-size:20px;font-weight:800;color:var(--c-text)">\u00a3'+Math.round(esaGBP).toLocaleString()+'</div></div>';
-  if(esaAUD>0) currBand+='<div><div class="text-xs text-muted mb4">AUD</div><div style="font-size:20px;font-weight:800;color:var(--c-text)">A$'+Math.round(esaAUD).toLocaleString()+'</div></div>';
+  var h='<div style="max-width:1400px">';
 
-  var tc={digital:'blu',bundle:'pur',isbn:'org'};
+  // ── S1: ESA Scorecard ───────────────────────────────────────────────────
+  h += '<div class="g4 mb14" style="align-items:stretch">';
+  h += '<div class="card" style="border-left:3px solid var(--c-brand)">'+
+    '<div class="card-title mb6">ESA Revenue (All Time)</div>'+
+    '<div style="font-size:22px;font-weight:800;color:var(--c-brand)">'+audFmt(esaRev)+'</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">'+pctFmt(esaPct)+' of total revenue</div>'+
+    metaRow('FY26',audFmt(esaRevFY26),esaGrowth!==null?deltaBadge(esaRevFY26,esaRevFY25):'')+
+    metaRow('FY25',audFmt(esaRevFY25),'')+
+    (esaGrowth!==null?'<div style="font-size:11px;font-weight:700;color:'+(esaGrowth>=0?'var(--c-grn)':'var(--c-red)')+';margin-top:6px">'+(esaGrowth>=0?'↑':'↓')+Math.abs(esaGrowth).toFixed(1)+'% YoY growth</div>':'')+
+  '</div>';
+  h += '<div class="card" style="border-left:3px solid var(--c-pur)">'+
+    '<div class="card-title mb6">ESA AOV vs Non-ESA</div>'+
+    '<div style="font-size:22px;font-weight:800;color:var(--c-pur)">'+audFmt(esaAov)+'</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">ESA average order value</div>'+
+    metaRow('Non-ESA AOV',audFmt(nonAov),'')+
+    metaRow('Premium',audFmt(esaAov-nonAov),pctFmt(nonAov>0?(esaAov-nonAov)/nonAov*100:0)+' higher')+
+    metaRow('Avg items/order',avgEsaItems.toFixed(1),'vs '+((function(){var n=rawO.filter(function(r){return !r._esa&&!r._zero;});var c=n.map(function(r){return(r._items||[]).length;}).filter(function(v){return v>0;});return c.length?c.reduce(function(s,v){return s+v;},0)/c.length:0;})()).toFixed(1)+' non-ESA')+
+  '</div>';
+  h += '<div class="card" style="border-left:3px solid var(--c-grn)">'+
+    '<div class="card-title mb6">Accounts</div>'+
+    '<div style="font-size:22px;font-weight:800;color:var(--c-grn)">'+accts.length.toLocaleString()+'</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">unique ESA buyers</div>'+
+    metaRow('Repeat buyers',repeat.length.toLocaleString(),pctFmt(repeatRate))+
+    metaRow('One-time buyers',oneTime.length.toLocaleString(),pctFmt(100-repeatRate))+
+    metaRow('High-value (>$150 AOV)',esaHigh.length.toLocaleString(),'')+
+  '</div>';
+  h += '<div class="card" style="border-left:3px solid var(--c-org)">'+
+    '<div class="card-title mb6">Reorder Intelligence</div>'+
+    '<div style="font-size:22px;font-weight:800;color:var(--c-org)">'+avgInterval+'d</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">avg reorder interval</div>'+
+    metaRow('Avg time to 2nd order',avgT2+'d','')+
+    metaRow('Lapsed (FY25 not FY26)',lapsed.length.toLocaleString(),'<span style="color:var(--c-red)">warm leads</span>')+
+    metaRow('Due to reorder',due.length.toLocaleString(),'<span style="color:var(--c-amb)">outreach now</span>')+
+  '</div>';
+  h += '</div>';
 
-  el.innerHTML=
-    '<div class="g4 mb14">'+
-      kpiCard('ESA Revenue',audFmt(esaRev),pctFmt(esaPct)+' of total \u00b7 '+esaOrds.length+' orders','#ea580c')+
-      kpiCard('ESA AOV',audFmt(esaAov),'vs '+audFmt(orgAov)+' organic'+(esaAov>orgAov?' <span class="delta up">\u2191 '+((esaAov-orgAov)/orgAov*100).toFixed(0)+'%</span>':''),'var(--c-grn)')+
-      kpiCard('US ESA Revenue',audFmt(esaUSRev),pctFmt(usTotal?esaUSRev/usTotal*100:0)+' of US \u00b7 '+esaUS.length+' orders','var(--c-pur)')+
-      kpiCard('US Non-ESA Revenue',audFmt(nonEsaUSRev),pctFmt(usTotal?nonEsaUSRev/usTotal*100:0)+' of US \u00b7 '+nonEsaUS.length+' orders','var(--c-brand)')+
-    '</div>'+
-    '<div class="card mb14">'+
-      '<div class="card-title mb10">ESA Revenue in Original Currency</div>'+
-      '<div class="flex gap16 items-center">'+
-        currBand+
-        '<div style="margin-left:auto"><span class="text-xs text-muted">before FX conversion. Converted total: <strong>'+audFmt(esaRev)+'</strong></span></div>'+
-      '</div>'+
-    '</div>'+
-    depAlert+
-    '<div class="g2 mb14">'+
-      '<div class="card"><div class="card-hdr"><div class="card-title-lg">US Sales \u2014 ESA vs Non-ESA</div>'+tag('USA only','us')+'</div><div class="cw h240"><canvas id="esaCompChart"></canvas></div></div>'+
-      '<div class="card"><div class="card-hdr"><div class="card-title-lg">ESA Monthly Revenue Trend</div></div><div class="cw h240"><canvas id="esaTrendChart"></canvas></div></div>'+
-    '</div>'+
-    '<div class="g2 mb14">'+
-      '<div class="card">'+
-        '<div class="card-hdr"><div class="card-title-lg">Top ESA Products</div><span class="text-xs text-muted">'+esaProdArr.length+' SKUs</span></div>'+
-        '<div class="tbl-wrap" style="max-height:280px;overflow-y:auto"><table class="tbl tbl-sm">'+
-          '<thead><tr><th>#</th><th>Product</th><th>Type</th><th class="r">Units</th><th class="r">Revenue</th></tr></thead>'+
-          '<tbody>'+esaProdArr.slice(0,20).map(function(p,i){
-            return '<tr><td class="text-muted text-xs">'+(i+1)+'</td><td style="max-width:180px" class="truncate bold" title="'+p.name+'">'+p.name.slice(0,36)+'</td><td>'+tag(p.type,tc[p.type]||'neu')+'</td><td class="num">'+p.qty+'</td><td class="num">'+audFmt(p.rev)+'</td></tr>';
-          }).join('')+'</tbody></table></div>'+
-      '</div>'+
-      '<div class="card">'+
-        '<div class="card-hdr"><div class="card-title-lg">ESA Orders by State</div>'+tag('USA','us')+'</div>'+
-        '<div class="tbl-wrap" style="max-height:280px;overflow-y:auto"><table class="tbl tbl-sm">'+
-          '<thead><tr><th>State</th><th class="r">Orders</th><th class="r">Revenue</th><th class="r">AOV</th></tr></thead>'+
-          '<tbody>'+esaStateArr.slice(0,20).map(function(s){
-            return '<tr><td class="bold">'+s.state+'</td><td class="num">'+s.cnt+'</td><td class="num">'+audFmt(s.rev)+'</td><td class="num">'+audFmt(s.cnt?s.rev/s.cnt:0)+'</td></tr>';
-          }).join('')+'</tbody></table></div>'+
-      '</div>'+
-    '</div>'+
-    '<div class="card">'+
-      '<div class="card-hdr"><div class="card-title-lg">US Monthly \u2014 ESA vs Non-ESA</div></div>'+
-      '<div class="tbl-wrap"><table class="tbl">'+
-        '<thead><tr><th>Month</th><th class="r">Total US</th><th class="r">ESA</th><th class="r">Non-ESA</th><th class="r">ESA %</th><th class="r">ESA AOV</th></tr></thead>'+
-        '<tbody>'+usMonthKeys.slice().reverse().map(function(m){
-          var d=usMonths[m]; var tot=(d.esa+d.noesa)||1;
-          var ep=d.esa/tot*100;
-          var aov=d.esaCnt?d.esa/d.esaCnt:0;
-          return '<tr>'+
-            '<td class="bold">'+monthLabel(m)+'</td>'+
-            '<td class="num">'+audFmt(d.esa+d.noesa)+'</td>'+
-            '<td class="num" style="color:#ea580c">'+audFmt(d.esa)+'</td>'+
-            '<td class="num">'+audFmt(d.noesa)+'</td>'+
-            '<td class="num"><span class="delta '+(ep>30?'dn':ep>10?'neu':'up')+'">'+ep.toFixed(0)+'%</span></td>'+
-            '<td class="num">'+audFmt(aov)+'</td>'+
-          '</tr>';
-        }).join('')+
-      '</tbody></table></div>'+
+  // ── S2: Action Recommendations ──────────────────────────────────────────
+  h += secHdr('🎯 Strategic Actions — Act on These Now');
+  h += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">';
+  recs.forEach(function(r){
+    h += '<div style="padding:12px 16px;border-radius:8px;background:'+ragBg(r.c)+';border-left:3px solid '+rag(r.c)+';display:flex;justify-content:space-between;align-items:center">'+
+      '<div><div style="font-size:12px;font-weight:600">'+(r.c==='red'?'🔴':r.c==='amb'?'🟡':'🟢')+' '+r.t+'</div>'+
+      '<div style="font-size:11px;color:var(--c-text-3);margin-top:3px">→ '+r.a+'</div></div>'+
     '</div>';
+  });
+  h += '</div>';
 
+  // ── S3: Fund Cycle Timing ───────────────────────────────────────────────
+  h += secHdr('📅 ESA Fund Cycle & Spending Patterns');
+  h += '<div class="g-2-1 mb14">';
+  h += '<div class="card"><div class="card-hdr"><div class="card-title-lg">Monthly ESA vs Non-ESA Revenue</div><span class="text-xs text-muted">AZ quarterly fund releases marked</span></div><div class="cw h260"><canvas id="esaTrendC"></canvas></div></div>';
+  // Quarter summary
+  h += '<div class="card"><div class="card-title mb8">Arizona Fund Calendar</div>';
+  [{q:'Q1',label:'Jul 1 – Sep 30',tip:'Back to school — biggest spend quarter'},{q:'Q2',label:'Oct 1 – Dec 31',tip:'Holiday season — curriculum stocking'},{q:'Q3',label:'Jan 1 – Mar 31',tip:'New year refresh'},{q:'Q4',label:'Apr 1 – Jun 30',tip:'Year-end spend — burn remaining balance'}].forEach(function(q){
+    var isNow = (function(){
+      var m=now.getMonth()+1;
+      if(q.q==='Q1') return m>=7&&m<=9;
+      if(q.q==='Q2') return m>=10||m<=12;
+      if(q.q==='Q3') return m>=1&&m<=3;
+      return m>=4&&m<=6;
+    })();
+    h += '<div style="padding:8px;border-radius:6px;margin-bottom:6px;background:'+(isNow?'rgba(37,99,235,0.08)':'var(--c-surface-2)')+';border:'+(isNow?'1px solid var(--c-brand)':'1px solid var(--c-border)')+'">';
+    h += '<div style="display:flex;justify-content:space-between"><span style="font-weight:700;font-size:12px">'+q.q+' '+q.label+'</span>'+(isNow?'<span style="font-size:10px;background:var(--c-brand);color:#fff;padding:2px 6px;border-radius:4px">NOW</span>':'')+'</div>';
+    h += '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">'+q.tip+'</div></div>';
+  });
+  h += '<div style="margin-top:10px;padding:8px;border-radius:6px;background:rgba(239,68,68,0.08);border:1px solid var(--c-red)"><div style="font-size:11px;font-weight:700;color:var(--c-red)">🚀 Texas ESA launches July 1 2026</div><div style="font-size:11px;color:var(--c-text-3);margin-top:2px">Ensure ClassWallet approval before June 30 to capture Q1</div></div>';
+  h += '</div></div>';
+
+  // ── S4: Account Intelligence Tables ────────────────────────────────────
+  h += secHdr('👥 Account Intelligence');
+  h += '<div class="g3 mb14">';
+  // Lapsed accounts
+  h += '<div class="card"><div class="card-hdr"><div class="card-title-lg">Lapsed Accounts</div><span class="tag red">'+lapsed.length+' warm leads</span></div>';
+  h += '<div style="font-size:11px;color:var(--c-text-3);margin-bottom:8px">Bought in FY25. No order in FY26. They have fresh ESA funds NOW.</div>';
+  if(lapsed.length>0){
+    h += '<div style="max-height:240px;overflow-y:auto"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr><th style="text-align:left;padding:4px;color:var(--c-text-3)">State</th><th style="text-align:right;padding:4px;color:var(--c-text-3)">LTV</th><th style="text-align:right;padding:4px;color:var(--c-text-3)">Orders</th></tr></thead><tbody>';
+    lapsed.slice(0,20).forEach(function(a){
+      h += '<tr style="border-bottom:1px solid var(--c-border)"><td style="padding:4px">'+a.state+'</td><td style="padding:4px;text-align:right;font-weight:600">'+audFmt(a.rev)+'</td><td style="padding:4px;text-align:right">'+a.orders.length+'</td></tr>';
+    });
+    h += '</tbody></table></div>';
+  }
+  h += '</div>';
+  // Due to reorder
+  h += '<div class="card"><div class="card-hdr"><div class="card-title-lg">Due to Reorder</div><span class="tag amb">'+due.length+' accounts</span></div>';
+  h += '<div style="font-size:11px;color:var(--c-text-3);margin-bottom:8px">Past '+Math.round(avgInterval*0.8)+'d since last order. Avg interval is '+avgInterval+'d.</div>';
+  if(due.length>0){
+    h += '<div style="max-height:240px;overflow-y:auto"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr><th style="text-align:left;padding:4px;color:var(--c-text-3)">State</th><th style="text-align:right;padding:4px;color:var(--c-text-3)">Days Since</th><th style="text-align:right;padding:4px;color:var(--c-text-3)">LTV</th></tr></thead><tbody>';
+    due.slice(0,20).forEach(function(a){
+      h += '<tr style="border-bottom:1px solid var(--c-border)"><td style="padding:4px">'+a.state+'</td><td style="padding:4px;text-align:right;color:var(--c-amb);font-weight:600">'+a.daysSince+'d</td><td style="padding:4px;text-align:right">'+audFmt(a.rev)+'</td></tr>';
+    });
+    h += '</tbody></table></div>';
+  }
+  h += '</div>';
+  // At-risk
+  h += '<div class="card"><div class="card-hdr"><div class="card-title-lg">At-Risk / Churned</div><span class="tag red">'+atRisk.length+' accounts</span></div>';
+  h += '<div style="font-size:11px;color:var(--c-text-3);margin-bottom:8px">2x+ past average reorder interval. May have switched to a competitor.</div>';
+  if(atRisk.length>0){
+    h += '<div style="max-height:240px;overflow-y:auto"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr><th style="text-align:left;padding:4px;color:var(--c-text-3)">State</th><th style="text-align:right;padding:4px;color:var(--c-text-3)">Days Since</th><th style="text-align:right;padding:4px;color:var(--c-text-3)">LTV</th></tr></thead><tbody>';
+    atRisk.sort(function(a,b){return b.rev-a.rev;}).slice(0,20).forEach(function(a){
+      h += '<tr style="border-bottom:1px solid var(--c-border)"><td style="padding:4px">'+a.state+'</td><td style="padding:4px;text-align:right;color:var(--c-red);font-weight:600">'+a.daysSince+'d</td><td style="padding:4px;text-align:right">'+audFmt(a.rev)+'</td></tr>';
+    });
+    h += '</tbody></table></div>';
+  }
+  h += '</div>';
+  h += '</div>';
+
+  // ── S5: Conversion funnel ───────────────────────────────────────────────
+  h += secHdr('📈 Growth & Conversion');
+  h += '<div class="g4 mb14" style="align-items:stretch">';
+  h += '<div class="card"><div class="card-title mb6">Repeat Rate</div>'+
+    '<div style="font-size:22px;font-weight:800;color:'+(repeatRate>=25?'var(--c-grn)':repeatRate>=15?'var(--c-amb)':'var(--c-red)')+'">'+pctFmt(repeatRate)+'</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">ESA accounts who reordered</div>'+
+    '<div style="height:4px;border-radius:2px;background:var(--c-border);margin:8px 0"><div style="height:100%;border-radius:2px;width:'+Math.min(100,repeatRate)+'%;background:'+(repeatRate>=25?'var(--c-grn)':repeatRate>=15?'var(--c-amb)':'var(--c-red)')+'"></div></div>'+
+    '<div style="font-size:11px;color:var(--c-text-3)">Non-ESA: '+pctFmt(nonRepeatRate)+'</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3)">Target: 30%+</div>'+
+  '</div>';
+  h += '<div class="card"><div class="card-title mb6">Time to 2nd Order</div>'+
+    '<div style="font-size:22px;font-weight:800;color:var(--c-pur)">'+avgT2+'d</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">avg days to reorder</div>'+
+    metaRow('Outreach window','Day '+(Math.round(avgT2*0.7))+'–'+avgT2,'')+
+    metaRow('Contact before','Day '+Math.round(avgT2*0.8),'highest conversion')+
+  '</div>';
+  h += '<div class="card"><div class="card-title mb6">ESA Growth Rate</div>'+
+    '<div style="font-size:22px;font-weight:800;color:'+(esaGrowth===null?'var(--c-text-3)':esaGrowth>=0?'var(--c-grn)':'var(--c-red)')+'">'+
+    (esaGrowth!==null?(esaGrowth>=0?'+':'')+esaGrowth.toFixed(1)+'%':'—')+'</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">FY26 vs FY25 revenue</div>'+
+    metaRow('FY26 revenue',audFmt(esaRevFY26),'')+
+    metaRow('FY25 revenue',audFmt(esaRevFY25),'')+
+  '</div>';
+  h += '<div class="card"><div class="card-title mb6">Special Needs Proxy</div>'+
+    '<div style="font-size:22px;font-weight:800;color:var(--c-org)">'+esaHigh.length.toLocaleString()+'</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">accounts with avg order >A$150</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:4px">Likely multi-child or special needs families. AZ special needs accounts receive up to $28k/year.</div>'+
+    metaRow('Their revenue',audFmt(esaHigh.reduce(function(s,a){return s+a.rev;},0)),'')+
+  '</div>';
+  h += '</div>';
+
+  // ── S6: State Penetration ───────────────────────────────────────────────
+  h += secHdr('🗺️ State Penetration');
+  h += '<div class="g-2-1 mb14">';
+  h += '<div class="card"><div class="card-hdr"><div class="card-title-lg">Revenue by US State</div><span class="text-xs text-muted">Green = active ESA program</span></div>'+
+    '<div style="max-height:320px;overflow-y:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'+
+    '<thead><tr><th style="text-align:left;padding:6px;color:var(--c-text-3)">State</th><th style="text-align:right;padding:6px;color:var(--c-text-3)">Revenue</th><th style="text-align:right;padding:6px;color:var(--c-text-3)">Orders</th><th style="padding:6px;color:var(--c-text-3)">ESA Program</th></tr></thead>'+
+    '<tbody>'+states.slice(0,20).map(function(s){
+      return '<tr style="border-bottom:1px solid var(--c-border)">'+
+        '<td style="padding:6px;font-weight:500">'+s.state+'</td>'+
+        '<td style="padding:6px;text-align:right;font-weight:600">'+audFmt(s.rev)+'</td>'+
+        '<td style="padding:6px;text-align:right;color:var(--c-text-3)">'+s.cnt+'</td>'+
+        '<td style="padding:6px;text-align:center">'+(s.esaProg?'<span style="color:var(--c-grn);font-weight:700">✓ Active</span>':'<span style="color:var(--c-text-3)">—</span>')+'</td>'+
+      '</tr>';
+    }).join('')+
+    '</tbody></table></div></div>';
+  // Under-indexed states
+  h += '<div class="card"><div class="card-title mb8">Growth Opportunities</div>';
+  var underIndexed=[{s:'Texas',pop:'29M',esa:'Launching Jul 2026',urgent:true},{s:'Iowa',pop:'3.2M',esa:'Universal — $8,148/student',urgent:false},{s:'Utah',pop:'3.4M',esa:'Universal — $8,500/student',urgent:false},{s:'North Carolina',pop:'10.7M',esa:'Active program',urgent:false},{s:'West Virginia',pop:'1.8M',esa:'Universal',urgent:false}];
+  underIndexed.forEach(function(u){
+    var current=stateMap[u.s]?stateMap[u.s].rev:0;
+    h += '<div style="padding:8px;border-radius:6px;margin-bottom:6px;background:'+(u.urgent?'rgba(239,68,68,0.08)':'var(--c-surface-2)')+';border:1px solid '+(u.urgent?'var(--c-red)':'var(--c-border)')+'">';
+    h += '<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:700;font-size:12px">'+u.s+'</span><span style="font-size:11px;font-weight:600;color:'+(u.urgent?'var(--c-red)':'var(--c-text-3)')+'">'+audFmt(current)+' current</span></div>';
+    h += '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">'+u.esa+' · Pop: '+u.pop+'</div>';
+    if(u.urgent) h += '<div style="font-size:11px;color:var(--c-red);font-weight:600;margin-top:4px">⚡ Ensure ClassWallet approval before June 30</div>';
+    h += '</div>';
+  });
+  h += '</div></div>';
+
+  // ── S7: Product Intelligence ────────────────────────────────────────────
+  // Categorise products
+  function getProductType(sku, name){
+    var sl = (sku||'').toLowerCase();
+    var nl = (name||'').toLowerCase();
+    // Only two real ESA product categories
+    if(/12mth|mthus|max12|rehsmax|com12|re12|program access/i.test(sl)) return 'Digital / Subscription';
+    if(/subscription|program access|12.month/i.test(nl)) return 'Digital / Subscription';
+    // Everything else sold to ESA = a bundle (physical books are components inside bundles)
+    return 'Bundle / Pack';
+  }
+
+  // Build category map
+  var catMap = {};
+  var esaSkuList = Object.values(esaSkuMap);
+  esaSkuList.forEach(function(p){
+    var rp = rawP.filter(function(r){return r['SKU']===p.sku;})[0];
+    var name = rp ? rp['Product Name']||'' : p.name||'';
+    var cat = getProductType(p.sku, name);
+    if(!catMap[cat]) catMap[cat]={cat:cat,esaQty:0,nonQty:0,esaRev:0,products:[]};
+    catMap[cat].esaQty += p.cnt;
+    catMap[cat].esaRev += p.rev;
+    var nc = nonSkuMap[p.sku]||{cnt:0};
+    catMap[cat].nonQty += nc.cnt;
+    catMap[cat].products.push({sku:p.sku,name:name,esaQty:p.cnt,nonQty:nc.cnt});
+  });
+  var cats = Object.values(catMap).sort(function(a,b){return b.esaQty-a.esaQty;});
+  var totalEsaQty = cats.reduce(function(s,c){return s+c.esaQty;},0)||1;
+
+  h += secHdr('📦 Product Mix');
+  // Category overview row
+  h += '<div class="g4 mb14" style="align-items:stretch">';
+  var catColors={'Bundle / Pack':'#7c3aed','Digital / Subscription':'#059669','Other':'#64748b'};
+  cats.forEach(function(c){
+    var esaPct2 = c.esaQty/(c.esaQty+c.nonQty)*100||0;
+    var col = catColors[c.cat]||'#64748b';
+    h += '<div class="card" style="border-top:3px solid '+col+'">'+
+      '<div class="card-title mb4">'+c.cat+'</div>'+
+      '<div style="font-size:20px;font-weight:800;color:'+col+'">'+c.esaQty.toLocaleString('en-AU')+'</div>'+
+      '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">units via ESA</div>'+
+      '<div style="height:4px;border-radius:2px;background:var(--c-border);margin:8px 0">'+
+        '<div style="height:100%;border-radius:2px;width:'+Math.min(100,c.esaQty/totalEsaQty*100)+'%;background:'+col+'"></div>'+
+      '</div>'+
+      '<div style="display:flex;justify-content:space-between;font-size:11px">'+
+        '<span style="color:var(--c-text-3)">'+pctFmt(c.esaQty/totalEsaQty*100)+' of mix</span>'+
+        '<span style="font-weight:600;color:'+col+'">'+pctFmt(esaPct2)+' ESA</span>'+
+      '</div>'+
+      '<div style="font-size:11px;color:var(--c-text-3);margin-top:4px">'+c.products.length+' products</div>'+
+    '</div>';
+  });
+  h += '</div>';
+
+  // Stacked mix bar
+  h += '<div class="card mb14">'+
+    '<div class="card-title mb8">Product Mix — ESA vs Non-ESA</div>'+
+    '<div style="margin-bottom:6px">'+
+      '<div style="font-size:11px;color:var(--c-text-3);margin-bottom:4px">ESA mix</div>'+
+      '<div style="height:20px;border-radius:4px;overflow:hidden;display:flex">'+
+      cats.map(function(c){return '<div style="width:'+pctFmt(c.esaQty/totalEsaQty*100)+';background:'+(catColors[c.cat]||'#64748b')+';height:100%" title="'+c.cat+': '+pctFmt(c.esaQty/totalEsaQty*100)+'"></div>';}).join('')+
+      '</div>'+
+    '</div>'+
+    '<div>'+
+      '<div style="font-size:11px;color:var(--c-text-3);margin-bottom:4px">Non-ESA mix</div>'+
+      '<div style="height:20px;border-radius:4px;overflow:hidden;display:flex">'+
+      (function(){
+        var totNon=cats.reduce(function(s,c){return s+c.nonQty;},0)||1;
+        return cats.map(function(c){return '<div style="width:'+pctFmt(c.nonQty/totNon*100)+';background:'+(catColors[c.cat]||'#64748b')+';height:100%;opacity:0.5" title="'+c.cat+': '+pctFmt(c.nonQty/totNon*100)+'"></div>';}).join('');
+      })()+
+      '</div>'+
+    '</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px">'+
+    cats.map(function(c){return '<div style="display:flex;align-items:center;gap:4px;font-size:11px"><div style="width:10px;height:10px;border-radius:2px;background:'+(catColors[c.cat]||'#64748b')+'"></div>'+c.cat+'</div>';}).join('')+
+    '</div>'+
+  '</div>';
+
+  // Detail tables
+  h += '<div class="g3 mb14">';
+  // Top products by name
+  h += '<div class="card"><div class="card-title mb8">Top ESA Products</div>'+
+    '<div style="max-height:280px;overflow-y:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">'+
+    '<thead><tr><th style="text-align:left;padding:4px;color:var(--c-text-3)">Product</th><th style="text-align:right;padding:4px;color:var(--c-text-3)">ESA</th><th style="text-align:right;padding:4px;color:var(--c-text-3)">ESA%</th></tr></thead><tbody>'+
+    esaTop.map(function(p){
+      var rp=rawP.filter(function(r){return r['SKU']===p.sku;})[0];
+      var name=rp?rp['Product Name']||p.sku:p.sku;
+      var nc=nonSkuMap[p.sku]?nonSkuMap[p.sku].cnt:0;
+      var ep=p.cnt/(p.cnt+nc)*100;
+      return '<tr style="border-bottom:1px solid var(--c-border)">'+
+        '<td style="padding:4px"><div style="font-size:11px;font-weight:500">'+name.slice(0,38)+'</div><div style="font-size:10px;font-family:monospace;color:var(--c-text-3)">'+p.sku+'</div></td>'+
+        '<td style="padding:4px;text-align:right;font-weight:600">'+p.cnt+'</td>'+
+        '<td style="padding:4px;text-align:right;font-weight:700;color:'+(ep>70?'var(--c-grn)':ep>40?'var(--c-amb)':'var(--c-text-3)')+'">'+pctFmt(ep)+'</td>'+
+      '</tr>';
+    }).join('')+'</tbody></table></div></div>';
+  // ESA dominant
+  h += '<div class="card"><div class="card-title mb8">ESA-Dominant Products</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-bottom:8px">>70% of sales via ESA — these are your ESA signature products</div>'+
+    '<div style="max-height:240px;overflow-y:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">'+
+    '<thead><tr><th style="text-align:left;padding:4px;color:var(--c-text-3)">Product</th><th style="text-align:right;padding:4px;color:var(--c-text-3)">ESA%</th></tr></thead><tbody>'+
+    esaDominant.slice(0,12).map(function(p){
+      var rp=rawP.filter(function(r){return r['SKU']===p.sku;})[0];
+      var name=rp?rp['Product Name']||p.sku:p.sku;
+      var nc=nonSkuMap[p.sku]?nonSkuMap[p.sku].cnt:0;
+      var ep=p.cnt/(p.cnt+nc)*100;
+      return '<tr style="border-bottom:1px solid var(--c-border)">'+
+        '<td style="padding:4px"><div style="font-size:11px;font-weight:500">'+name.slice(0,38)+'</div><div style="font-size:10px;font-family:monospace;color:var(--c-text-3)">'+p.sku+'</div></td>'+
+        '<td style="padding:4px;text-align:right;font-weight:700;color:var(--c-grn)">'+pctFmt(ep)+'</td>'+
+      '</tr>';
+    }).join('')+'</tbody></table></div></div>';
+  // Cross-sell gaps
+  h += '<div class="card"><div class="card-title mb8">Cross-Sell Gaps</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-bottom:8px">Popular with non-ESA but ESA families rarely buy — opportunity</div>'+
+    '<div style="max-height:240px;overflow-y:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">'+
+    '<thead><tr><th style="text-align:left;padding:4px;color:var(--c-text-3)">Product</th><th style="text-align:right;padding:4px;color:var(--c-text-3)">Non-ESA</th><th style="text-align:right;padding:4px;color:var(--c-text-3)">ESA</th></tr></thead><tbody>'+
+    esaMissing.map(function(p){
+      var rp=rawP.filter(function(r){return r['SKU']===p.sku;})[0];
+      var name=rp?rp['Product Name']||p.sku:p.sku;
+      var ec=esaSkuMap[p.sku]?esaSkuMap[p.sku].cnt:0;
+      return '<tr style="border-bottom:1px solid var(--c-border)">'+
+        '<td style="padding:4px"><div style="font-size:11px;font-weight:500">'+name.slice(0,38)+'</div><div style="font-size:10px;font-family:monospace;color:var(--c-text-3)">'+p.sku+'</div></td>'+
+        '<td style="padding:4px;text-align:right;font-weight:600">'+p.cnt+'</td>'+
+        '<td style="padding:4px;text-align:right;color:var(--c-red)">'+ec+'</td>'+
+      '</tr>';
+    }).join('')+'</tbody></table></div></div>';
+  h += '</div>';
+
+  // ── S8: Concentration Risk ──────────────────────────────────────────────
+  h += secHdr('⚠️ Concentration Risk');
+  h += '<div class="g3 mb14">';
+  var sortedAccts=accts.sort(function(a,b){return b.rev-a.rev;});
+  var top5Rev=sortedAccts.slice(0,5).reduce(function(s,a){return s+a.rev;},0);
+  var top10Rev=sortedAccts.slice(0,10).reduce(function(s,a){return s+a.rev;},0);
+  var top20Rev=sortedAccts.slice(0,20).reduce(function(s,a){return s+a.rev;},0);
+  h += '<div class="card"><div class="card-title mb8">Revenue Concentration</div>'+
+    metaRow('Top 5 accounts',audFmt(top5Rev),pctFmt(top5Rev/esaRev*100)+' of ESA rev')+
+    metaRow('Top 10 accounts',audFmt(top10Rev),pctFmt(top10Rev/esaRev*100)+' of ESA rev')+
+    metaRow('Top 20 accounts',audFmt(top20Rev),pctFmt(top20Rev/esaRev*100)+' of ESA rev')+
+    '<div style="margin-top:10px;font-size:11px;color:var(--c-text-3)">Low concentration = healthy. ESA revenue is well distributed across '+accts.length.toLocaleString()+' accounts.</div>'+
+  '</div>';
+  // Top accounts
+  h += '<div class="card" style="grid-column:span 2"><div class="card-title mb8">Top 20 Accounts by Lifetime Value</div>'+
+    '<div style="max-height:260px;overflow-y:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">'+
+    '<thead><tr><th style="text-align:left;padding:5px;color:var(--c-text-3)">#</th><th style="text-align:left;padding:5px;color:var(--c-text-3)">State</th><th style="text-align:right;padding:5px;color:var(--c-text-3)">LTV</th><th style="text-align:right;padding:5px;color:var(--c-text-3)">Orders</th><th style="text-align:right;padding:5px;color:var(--c-text-3)">Last Order</th><th style="text-align:right;padding:5px;color:var(--c-text-3)">Days Since</th><th style="padding:5px;color:var(--c-text-3)">Risk</th></tr></thead><tbody>'+
+    sortedAccts.slice(0,20).map(function(a,i){
+      var ds=a.daysSince||0;
+      var risk=ds>avgInterval*2?'<span class="tag red">At Risk</span>':ds>avgInterval*0.8?'<span class="tag amb">Due</span>':'<span class="tag grn">Active</span>';
+      return '<tr style="border-bottom:1px solid var(--c-border)">'+
+        '<td style="padding:5px;color:var(--c-text-3)">'+(i+1)+'</td>'+
+        '<td style="padding:5px">'+a.state+'</td>'+
+        '<td style="padding:5px;text-align:right;font-weight:700">'+audFmt(a.rev)+'</td>'+
+        '<td style="padding:5px;text-align:right">'+a.orders.length+'</td>'+
+        '<td style="padding:5px;text-align:right;color:var(--c-text-3)">'+(a.lastDate?a.lastDate.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'2-digit'}):'—')+'</td>'+
+        '<td style="padding:5px;text-align:right;color:var(--c-text-3)">'+ds+'d</td>'+
+        '<td style="padding:5px">'+risk+'</td>'+
+      '</tr>';
+    }).join('')+'</tbody></table></div></div>';
+  h += '</div>';
+
+  h += '</div>'; // max-width container
+  el.innerHTML = h;
+
+  // ── Charts ──────────────────────────────────────────────────────────────
   setTimeout(function(){
-    mkChart('esaCompChart',{
+    // Monthly trend
+    var esaData = allMonths.map(function(m){return Math.round(esaMonthly[m]||0);});
+    var nonData = allMonths.map(function(m){return Math.round(nonMonthly[m]||0);});
+    mkChart('esaTrendC',{
       type:'bar',
-      data:{labels:usMonthKeys.map(monthLabel),datasets:[
-        {label:'Non-ESA',data:usMonthKeys.map(function(m){return Math.round(usMonths[m].noesa);}),backgroundColor:'#2563eb88',borderRadius:3},
-        {label:'ESA',data:usMonthKeys.map(function(m){return Math.round(usMonths[m].esa);}),backgroundColor:'#ea580ccc',borderRadius:3},
-      ]},
+      data:{
+        labels:allMonths.map(monthLabel),
+        datasets:[
+          {label:'ESA Revenue',data:esaData,backgroundColor:'#2563eb88',borderRadius:3},
+          {label:'Non-ESA Revenue',data:nonData,backgroundColor:'#64748b33',borderRadius:3},
+        ]
+      },
       options:{responsive:true,maintainAspectRatio:false,animation:false,
-        plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:8}},tooltip:{backgroundColor:'#0f172a',padding:8,cornerRadius:6}},
+        plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:8}},
+          annotation:{annotations:{
+            q1:{type:'line',xMin:allMonths.indexOf('2025-07'),xMax:allMonths.indexOf('2025-07'),borderColor:'#2563eb',borderWidth:1,borderDash:[4,4],label:{content:'Q1',display:true,position:'start',font:{size:9}}},
+            q2:{type:'line',xMin:allMonths.indexOf('2025-10'),xMax:allMonths.indexOf('2025-10'),borderColor:'#7c3aed',borderWidth:1,borderDash:[4,4],label:{content:'Q2',display:true,position:'start',font:{size:9}}},
+            q3:{type:'line',xMin:allMonths.indexOf('2026-01'),xMax:allMonths.indexOf('2026-01'),borderColor:'#059669',borderWidth:1,borderDash:[4,4],label:{content:'Q3',display:true,position:'start',font:{size:9}}},
+          }}
+        },
         scales:{
-          x:{stacked:true,grid:{display:false},ticks:{color:'#64748b',font:{size:10}},border:{display:false}},
-          y:{stacked:true,grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#64748b',font:{size:10},callback:function(v){return 'A$'+(v/1000).toFixed(0)+'K';}},border:{display:false}}
+          x:{stacked:false,grid:{display:false},ticks:{color:'#64748b',font:{size:10}},border:{display:false}},
+          y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#64748b',font:{size:10},callback:function(v){return 'A$'+Math.round(v/1000)+'k';}},border:{display:false}}
         }
       }
     });
-    lineChart('esaTrendChart',esaTrendKeys.map(monthLabel),
-      [{label:'ESA Revenue',data:esaTrendKeys.map(function(m){return Math.round(esaTrendMap[m]||0);}),borderColor:'#ea580c',backgroundColor:'#ea580c18'}]);
   },50);
 }
 
-// ── Financials ─────────────────────────────────────────────────────────────
 function rFinancials(orders){
   var el = document.getElementById('panel-financials');
   var prev = getPrevOrders(orders);
