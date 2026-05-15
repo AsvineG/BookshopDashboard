@@ -3358,7 +3358,61 @@ function rCustomers(orders){
     '<div class="card"><div class="card-title mb8">Order Frequency</div>'+
       '<div class="cw h120"><canvas id="custFreq"></canvas></div>'+
     '</div>'+
-  '</div>';
+  '</div>'
+  // ── Customer Profile (Mum / Dad) ─────────────────────────────────────────
+  (function(){
+    var mums = custs.filter(function(c){return c.profile==='Mum';});
+    var dads = custs.filter(function(c){return c.profile==='Dad';});
+    var unkn = custs.filter(function(c){return c.profile==='Unknown';});
+    var mumRev = mums.reduce(function(s,c){return s+c.rev;},0);
+    var dadRev = dads.reduce(function(s,c){return s+c.rev;},0);
+    var mumAov = mums.length ? mumRev/mums.reduce(function(s,c){return s+c.orders.length;},0) : 0;
+    var dadAov = dads.length ? dadRev/dads.reduce(function(s,c){return s+c.orders.length;},0) : 0;
+    var total  = mums.length + dads.length || 1;
+    var mumPct = mums.length/total*100;
+    var dadPct = dads.length/total*100;
+
+    el.innerHTML +=
+      '<div style="margin:24px 0 10px;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;padding-top:16px;border-top:1px solid var(--c-border)">Customer Profile</div>'+
+      '<div class="g4 mb14">'+
+        '<div class="card" style="border-left:3px solid #ec4899">'+
+          '<div class="card-title mb4">👩 Mums</div>'+
+          '<div style="font-size:22px;font-weight:800;color:#ec4899">'+mums.length.toLocaleString('en-AU')+'</div>'+
+          '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">'+pctFmt(mumPct)+' of identified</div>'+
+          '<div style="margin-top:8px;font-size:11px">'+
+            '<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--c-text-3)">Revenue</span><span style="font-weight:600">'+audFmt(mumRev)+'</span></div>'+
+            '<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--c-text-3)">AOV</span><span style="font-weight:600">'+audFmt(mumAov)+'</span></div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="card" style="border-left:3px solid #3b82f6">'+
+          '<div class="card-title mb4">👨 Dads</div>'+
+          '<div style="font-size:22px;font-weight:800;color:#3b82f6">'+dads.length.toLocaleString('en-AU')+'</div>'+
+          '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">'+pctFmt(dadPct)+' of identified</div>'+
+          '<div style="margin-top:8px;font-size:11px">'+
+            '<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--c-text-3)">Revenue</span><span style="font-weight:600">'+audFmt(dadRev)+'</span></div>'+
+            '<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--c-text-3)">AOV</span><span style="font-weight:600">'+audFmt(dadAov)+'</span></div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="card">'+
+          '<div class="card-title mb4">❓ Unknown</div>'+
+          '<div style="font-size:22px;font-weight:800;color:var(--c-text-3)">'+unkn.length.toLocaleString('en-AU')+'</div>'+
+          '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">name not in dictionary</div>'+
+        '</div>'+
+        '<div class="card">'+
+          '<div class="card-title mb4">📊 Split</div>'+
+          '<div style="height:10px;border-radius:5px;overflow:hidden;display:flex;margin:8px 0">'+
+            '<div style="width:'+pctFmt(mumPct)+';background:#ec4899"></div>'+
+            '<div style="flex:1;background:#3b82f6"></div>'+
+          '</div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:12px">'+
+            '<span style="color:#ec4899;font-weight:700">'+pctFmt(mumPct)+' Mum</span>'+
+            '<span style="color:#3b82f6;font-weight:700">'+pctFmt(dadPct)+' Dad</span>'+
+          '</div>'+
+          '<div style="font-size:11px;color:var(--c-text-3);margin-top:6px">of '+total.toLocaleString('en-AU')+' identified customers</div>'+
+        '</div>'+
+      '</div>';
+  })();
+;
 
   setTimeout(function(){
     donutChart('custRepeat',['New (1 order)','Repeat (2+)'],[newCusts.length,repeatCusts.length],['#2563eb','#16a34a']);
