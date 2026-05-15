@@ -323,7 +323,14 @@ if new_orders or FULL_REFRESH:
         oid   = o['id']
         items = order_items.get(oid, [])
         _curr = (o.get('currency_code') or 'AUD').upper()
-        _rate = AUD_RATES.get(_curr, 1.0)
+        # Use BC's stored exchange rate (rate at time of purchase) — historically accurate
+        # currency_exchange_rate is stored per order by BC
+        # Fall back to our live/hardcoded rates if BC doesn't have it (e.g. AUD orders = 1.0)
+        _bc_rate = o.get('currency_exchange_rate')
+        if _bc_rate and float(_bc_rate or 0) > 0:
+            _rate = float(_bc_rate)
+        else:
+            _rate = AUD_RATES.get(_curr, 1.0)
         def _to_aud(v): return str(round(float(v or 0) * _rate, 2))
         billing    = o.get('billing_address') or {}
         ship_addrs = o.get('shipping_addresses') or []
