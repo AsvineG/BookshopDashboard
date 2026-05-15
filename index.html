@@ -1152,9 +1152,10 @@ function preProcess(cb){
     for(var i = cur; i < end; i++){
       var row = rawO[i];
       // Currency
+      // BC API returns all order totals already in store default currency (AUD).
+      // No conversion needed — rate is always 1.
       var currCode = (row['Order Currency Code']||'AUD').toUpperCase();
-      var rateObj = fx_rates.filter(function(r){return r.code===currCode;})[0];
-      var rate = rateObj ? rateObj.rate : (parseFloat(row['Exchange Rate']||1)||1);
+      var rate = 1;
 
       var rawTotal   = parseFloat(String(row['Order Total (inc tax)']||0).replace(/[^\d.\-]/g,''))||0;
       var rawExTax   = parseFloat(String(row['Order Total (ex tax)']||0).replace(/[^\d.\-]/g,''))||0;
@@ -1188,7 +1189,7 @@ function preProcess(cb){
       // Status
       row._status = row['Order Status']||'Unknown';
       var _sl = row._status.toLowerCase();
-      row._excluded = _sl.includes('cancel')||_sl.includes('decline')||_sl.includes('refund')||_sl==='disputed'||_sl==='manual verification required';
+      row._excluded = !(['awaiting fulfillment','awaiting shipment','shipped','completed','partially shipped','partially cancelled'].includes(_sl));
       row._shipped   = _sl.includes('shipped')||_sl.includes('completed')||_sl.includes('delivered');
       row._awaiting  = _sl.includes('awaiting fulfillment');
       row._zero      = row._aud < 0.01 || row._excluded;
