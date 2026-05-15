@@ -5891,28 +5891,34 @@ function buildStkProducts(velOrders) {
     var isDigital= /isDigital:\s*true/i.test(cf) || /12.?month|24.?month|program access|subscription/i.test(name);
     var type     = isDigital?'digital':isBundle?'bundle':'isbn';
 
-    // Stock per region
+    // Stock per region — storefront assignment gates which regions appear
+    // Custom field inventory provides the quantity
+    var storefrontMap = {au:'In AU Storefront', uk:'In UK Storefront', us:'In USA Storefront'};
+    var cfStock = parseStockFromCustomFields(cf);
     var stock = {};
-    if(isBundle && bundleMap[sku] && bundleMap[sku].length) {
-      // Bundle stock = min component stock per region
-      REGS.forEach(function(reg) {
+
+    REGS.forEach(function(reg) {
+      if(p[storefrontMap[reg]] !== 'Y') return; // not assigned to this region — skip
+      if(isBundle && bundleMap[sku] && bundleMap[sku].length) {
+        // Bundle: min of component stocks for this region
         var vals = [];
         bundleMap[sku].forEach(function(csku) {
           var cstk = stkLookup[csku]||{};
           if(reg in cstk) vals.push(cstk[reg]);
         });
-        if(vals.length) stock[reg] = Math.min.apply(null, vals);
-      });
-    } else {
-      // ISBN or bundle without modifier data — use own custom field
-      stock = parseStockFromCustomFields(cf);
-    }
-
-    // Fallback to SEED_STOCK if no CF stock found
-    if(!Object.keys(stock).length) {
-      var seed = (window.SEED_STOCK && window.SEED_STOCK[sku]);
-      if(seed && seed.stock) stock = Object.assign({}, seed.stock);
-    }
+        stock[reg] = vals.length ? Math.min.apply(null, vals) : 0;
+      } else {
+        // ISBN: use own custom field stock for this region (0 if not set)
+        stock[reg] = (reg in cfStock) ? cfStock[reg] : 0;
+      }
+    });
+    // SEED_STOCK: fill qty for storefront-gated regions where CF has no data
+    // Never adds regions (storefront assignment is the only gate)
+    var seed = (window.SEED_STOCK && window.SEED_STOCK[sku]) || {};
+    var seedStk = seed.stock || {};
+    Object.keys(stock).forEach(function(reg) {
+      if(stock[reg] === 0 && reg in seedStk) stock[reg] = seedStk[reg];
+    });
 
     var lowWatermark = parseInt(p['Inventory Warning Level']||0)||0;
 

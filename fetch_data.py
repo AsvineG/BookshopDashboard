@@ -38,23 +38,36 @@ COUNTRY_CHANNEL = {
 }
 
 # ── AUD exchange rates ────────────────────────────────────────────────────────
+# ── Fetch live exchange rates (AUD base) ──────────────────────────────────────
+# Fallback hardcoded rates used only if live fetch fails
 AUD_RATES = {
     'AUD': 1.0, 'GBP': 2.02, 'USD': 1.56, 'EUR': 1.73,
     'NZD': 0.90, 'CAD': 1.12, 'SGD': 1.18, 'HKD': 0.20,
     'ZAR': 0.085, 'INR': 0.019,
 }
 try:
-    if os.path.exists('settings.json'):
-        with open('settings.json','r',encoding='utf-8') as _sf:
-            _settings = json.load(_sf)
-        for _r in _settings.get('currencyRates', []):
-            _code = (_r.get('code') or '').upper()
-            _rate = float(_r.get('rate') or 0)
-            if _code and _rate > 0:
-                AUD_RATES[_code] = _rate
-        print(f'  Exchange rates loaded from settings.json')
+    # open.er-api.com — free, no API key required
+    # Returns rates relative to AUD base: e.g. {"USD": 0.6412, "GBP": 0.4951}
+    # To convert X USD → AUD: X / rates["USD"]  (i.e. X * (1/0.6412))
+    _er = requests.get('https://open.er-api.com/v6/latest/AUD', timeout=10)
+    if _er.status_code == 200:
+        _er_data = _er.json()
+        _er_rates = _er_data.get('rates', {})
+        if _er_rates:
+            # Convert: 1 FOREIGN → N AUD = 1 / rate_from_AUD_base
+            for _code, _rate in _er_rates.items():
+                if _code != 'AUD' and _rate > 0:
+                    AUD_RATES[_code] = round(1.0 / _rate, 6)
+            AUD_RATES['AUD'] = 1.0
+            _fetch_date = _er_data.get('time_last_update_utc', 'unknown')
+            print(f'  ✅ Live exchange rates loaded ({_fetch_date})')
+            print(f'     USD: {AUD_RATES.get("USD","?")} | GBP: {AUD_RATES.get("GBP","?")} | NZD: {AUD_RATES.get("NZD","?")} | CAD: {AUD_RATES.get("CAD","?")}')
+        else:
+            print('  ⚠️  Exchange rate API returned empty rates — using fallback')
+    else:
+        print(f'  ⚠️  Exchange rate API returned {_er.status_code} — using fallback')
 except Exception as e:
-    print(f'  Using default exchange rates ({e})')
+    print(f'  ⚠️  Live exchange rates failed ({e}) — using hardcoded fallback')
 
 def derive_channel(country, channel_id):
     return COUNTRY_CHANNEL.get((country or '').lower().strip(), 'Reading Eggs AU')
