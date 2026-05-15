@@ -6149,7 +6149,7 @@ function renderStkTable(reg) {
     var comps = bm[p.sku] || [];
     if(p.bundle) console.log('bundle', p.sku, 'comps=', comps.length, 'in bm=', p.sku in bm);
     if(p.bundle && comps.length) {
-      compRows = '<tr id="stkExp-'+i+'" style="display:none"><td colspan="50" style="padding:0">'+
+      compRows = '<tr id="stkExp-'+reg+'-'+i+'" style="display:none"><td colspan="50" style="padding:0">'+
         '<table style="width:100%;border-collapse:collapse;background:var(--c-surface-2)">'+
         comps.map(function(csku) {
           var cp = (window._stkProducts||[]).find(function(x){ return x.sku===csku; });
@@ -6192,10 +6192,10 @@ function renderStkTable(reg) {
         (hasPL?'<td class="num">'+fmtPLPrice(p.sku, REG_CURR[r])+'</td>':'');
     }).join('');
 
-    return '<tr style="cursor:'+(hasExp?'pointer':'default')+'" '+(hasExp?'onclick="stkToggle(this,\'stkExp-'+i+'\')"':'')+'>'+
+    return '<tr style="cursor:'+(hasExp?'pointer':'default')+'" '+(hasExp?'onclick="stkToggle(this,\'stkExp-'+reg+'-'+i+'\')"':'')+'>'+
       '<td class="text-muted text-xs">'+(i+1)+'</td>'+
       '<td class="bold" style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+p.name+'">'+
-        (hasExp?'<span id="stkArrow-'+i+'" style="font-size:9px;margin-right:3px;color:var(--c-amb)">▶</span>':'')+
+        (hasExp?'<span id="stkArrow-'+reg+'-'+i+'" style="font-size:9px;margin-right:3px;color:var(--c-amb)">▶</span>':'')+
         (p.bundle?'<span class="tag pur" style="font-size:9px;margin-right:3px">BUNDLE</span>':'')+
         p.name.slice(0,38)+
       '</td>'+
