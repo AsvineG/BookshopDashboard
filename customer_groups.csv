@@ -1,0 +1,4 @@
+Group ID,Group Name,Is Default,Category Access,Discount Amount,Discount Type
+3,Sales Staff,N,specific,,
+4,Registered Customers,Y,all,,
+5,Wholesale,N,all,,
