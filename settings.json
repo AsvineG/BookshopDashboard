@@ -1437,11 +1437,6 @@
   },
   "currencyRates": [
     {
-      "code": "USD",
-      "name": "US Dollar",
-      "rate": 1.379
-    },
-    {
       "code": "EUR",
       "name": "Euro",
       "rate": 1.616
