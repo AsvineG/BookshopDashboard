@@ -2533,6 +2533,27 @@ function rProd(orders){
   var plLookup = buildPLLookup();
   var hasPL    = Object.keys(plLookup).length > 0;
 
+  // Build direct vs bundle sales split per SKU from rawO
+  var prodSalesSplit = {};
+  var bMapP = buildBundleMapFromModifiers();
+  var paid2 = rawO.filter(function(r){return !r._zero;});
+  paid2.forEach(function(r){
+    r._items.forEach(function(it){
+      var sku = (it.sku||'').trim();
+      var qty = it.qty||1;
+      if(!sku||it.type==='digital') return;
+      if(!prodSalesSplit[sku]) prodSalesSplit[sku]={direct:0,bundle:0};
+      prodSalesSplit[sku].direct += qty;
+      // Propagate to components
+      if(it.type==='bundle'){
+        (bMapP[sku]||[]).forEach(function(csku){
+          if(!prodSalesSplit[csku]) prodSalesSplit[csku]={direct:0,bundle:0};
+          prodSalesSplit[csku].bundle += qty;
+        });
+      }
+    });
+  });
+
   el.innerHTML='<div class="g3 mb14">'+
     kpiCard('Total Products',prods.length.toString(),'across all types','var(--c-brand)')+
     kpiCard('Top Product',prods[0]?prods[0].name.slice(0,28):'—',prods[0]?audFmt(prods[0].rev)+' · '+pctFmt(totalRev?prods[0].rev/totalRev*100:0)+' of revenue':'','var(--c-grn)')+
@@ -2555,7 +2576,7 @@ function rProd(orders){
 
 
   '<div class="tbl-wrap" id="prodTableWrap"><table class="tbl" id="prodTable">'+
-    '<thead><tr><th>Product</th><th>SKU</th><th>Type</th><th class="r">Revenue</th><th class="r">Share</th><th class="r">Qty</th><th class="r">🇦🇺</th><th class="r">🇬🇧</th><th class="r">🇺🇸</th>'+
+    '<thead><tr><th>Product</th><th>SKU</th><th>Type</th><th class="r">Revenue</th><th class="r">Share</th><th class="r">Qty</th><th class="r">Direct</th><th class="r">Via Bundle</th><th class="r">🇦🇺</th><th class="r">🇬🇧</th><th class="r">🇺🇸</th>'+
     (hasPL?'<th class="r" style="color:var(--c-brand)">🇦🇺 AUD</th><th class="r" style="color:var(--c-pur)">🇬🇧 GBP</th><th class="r" style="color:var(--c-grn)">🇺🇸 USD</th>':'')+
     '</tr></thead>'+
     '<tbody>'+prods.slice(0,50).map(function(p,i){
@@ -2567,6 +2588,9 @@ function rProd(orders){
         '<td class="num">'+audFmt(p.rev)+'</td>'+
         '<td class="num text-muted">'+pctFmt(totalRev?p.rev/totalRev*100:0)+'</td>'+
         '<td class="num">'+p.qty.toLocaleString('en-AU')+'</td>'+
+        (function(){ var sp=prodSalesSplit[p.sku]||{direct:0,bundle:0};
+          return '<td class="num">'+sp.direct.toLocaleString('en-AU')+'</td>'+
+                 '<td class="num '+(sp.bundle>0?'text-grn':sp.bundle===0&&sp.direct===0?'text-muted':'text-muted')+'">'+(sp.bundle>0?'+':'')+sp.bundle.toLocaleString('en-AU')+'</td>'; })()+
         '<td class="num">'+p.regions.au+'</td>'+
         '<td class="num">'+p.regions.uk+'</td>'+
         '<td class="num">'+p.regions.us+'</td>'+
@@ -2635,13 +2659,14 @@ function rBundles(orders){
 
   '<div class="card"><div class="card-hdr"><div class="card-title-lg">Bundle Performance</div></div>'+
   '<div class="tbl-wrap"><table class="tbl">'+
-    '<thead><tr><th>Bundle Name</th><th class="r">Revenue</th><th class="r">Qty</th><th class="r">🇦🇺</th><th class="r">🇬🇧</th><th class="r">🇺🇸</th><th>Insights</th></tr></thead>'+
+    '<thead><tr><th>Bundle Name</th><th>SKU</th><th class="r">Revenue</th><th class="r">Qty</th><th class="r">🇦🇺</th><th class="r">🇬🇧</th><th class="r">🇺🇸</th><th>Insights</th></tr></thead>'+
     '<tbody>'+bunProdList.map(function(b){
       var maxReg=Object.entries(b.regions).sort(function(a2,a3){return a3[1]-a2[1];})[0];
       var minReg=Object.entries(b.regions).filter(function(x){return x[1]>0;}).sort(function(a2,a3){return a2[1]-a3[1];})[0];
       var opp=minReg&&maxReg&&minReg[0]!==maxReg[0]?'<span class="tag amb">Expand to '+{au:'AU',uk:'UK',us:'US'}[minReg[0]]+'</span>':'';
       return '<tr>'+
         '<td><span class="bold">'+b.name.slice(0,40)+'</span></td>'+
+        '<td class="mono text-sm text-muted">'+b.sku+'</td>'+
         '<td class="num">'+audFmt(b.rev)+'</td>'+
         '<td class="num">'+b.qty+'</td>'+
         '<td class="num">'+b.regions.au+'</td>'+
@@ -5853,7 +5878,9 @@ function buildStkProducts(velOrders) {
   var d90 = new Date(Date.now() - 90*86400000);
   function initV(sku) {
     if(!velMap[sku]) velMap[sku] = {
-      au:{d30:0,d90:0,total:0}, uk:{d30:0,d90:0,total:0}, us:{d30:0,d90:0,total:0}
+      au:{d30:0,d90:0,total:0,direct30:0,direct90:0,directTotal:0,bundle30:0,bundle90:0,bundleTotal:0},
+      uk:{d30:0,d90:0,total:0,direct30:0,direct90:0,directTotal:0,bundle30:0,bundle90:0,bundleTotal:0},
+      us:{d30:0,d90:0,total:0,direct30:0,direct90:0,directTotal:0,bundle30:0,bundle90:0,bundleTotal:0},
     };
   }
   (velOrders||[]).forEach(function(r) {
@@ -5866,16 +5893,19 @@ function buildStkProducts(velOrders) {
       var qty = it.qty||1;
       if(!sku || it.type==='digital') return;
       initV(sku);
+      // Direct sale of this SKU (bundle or ISBN sold directly)
       velMap[sku][reg].total += qty;
-      if(in30) velMap[sku][reg].d30 += qty;
-      if(in90) velMap[sku][reg].d90 += qty;
-      // Propagate bundle velocity to components
+      velMap[sku][reg].directTotal += qty;
+      if(in30){ velMap[sku][reg].d30 += qty; velMap[sku][reg].direct30 += qty; }
+      if(in90){ velMap[sku][reg].d90 += qty; velMap[sku][reg].direct90 += qty; }
+      // Propagate bundle sales to component ISBNs (consumed via bundle)
       if(it.type==='bundle') {
         (bundleMap[sku]||[]).forEach(function(csku) {
           initV(csku);
-          velMap[csku][reg].total += qty;
-          if(in30) velMap[csku][reg].d30 += qty;
-          if(in90) velMap[csku][reg].d90 += qty;
+          velMap[csku][reg].total      += qty;
+          velMap[csku][reg].bundleTotal += qty;
+          if(in30){ velMap[csku][reg].d30 += qty; velMap[csku][reg].bundle30 += qty; }
+          if(in90){ velMap[csku][reg].d90 += qty; velMap[csku][reg].bundle90 += qty; }
         });
       }
     });
@@ -5927,12 +5957,15 @@ function buildStkProducts(velOrders) {
     REGS.forEach(function(reg) {
       if(!(reg in stock)) return;
       var stk  = stock[reg]||0;
-      var v    = (velMap[sku]&&velMap[sku][reg])||{d30:0,d90:0,total:0};
+      var v    = (velMap[sku]&&velMap[sku][reg])||{d30:0,d90:0,total:0,direct30:0,direct90:0,directTotal:0,bundle30:0,bundle90:0,bundleTotal:0};
       var rate = v.d30>0 ? v.d30/30 : v.d90>0 ? v.d90/90 : 0;
       var days = (stk>0&&rate>0) ? Math.round(stk/rate) : (stk>0?9999:0);
       var atWarn = lowWatermark>0 && stk>0 && stk<=lowWatermark;
       var status = stk===0?'zero' : atWarn?'critical' : days===9999?'ok' : days<=30?'critical' : days<=120?'low' : 'ok';
-      r[reg] = {stk:stk, status:status, days:days, rate:rate, d30:v.d30, d90:v.d90, total:v.total};
+      r[reg] = {stk:stk, status:status, days:days, rate:rate,
+                d30:v.d30, d90:v.d90, total:v.total,
+                direct30:v.direct30||0, direct90:v.direct90||0, directTotal:v.directTotal||0,
+                bundle30:v.bundle30||0, bundle90:v.bundle90||0, bundleTotal:v.bundleTotal||0};
     });
 
     return {
@@ -6135,7 +6168,7 @@ function renderStkTable(reg) {
     REGS.map(function(r) {
       var fl = {au:'🇦🇺',uk:'🇬🇧',us:'🇺🇸'}[r];
       var curr = REG_CURR[r];
-      return '<th class="r">'+fl+' Stock</th><th>Status</th><th class="r">Sold 30d</th><th class="r">Days Left</th>'+
+      return '<th class="r">'+fl+' Stock</th><th>Status</th><th class="r">Sold 30d</th><th class="r">Direct</th><th class="r">Bundle</th><th class="r">Days Left</th>'+
              (hasPL?'<th class="r">'+curr+' Price</th>':'');
     }).join('')+
     '</tr></thead><tbody>';
@@ -6163,9 +6196,12 @@ function renderStkTable(reg) {
               var rd = cp.r[r];
               if(!rd) return '<td colspan="'+(hasPL?5:4)+'" class="text-muted text-xs r">—</td>';
               var col = rd.stk===0?'var(--c-red)':rd.status==='critical'?'var(--c-red)':rd.status==='low'?'var(--c-amb)':'var(--c-grn)';
+              var cDirect = rd.direct30||0; var cBundle = rd.bundle30||0;
               return '<td class="num" style="font-weight:700;color:'+col+';font-size:11px">'+rd.stk.toLocaleString('en-AU')+'</td>'+
                 '<td>'+stkPill(rd)+'</td>'+
                 '<td class="num text-muted" style="font-size:11px">'+rd.d30+'</td>'+
+                '<td class="num text-muted" style="font-size:11px" title="Direct sales">'+cDirect+'</td>'+
+                '<td class="num text-grn" style="font-size:11px" title="Via bundle">+'+(cBundle||'0')+'</td>'+
                 '<td class="num text-muted" style="font-size:11px">'+(rd.days===9999||!rd.days?'—':rd.days+'d')+'</td>'+
                 (hasPL?'<td class="num text-muted" style="font-size:11px">'+fmtPLPrice(csku, REG_CURR[r])+'</td>':'');
             }).join('')+
@@ -6185,9 +6221,13 @@ function renderStkTable(reg) {
       if((rd.status==='critical'||rd.stk===0) && rd.total>0) {
         reorderItems.push({name:p.name,sku:p.sku,reg:r,stk:rd.stk,days:rd.days,rate:rd.rate,suggest:Math.round(rd.rate*90)});
       }
+      var directStr = rd.direct30>0 ? rd.direct30.toString() : (rd.directTotal>0?'<span class="text-muted text-xs">—</span>':'<span class="text-muted">0</span>');
+      var bundleStr = rd.bundle30>0 ? '<span class="text-grn">+'+rd.bundle30+'</span>' : '<span class="text-muted">0</span>';
       return '<td class="num" style="font-weight:700;color:'+col+'">'+rd.stk.toLocaleString('en-AU')+'</td>'+
         '<td>'+stkPill(rd)+'</td>'+
         '<td class="num text-muted">'+rd.d30+'</td>'+
+        '<td class="num text-muted" title="Sold directly in last 30d">'+directStr+'</td>'+
+        '<td class="num" title="Consumed via bundle in last 30d" style="font-size:11px">'+bundleStr+'</td>'+
         '<td class="num '+(rd.days!==9999&&rd.days<=30?'text-red bold':rd.days<=120?'text-amb':'text-muted')+'">'+daysStr+'</td>'+
         (hasPL?'<td class="num">'+fmtPLPrice(p.sku, REG_CURR[r])+'</td>':'');
     }).join('');
