@@ -1424,11 +1424,20 @@ function getPrevOrders(orders){
   var now   = new Date();
   var from2, to2;
   if(range==='mtd'){
-    from2 = new Date(now.getFullYear(),now.getMonth()-1,1);
-    to2   = new Date(now.getFullYear(),now.getMonth(),0,23,59,59);
+    // Same period last month: 1st to same day-of-month as today
+    var dayOfMonth = now.getDate();
+    from2 = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    to2   = new Date(now.getFullYear(), now.getMonth()-1, dayOfMonth, 23, 59, 59);
   } else if(range==='lm'){
     from2 = new Date(now.getFullYear(),now.getMonth()-2,1);
     to2   = new Date(now.getFullYear(),now.getMonth()-1,0,23,59,59);
+  } else if(range==='fytd'){
+    // Same days into last FY
+    var fyStart = now.getMonth()>=6 ? new Date(now.getFullYear(),6,1) : new Date(now.getFullYear()-1,6,1);
+    var daysSinceFyStart = Math.floor((now - fyStart) / 86400000);
+    var prevFyStart = new Date(fyStart.getFullYear()-1, 6, 1);
+    from2 = prevFyStart;
+    to2   = new Date(prevFyStart.getTime() + daysSinceFyStart*86400000 + 86399999);
   } else if(!isNaN(parseInt(range))){
     var days = parseInt(range);
     to2   = new Date(now - days*86400000);
@@ -1436,14 +1445,15 @@ function getPrevOrders(orders){
   } else {
     return [];
   }
+  var chk = filterState.channels;
   return rawO.filter(function(r){
     if(r._zero) return false;
     var d = r._date;
     if(!d) return false;
+    if(chk.length && !chk.includes(r._region)) return false;
     return d >= from2 && d <= to2;
   });
 }
-
 function buildFilters(){
   var pays = [...new Set(rawO.map(function(r){return r._pay;}))].sort();
   var fb = document.getElementById('filterBody');
@@ -1625,7 +1635,15 @@ function updateTopbar(){
     }
 
     if(periodMonths.length > 0){
-      var tgt = TARGETS.global || {};
+      // Map active region filter to TARGETS key
+      var activeCh = filterState.channels;
+      var tgtKey = 'global';
+      if(activeCh.length === 1){
+        if(activeCh[0]==='au') tgtKey='apac';
+        else if(activeCh[0]==='uk') tgtKey='emea';
+        else if(activeCh[0]==='us') tgtKey='amer';
+      }
+      var tgt = TARGETS[tgtKey] || TARGETS.global || {};
       lyRev  = periodMonths.reduce(function(s,m){ return s + (tgt[m] ? (tgt[m].fy25_rev||0) : 0); }, 0);
       tgtRev = periodMonths.reduce(function(s,m){ return s + (tgt[m] ? (tgt[m].fy26_kpi||0) : 0); }, 0);
       if(lyRev===0) lyRev = null;
@@ -2313,78 +2331,398 @@ function calcHealthScore(orders, prev){
 // ── Executive Summary ──────────────────────────────────────────────────────
 function rExec(orders){
   var el = document.getElementById('panel-exec');
-  var prev = getPrevOrders(orders);
-  var rev  = orders.reduce(function(s,r){return s+r._aud;},0);
-  var cnt  = orders.length;
-  var aov  = cnt?rev/cnt:0;
-  var prevRev=prev.reduce(function(s,r){return s+r._aud;},0);
-  var prevCnt=prev.length;
 
-  // YTD
+  // ── Always use FY to date regardless of filter ───────────────────────────
   var ytdMonths = getYTDMonths();
-  var ytdOrders = rawO.filter(function(r){return !r._zero&&r._month&&ytdMonths.includes(r._month);});
-  var ytdRev    = ytdOrders.reduce(function(s,r){return s+r._aud;},0);
-  var ytdCnt    = ytdOrders.length;
+  var now = new Date();
+  var fyStart = now.getMonth()>=6 ? new Date(now.getFullYear(),6,1) : new Date(now.getFullYear()-1,6,1);
+  var fyOrders = rawO.filter(function(r){
+    return !r._excluded && !r._zero && r._date && r._date>=fyStart;
+  });
+  var fyAllOrders = rawO.filter(function(r){
+    return !r._excluded && r._date && r._date>=fyStart;
+  }); // includes free orders for count/conv
 
-  // Targets
-  var tgtData = getTargetMonths(ytdMonths[0], ytdMonths[ytdMonths.length-1], 'global');
-  var tgtRev  = Object.values(tgtData).reduce(function(s,t){return s+(t.fy26_kpi||0);},0);
+  // ── FY last year same period ──────────────────────────────────────────────
+  var lyFyStart = new Date(fyStart.getFullYear()-1, 6, 1);
+  var daysSoFar = Math.floor((now - fyStart)/86400000);
+  var lyPeriodEnd = new Date(lyFyStart.getTime() + daysSoFar*86400000 + 86399999);
+  var lyFyOrders = rawO.filter(function(r){
+    return !r._excluded && !r._zero && r._date && r._date>=lyFyStart && r._date<=lyPeriodEnd;
+  });
 
-  var auRev=regRevenue(orders,'au'), ukRev=regRevenue(orders,'uk'), usRev=regRevenue(orders,'us');
+  // ── Core FY metrics ───────────────────────────────────────────────────────
+  var fyRev   = fyOrders.reduce(function(s,r){return s+r._aud;},0);
+  var fyCnt   = fyAllOrders.length;
+  var fyLyRev = lyFyOrders.reduce(function(s,r){return s+r._aud;},0);
+  var fyLyCnt = lyFyOrders.length;
+  var fyAov   = fyOrders.length ? fyRev/fyOrders.length : 0;
+  var fyLyAov = lyFyOrders.length ? fyLyRev/lyFyOrders.length : 0;
+  var fyGp    = (typeof calcGrossProfit==='function') ? calcGrossProfit(fyOrders) : null;
+  var fyGpPct = (fyGp!==null&&fyRev>0) ? fyGp/fyRev*100 : null;
 
-  el.innerHTML = '<div class="g4 mb14">'+
-    kpiCard('Period Revenue','<span style="font-size:22px">'+audFmt(rev)+'</span>','<span>'+cnt.toLocaleString()+' orders</span> '+deltaBadge(rev,prevRev),'var(--c-brand)',null)+
-    kpiCard('AOV','<span style="font-size:22px">'+audFmt(aov)+'</span>',deltaBadge(aov,prevCnt?prevRev/prevCnt:0),'var(--c-pur)',null)+
-    kpiCard('YTD Revenue','<span style="font-size:22px">'+audFmt(ytdRev)+'</span>',tgtRev>0?'<span class="delta '+(ytdRev>=tgtRev?'up':'dn')+'">'+pctFmt(ytdRev/tgtRev*100)+' of target</span>':'<span class="text-muted">No target set</span>','var(--c-grn)',tgtRev,tgtRev>0?ytdRev/tgtRev*100:undefined)+
-    kpiCard('YTD Orders','<span style="font-size:22px">'+ytdCnt.toLocaleString()+'</span>','<span class="text-muted">FY to date</span>','var(--c-org)',null)+
-  '</div>'+
+  // ── Full FY targets ───────────────────────────────────────────────────────
+  var allFyMonths = [];
+  var t = new Date(fyStart.getFullYear(), fyStart.getMonth(), 1);
+  while(t.getFullYear()<fyStart.getFullYear()+1 || t.getMonth()<6){
+    allFyMonths.push(monthKey(t)); t.setMonth(t.getMonth()+1);
+    if(allFyMonths.length>12) break;
+  }
+  var tgtData   = TARGETS && TARGETS.global ? TARGETS.global : {};
+  var tgtRevFY  = allFyMonths.reduce(function(s,m){return s+(tgtData[m]?tgtData[m].fy26_kpi||0:0);},0);
+  var tgtOrdFY  = allFyMonths.reduce(function(s,m){return s+(tgtData[m]?tgtData[m].fy26_kpi_orders||0:0);},0);
+  var tgtLyRevFY= allFyMonths.reduce(function(s,m){return s+(tgtData[m]?tgtData[m].fy25_rev||0:0);},0);
 
-  '<div class="g3 mb14">'+
-    '<div class="card">'+
-      '<div class="card-title mb10">🇦🇺 AU Revenue</div>'+
-      '<div class="kpi-value sm">'+audFmt(auRev)+'</div>'+
-      '<div class="kpi-meta mt8">'+pctFmt(rev?auRev/rev*100:0)+' of total '+deltaBadge(auRev, prevRev>0?regRevenue(prev,'au'):0)+'</div>'+
-      '<div class="pb pb-sm mt12"><div class="pb-fill pb-blu" style="width:'+pctFmt(rev?auRev/rev*100:0)+'"></div></div>'+
+  // ── Run rate projection ───────────────────────────────────────────────────
+  var daysElapsed = Math.max(1, Math.floor((now - fyStart)/86400000));
+  var fyTotalDays = 365;
+  var runRate = fyRev / daysElapsed * fyTotalDays;
+  var monthsLeft = Math.max(0, 12 - ytdMonths.length);
+
+  // ── Regional FY ───────────────────────────────────────────────────────────
+  function fyRegData(reg, tgtKey) {
+    var ro = fyOrders.filter(function(r){return r._region===reg;});
+    var rv = ro.reduce(function(s,r){return s+r._aud;},0);
+    var rt = TARGETS && TARGETS[tgtKey] ? TARGETS[tgtKey] : {};
+    var tgt = allFyMonths.reduce(function(s,m){return s+(rt[m]?rt[m].fy26_kpi||0:0);},0);
+    var ly  = allFyMonths.reduce(function(s,m){return s+(rt[m]?rt[m].fy25_rev||0:0);},0);
+    var pct = tgt>0 ? rv/tgt*100 : null;
+    var rag = pct===null?'muted':pct>=90?'grn':pct>=60?'amb':'red';
+    return {rev:rv, tgt:tgt, ly:ly, pct:pct, rag:rag, cnt:ro.length};
+  }
+  var auD = fyRegData('au','apac');
+  var ukD = fyRegData('uk','emea');
+  var usD = fyRegData('us','amer');
+
+  // ── Visitors & conversion ─────────────────────────────────────────────────
+  var visMap2={};
+  if(SETTINGS.visitors) SETTINGS.visitors.forEach(function(v){visMap2[v.month]={all:v.all||0,au:v.au||0,uk:v.uk||0,us:v.us||0};});
+  var fyVis={all:0,au:0,uk:0,us:0};
+  ytdMonths.forEach(function(m){if(visMap2[m]){fyVis.all+=visMap2[m].all;fyVis.au+=visMap2[m].au;fyVis.uk+=visMap2[m].uk;fyVis.us+=visMap2[m].us;}});
+  var fyConv = fyVis.all>0 ? fyCnt/fyVis.all*100 : null;
+  var fyRpv  = fyVis.all>0 ? fyRev/fyVis.all : null;
+  // LY conv from TARGETS
+  var lyConv = allFyMonths.reduce(function(s,m){return s+(tgtData[m]?tgtData[m].fy25_cr||0:0);},0)/Math.max(1,allFyMonths.filter(function(m){return tgtData[m]&&tgtData[m].fy25_cr;}).length)*100;
+
+  // ── Customer quality ──────────────────────────────────────────────────────
+  var custOrders={};
+  fyOrders.forEach(function(r){if(r._email){if(!custOrders[r._email])custOrders[r._email]=[];custOrders[r._email].push(r._aud);}});
+  var allCusts = Object.keys(custOrders);
+  var returning = allCusts.filter(function(e){return custOrders[e].length>1;});
+  var newCusts  = allCusts.filter(function(e){return custOrders[e].length===1;});
+  var repeatRate = allCusts.length>0 ? returning.length/allCusts.length*100 : 0;
+  var ltv = allCusts.length>0 ? fyRev/allCusts.length : 0;
+  var retRev = returning.reduce(function(s,e){return s+custOrders[e].reduce(function(a,b){return a+b;},0);},0);
+  var newRev  = newCusts.reduce(function(s,e){return s+custOrders[e][0];},0);
+  var avgFreq = allCusts.length>0 ? fyOrders.length/allCusts.length : 0;
+
+  // ── Basket composition ────────────────────────────────────────────────────
+  var bDigRev=0,bPhyRev=0,bBunRev=0,bDigCnt=0,bPhyCnt=0,bBunCnt=0;
+  fyOrders.forEach(function(r){
+    var bt=r._basketType;
+    if(bt==='digital'){bDigRev+=r._aud;bDigCnt++;}
+    else if(bt==='bundle'){bBunRev+=r._aud;bBunCnt++;}
+    else{bPhyRev+=r._aud;bPhyCnt++;}
+  });
+
+  // ── Risk signals ──────────────────────────────────────────────────────────
+  var refOrders = rawO.filter(function(r){return (r._status||'').toLowerCase().includes('refund')&&r._date&&r._date>=fyStart;});
+  var refRev = refOrders.reduce(function(s,r){return s+parseFloat(r._aud||0);},0);
+  var refRate = fyRev>0 ? refRev/(fyRev+refRev)*100 : 0;
+
+  var discOrders = fyOrders.filter(function(r){return r._audCoup>0;});
+  var discDepth = discOrders.length>0 ? discOrders.reduce(function(s,r){return s+r._audCoup/r._aud*100;},0)/discOrders.length : 0;
+  var discPct = fyOrders.length>0 ? discOrders.length/fyOrders.length*100 : 0;
+
+  var esaFyOrders = fyOrders.filter(function(r){return r._esa;});
+  var esaFyRev = esaFyOrders.reduce(function(s,r){return s+r._aud;},0);
+  var esaPct = fyRev>0 ? esaFyRev/fyRev*100 : 0;
+
+  var awaitOrds = rawO.filter(function(r){return r._awaiting;});
+  var awaitRev  = awaitOrds.reduce(function(s,r){return s+r._aud;},0);
+
+  // ── Top 5 products ────────────────────────────────────────────────────────
+  var prodRev={};
+  fyOrders.forEach(function(r){
+    (r._items||[]).forEach(function(it){
+      if(!it.sku||it.type==='digital') return;
+      if(!prodRev[it.sku]) prodRev[it.sku]={sku:it.sku,name:it.name||it.sku,rev:0,qty:0};
+      prodRev[it.sku].rev += it.audPrice||0;
+      prodRev[it.sku].qty += it.qty||1;
+    });
+  });
+  var top5 = Object.values(prodRev).sort(function(a,b){return b.rev-a.rev;}).slice(0,5);
+
+  // ── Risk flags ────────────────────────────────────────────────────────────
+  var flags=[];
+  if(tgtRevFY>0&&fyRev/tgtRevFY<0.7&&monthsLeft<=3) flags.push({c:'red',t:'Target gap: '+pctFmt(fyRev/tgtRevFY*100)+' achieved with '+monthsLeft+' months left'});
+  if(auD.pct!==null&&auD.pct<60) flags.push({c:'red',t:'AU is '+pctFmt(auD.pct)+' of FY target — A$'+Math.round(auD.tgt-auD.rev).toLocaleString()+' gap'});
+  if(ukD.pct!==null&&ukD.pct<60) flags.push({c:'red',t:'UK is '+pctFmt(ukD.pct)+' of FY target — A$'+Math.round(ukD.tgt-ukD.rev).toLocaleString()+' gap'});
+  if(usD.pct!==null&&usD.pct<60) flags.push({c:'red',t:'USA is '+pctFmt(usD.pct)+' of FY target — A$'+Math.round(usD.tgt-usD.rev).toLocaleString()+' gap'});
+  if(esaPct>40) flags.push({c:'amb',t:'ESA dependency: '+pctFmt(esaPct)+' of FY revenue — concentration risk'});
+  if(refRate>3) flags.push({c:'amb',t:'Refund rate elevated at '+pctFmt(refRate)+' of revenue'});
+  if(discDepth>20) flags.push({c:'amb',t:'Avg discount depth '+pctFmt(discDepth)+' on '+pctFmt(discPct)+' of orders — margin pressure'});
+  if(!flags.length) flags.push({c:'grn',t:'No critical risk flags — business on track'});
+
+  // ── Monthly MoM trend ─────────────────────────────────────────────────────
+  var momMonths={};
+  rawO.filter(function(r){return !r._zero;}).forEach(function(r){if(r._month)momMonths[r._month]=(momMonths[r._month]||0)+1;});
+  var last6m = Object.keys(momMonths).sort().slice(-6);
+
+  // ── Seasonal index ────────────────────────────────────────────────────────
+  var curMonthRev = fyOrders.filter(function(r){return r._month===monthKey(now);}).reduce(function(s,r){return s+r._aud;},0);
+  var lyMonthKey  = (now.getFullYear()-1)+'-'+(String(now.getMonth()+1).padStart(2,'0'));
+  var lyMonthRev  = rawO.filter(function(r){return !r._zero&&r._month===lyMonthKey;}).reduce(function(s,r){return s+r._aud;},0);
+  var seasonIdx   = lyMonthRev>0 ? curMonthRev/lyMonthRev*100 : null;
+
+  // ── Build HTML ────────────────────────────────────────────────────────────
+  function rag(v){ return v==='grn'?'var(--c-grn)':v==='amb'?'var(--c-amb)':'var(--c-red)'; }
+  function ragBg(v){ return v==='grn'?'rgba(34,197,94,0.08)':v==='amb'?'rgba(245,158,11,0.08)':'rgba(239,68,68,0.08)'; }
+  function pb(pct,col){ var w=Math.min(100,pct||0); return '<div style="background:var(--c-border);border-radius:4px;height:6px;margin-top:6px"><div style="width:'+w+'%;height:100%;border-radius:4px;background:'+col+'"></div></div>'; }
+  function secHdr(t){ return '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;margin:20px 0 10px">'+t+'</div>'; }
+  function metaRow(l,v,sub){ return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--c-border)"><span style="font-size:12px;color:var(--c-text-2)">'+l+'</span><span style="font-size:13px;font-weight:600">'+v+(sub?'<span style="font-size:11px;color:var(--c-text-3);margin-left:6px">'+sub+'</span>':'')+'</span></div>'; }
+
+  var html2 = '';
+
+  // S1: FY Scorecard
+  html2 += secHdr('FY26 Scorecard — always year to date');
+  html2 += '<div class="g4 mb14">';
+  // Revenue
+  var revPct = tgtRevFY>0?fyRev/tgtRevFY*100:null;
+  html2 += '<div class="card">'+
+    '<div class="card-title mb6">FY Revenue</div>'+
+    '<div style="font-size:24px;font-weight:800;color:var(--c-brand)">'+audFmt(fyRev)+'</div>'+
+    (tgtRevFY>0?'<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">of '+audFmt(tgtRevFY)+' target</div>':'')+
+    (revPct!==null?pb(revPct,revPct>=90?'var(--c-grn)':revPct>=60?'var(--c-amb)':'var(--c-red)'):'') +
+    '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px">'+
+      '<span style="color:var(--c-text-3)">LY: '+audFmt(fyLyRev)+'</span>'+
+      (revPct!==null?'<span style="font-weight:700;color:'+(revPct>=90?'var(--c-grn)':revPct>=60?'var(--c-amb)':'var(--c-red)')+'">'+pctFmt(revPct)+' of target</span>':'')+
     '</div>'+
-    '<div class="card">'+
-      '<div class="card-title mb10">🇬🇧 UK Revenue</div>'+
-      '<div class="kpi-value sm">'+audFmt(ukRev)+'</div>'+
-      '<div class="kpi-meta mt8">'+pctFmt(rev?ukRev/rev*100:0)+' of total '+deltaBadge(ukRev, prevRev>0?regRevenue(prev,'uk'):0)+'</div>'+
-      '<div class="pb pb-sm mt12"><div class="pb-fill pb-pur" style="width:'+pctFmt(rev?ukRev/rev*100:0)+'"></div></div>'+
-    '</div>'+
-    '<div class="card">'+
-      '<div class="card-title mb10">🇺🇸 USA Revenue</div>'+
-      '<div class="kpi-value sm">'+audFmt(usRev)+'</div>'+
-      '<div class="kpi-meta mt8">'+pctFmt(rev?usRev/rev*100:0)+' of total '+deltaBadge(usRev, prevRev>0?regRevenue(prev,'us'):0)+'</div>'+
-      '<div class="pb pb-sm mt12"><div class="pb-fill pb-grn" style="width:'+pctFmt(rev?usRev/rev*100:0)+'"></div></div>'+
-    '</div>'+
-  '</div>'+
-
-  '<div class="g-2-1">'+
-    '<div class="card">'+
-      '<div class="card-hdr"><div class="card-title-lg">Monthly Revenue</div></div>'+
-      '<div class="cw h240"><canvas id="execTrendC"></canvas></div>'+
-    '</div>'+
-    '<div class="card">'+
-      '<div class="card-hdr"><div class="card-title-lg">Top Insights</div></div>'+
-      '<div id="execInsBox" style="max-height:280px;overflow-y:auto"></div>'+
+    (runRate>0&&tgtRevFY>0?'<div style="font-size:11px;color:var(--c-text-3);margin-top:4px;padding-top:6px;border-top:1px solid var(--c-border)">Run rate: '+audFmt(runRate)+' projected</div>':'')+
+  '</div>';
+  // Orders
+  var ordPct = tgtOrdFY>0?fyCnt/tgtOrdFY*100:null;
+  html2 += '<div class="card">'+
+    '<div class="card-title mb6">FY Orders</div>'+
+    '<div style="font-size:24px;font-weight:800;color:var(--c-pur)">'+fyCnt.toLocaleString('en-AU')+'</div>'+
+    (tgtOrdFY>0?'<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">of '+tgtOrdFY.toLocaleString()+' target</div>':'')+
+    (ordPct!==null?pb(ordPct,ordPct>=90?'var(--c-grn)':ordPct>=60?'var(--c-amb)':'var(--c-red)'):'') +
+    '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px">'+
+      '<span style="color:var(--c-text-3)">LY: '+fyLyCnt.toLocaleString()+'</span>'+
+      (ordPct!==null?'<span style="font-weight:700;color:'+(ordPct>=90?'var(--c-grn)':ordPct>=60?'var(--c-amb)':'var(--c-red)')+'">'+pctFmt(ordPct)+' of target</span>':'')+
     '</div>'+
   '</div>';
+  // AOV
+  html2 += '<div class="card">'+
+    '<div class="card-title mb6">AOV</div>'+
+    '<div style="font-size:24px;font-weight:800;color:var(--c-org)">'+audFmt(fyAov)+'</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">FY year to date</div>'+
+    '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px">'+
+      '<span style="color:var(--c-text-3)">LY: '+audFmt(fyLyAov)+'</span>'+
+      deltaBadge(fyAov,fyLyAov)+
+    '</div>'+
+  '</div>';
+  // Gross Profit
+  html2 += '<div class="card">'+
+    '<div class="card-title mb6">Est. Gross Profit</div>'+
+    '<div style="font-size:24px;font-weight:800;color:var(--c-grn)">'+(fyGp!==null?audFmt(fyGp):'Set margins')+'</div>'+
+    (fyGpPct!==null?'<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">'+pctFmt(fyGpPct)+' GP margin</div>':'')+
+    (fyGp!==null?pb(fyGpPct||0,'var(--c-grn)'):'') +
+  '</div>';
+  html2 += '</div>';
+
+  // S2: Regional scoreboard
+  html2 += secHdr('Regional Scorecard');
+  html2 += '<div class="g3 mb14">';
+  [{d:auD,n:'🇦🇺 AU',col:'var(--c-brand)'},{d:ukD,n:'🇬🇧 UK',col:'var(--c-pur)'},{d:usD,n:'🇺🇸 USA',col:'var(--c-grn)'}].forEach(function(rd){
+    var d=rd.d,pct=d.pct||0;
+    html2 += '<div class="card" style="border-left:3px solid '+rag(d.rag)+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+        '<div style="font-weight:700;font-size:13px">'+rd.n+'</div>'+
+        '<div style="font-size:11px;font-weight:700;color:'+rag(d.rag)+'">'+pctFmt(pct)+' of target</div>'+
+      '</div>'+
+      '<div style="font-size:20px;font-weight:800;color:'+rd.col+'">'+audFmt(d.rev)+'</div>'+
+      pb(pct,rag(d.rag))+
+      '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:var(--c-text-3)">'+
+        '<span>Target: '+audFmt(d.tgt)+'</span>'+
+        '<span>Gap: '+audFmt(Math.max(0,d.tgt-d.rev))+'</span>'+
+      '</div>'+
+      '<div style="font-size:11px;color:var(--c-text-3);margin-top:4px">LY: '+audFmt(d.ly)+' · '+d.cnt.toLocaleString()+' orders</div>'+
+    '</div>';
+  });
+  html2 += '</div>';
+
+  // S3: Conversion & Traffic
+  html2 += secHdr('Conversion & Traffic');
+  html2 += '<div class="g3 mb14">';
+  // Global funnel
+  html2 += '<div class="card">'+
+    '<div class="card-title mb8">Global Funnel</div>'+
+    metaRow('Visitors (FY)',fyVis.all>0?fyVis.all.toLocaleString('en-AU'):'Not set','')+
+    metaRow('Orders',fyCnt.toLocaleString('en-AU'),'')+
+    metaRow('Conversion',fyConv!==null?pctFmt(fyConv):'—','LY avg: '+pctFmt(lyConv))+
+    metaRow('Revenue per Visitor',fyRpv!==null?audFmt(fyRpv):'—','')+
+    metaRow('Revenue',audFmt(fyRev),'')+
+  '</div>';
+  // Per region
+  html2 += '<div class="card">'+
+    '<div class="card-title mb8">Conversion by Region</div>';
+  [{reg:'au',label:'🇦🇺 AU',d:auD,vis:fyVis.au},{reg:'uk',label:'🇬🇧 UK',d:ukD,vis:fyVis.uk},{reg:'us',label:'🇺🇸 USA',d:usD,vis:fyVis.us}].forEach(function(r){
+    var conv = r.vis>0 ? r.d.cnt/r.vis*100 : null;
+    var rpv  = r.vis>0 ? r.d.rev/r.vis : null;
+    html2 += metaRow(r.label,(conv!==null?pctFmt(conv):'—')+' conv',(rpv!==null?audFmt(rpv)+' RPV':'no visitor data'));
+  });
+  html2 += '</div>';
+  // ESA
+  html2 += '<div class="card" style="border-left:3px solid '+(esaPct>40?'var(--c-red)':esaPct>25?'var(--c-amb)':'var(--c-grn)')+'">'+
+    '<div class="card-title mb8">ESA Dependency</div>'+
+    '<div style="font-size:24px;font-weight:800;color:'+(esaPct>40?'var(--c-red)':esaPct>25?'var(--c-amb)':'var(--c-grn)')+'">'+pctFmt(esaPct)+'</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">of FY revenue from ESA</div>'+
+    pb(esaPct,esaPct>40?'var(--c-red)':esaPct>25?'var(--c-amb)':'var(--c-grn)')+
+    metaRow('ESA Revenue',audFmt(esaFyRev),esaFyOrders.length+' orders')+
+    metaRow('Non-ESA',audFmt(fyRev-esaFyRev),'')+
+    (esaPct>40?'<div style="font-size:11px;color:var(--c-red);margin-top:8px;padding:6px;background:rgba(239,68,68,0.08);border-radius:6px">⚠️ Concentration risk — over 40% dependency</div>':'')+
+  '</div>';
+  html2 += '</div>';
+
+  // S4: Customer Quality
+  html2 += secHdr('Customer Quality');
+  html2 += '<div class="g4 mb14">';
+  html2 += '<div class="card"><div class="card-title mb6">Repeat Purchase Rate</div>'+
+    '<div style="font-size:24px;font-weight:800;color:var(--c-brand)">'+pctFmt(repeatRate)+'</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">'+returning.length.toLocaleString()+' returning of '+allCusts.length.toLocaleString()+' customers</div>'+
+    pb(repeatRate,'var(--c-brand)')+
+  '</div>';
+  html2 += '<div class="card"><div class="card-title mb6">Customer LTV</div>'+
+    '<div style="font-size:24px;font-weight:800;color:var(--c-pur)">'+audFmt(ltv)+'</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">avg revenue per customer FY</div>'+
+    metaRow('Avg order freq',avgFreq.toFixed(1)+'x','')+
+  '</div>';
+  html2 += '<div class="card"><div class="card-title mb6">New vs Returning</div>'+
+    '<div style="display:flex;gap:16px;margin-top:8px">'+
+      '<div><div style="font-size:18px;font-weight:700;color:var(--c-grn)">'+pctFmt(newCusts.length/Math.max(1,allCusts.length)*100)+'</div><div style="font-size:11px;color:var(--c-text-3)">New</div></div>'+
+      '<div><div style="font-size:18px;font-weight:700;color:var(--c-brand)">'+pctFmt(returning.length/Math.max(1,allCusts.length)*100)+'</div><div style="font-size:11px;color:var(--c-text-3)">Returning</div></div>'+
+    '</div>'+
+    metaRow('New rev',audFmt(newRev),pctFmt(fyRev>0?newRev/fyRev*100:0))+
+    metaRow('Returning rev',audFmt(retRev),pctFmt(fyRev>0?retRev/fyRev*100:0))+
+  '</div>';
+  html2 += '<div class="card"><div class="card-title mb6">Order Frequency</div>'+
+    '<div style="font-size:24px;font-weight:800;color:var(--c-org)">'+avgFreq.toFixed(1)+'x</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">avg orders per customer FY</div>'+
+    metaRow('1-time buyers',newCusts.length.toLocaleString(),'')+
+    metaRow('Multi-buyers',returning.length.toLocaleString(),'')+
+  '</div>';
+  html2 += '</div>';
+
+  // S5: Basket & Margin
+  html2 += secHdr('Basket Composition & Margin');
+  html2 += '<div class="g3 mb14">';
+  var bTotal = bDigRev+bPhyRev+bBunRev||1;
+  html2 += '<div class="card"><div class="card-title mb8">Revenue Mix</div>'+
+    metaRow('📱 Digital',audFmt(bDigRev),pctFmt(bDigRev/bTotal*100))+
+    metaRow('📚 Physical',audFmt(bPhyRev),pctFmt(bPhyRev/bTotal*100))+
+    metaRow('📦 Bundle',audFmt(bBunRev),pctFmt(bBunRev/bTotal*100))+
+    '<div style="margin-top:10px">'+
+      '<div style="height:8px;border-radius:4px;overflow:hidden;display:flex">'+
+        '<div style="width:'+pctFmt(bDigRev/bTotal*100)+';background:var(--c-brand)"></div>'+
+        '<div style="width:'+pctFmt(bPhyRev/bTotal*100)+';background:var(--c-grn)"></div>'+
+        '<div style="width:'+pctFmt(bBunRev/bTotal*100)+';background:var(--c-pur)"></div>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+  html2 += '<div class="card"><div class="card-title mb8">AOV by Type</div>'+
+    metaRow('Digital AOV',bDigCnt>0?audFmt(bDigRev/bDigCnt):'—',bDigCnt+' orders')+
+    metaRow('Physical AOV',bPhyCnt>0?audFmt(bPhyRev/bPhyCnt):'—',bPhyCnt+' orders')+
+    metaRow('Bundle AOV',bBunCnt>0?audFmt(bBunRev/bBunCnt):'—',bBunCnt+' orders')+
+  '</div>';
+  html2 += '<div class="card"><div class="card-title mb8">Margin & Discounts</div>'+
+    metaRow('Est. GP Margin',fyGpPct!==null?pctFmt(fyGpPct):'—','')+
+    metaRow('Discount rate',pctFmt(discPct),'of orders'),
+    metaRow('Avg discount depth',pctFmt(discDepth),'avg per discounted order')+
+    metaRow('Refund rate',pctFmt(refRate),'of revenue')+
+  '</div>';
+  html2 += '</div>';
+
+  // S6: Risk Flags
+  html2 += secHdr('Risk Flags');
+  html2 += '<div class="mb14" style="display:flex;flex-direction:column;gap:6px">';
+  flags.forEach(function(f){
+    html2 += '<div style="padding:10px 14px;border-radius:8px;background:'+ragBg(f.c)+';border-left:3px solid '+rag(f.c)+';font-size:12px;font-weight:500">'+(f.c==='red'?'🔴':f.c==='amb'?'🟡':'🟢')+' '+f.t+'</div>';
+  });
+  html2 += '</div>';
+
+  // S7: Growth & Forward-looking
+  html2 += secHdr('Growth Indicators');
+  html2 += '<div class="g3 mb14">';
+  // Run rate
+  html2 += '<div class="card"><div class="card-title mb8">FY Run Rate Projection</div>'+
+    '<div style="font-size:22px;font-weight:800;color:'+(runRate>=tgtRevFY?'var(--c-grn)':'var(--c-amb)')+'">'+audFmt(runRate)+'</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">projected FY close at current pace</div>'+
+    (tgtRevFY>0?metaRow('vs target',audFmt(tgtRevFY),(runRate>=tgtRevFY?'▲ On track':'▼ '+audFmt(tgtRevFY-runRate)+' short')):'')+
+    metaRow('Days elapsed',daysElapsed+' of '+fyTotalDays,monthsLeft+' months left')+
+  '</div>';
+  // Seasonal index
+  html2 += '<div class="card"><div class="card-title mb8">Seasonal Index</div>'+
+    '<div style="font-size:22px;font-weight:800;color:'+(seasonIdx===null?'var(--c-text-3)':seasonIdx>=100?'var(--c-grn)':'var(--c-amb)')+'">'+
+      (seasonIdx!==null?pctFmt(seasonIdx):'—')+
+    '</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">this month vs same month LY</div>'+
+    metaRow('This month',audFmt(curMonthRev),'')+
+    metaRow('Same month LY',audFmt(lyMonthRev),'')+
+  '</div>';
+  // Fulfilment
+  html2 += '<div class="card"><div class="card-title mb8">Fulfilment</div>'+
+    '<div style="font-size:22px;font-weight:800;color:'+(awaitOrds.length>50?'var(--c-red)':awaitOrds.length>20?'var(--c-amb)':'var(--c-grn)')+'">'+awaitOrds.length+'</div>'+
+    '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">orders awaiting fulfilment</div>'+
+    metaRow('Value',audFmt(awaitRev),'')+
+  '</div>';
+  html2 += '</div>';
+
+  // S8: Top 5 Products
+  html2 += secHdr('Top 5 Products by FY Revenue');
+  html2 += '<div class="card mb14">'+
+    '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+    '<thead><tr>'+
+      '<th style="text-align:left;padding:8px;color:var(--c-text-3);font-weight:600;border-bottom:1px solid var(--c-border)">#</th>'+
+      '<th style="text-align:left;padding:8px;color:var(--c-text-3);font-weight:600;border-bottom:1px solid var(--c-border)">Product</th>'+
+      '<th style="text-align:left;padding:8px;color:var(--c-text-3);font-weight:600;border-bottom:1px solid var(--c-border)">SKU</th>'+
+      '<th style="text-align:right;padding:8px;color:var(--c-text-3);font-weight:600;border-bottom:1px solid var(--c-border)">Revenue</th>'+
+      '<th style="text-align:right;padding:8px;color:var(--c-text-3);font-weight:600;border-bottom:1px solid var(--c-border)">Qty</th>'+
+      '<th style="text-align:right;padding:8px;color:var(--c-text-3);font-weight:600;border-bottom:1px solid var(--c-border)">% of Total</th>'+
+    '</tr></thead><tbody>'+
+    top5.map(function(p,i){
+      return '<tr style="border-bottom:1px solid var(--c-border)">'+
+        '<td style="padding:8px;color:var(--c-text-3)">'+(i+1)+'</td>'+
+        '<td style="padding:8px;font-weight:500">'+p.name.slice(0,40)+'</td>'+
+        '<td style="padding:8px;color:var(--c-text-3);font-family:monospace">'+p.sku+'</td>'+
+        '<td style="padding:8px;text-align:right;font-weight:600">'+audFmt(p.rev)+'</td>'+
+        '<td style="padding:8px;text-align:right;color:var(--c-text-3)">'+p.qty+'</td>'+
+        '<td style="padding:8px;text-align:right">'+pctFmt(fyRev>0?p.rev/fyRev*100:0)+'</td>'+
+      '</tr>';
+    }).join('')+
+    '</tbody></table>'+
+  '</div>';
+
+  // S9: Trend chart + Insights
+  html2 += '<div class="g-2-1">';
+  html2 += '<div class="card"><div class="card-hdr"><div class="card-title-lg">Monthly Revenue Trend</div></div><div class="cw h240"><canvas id="execTrendC"></canvas></div></div>';
+  html2 += '<div class="card"><div class="card-hdr"><div class="card-title-lg">Top Insights</div></div><div id="execInsBox" style="max-height:280px;overflow-y:auto"></div></div>';
+  html2 += '</div>';
+
+  el.innerHTML = html2;
 
   setTimeout(function(){
     var monthRevs={};
     rawO.filter(function(r){return !r._zero;}).forEach(function(r){if(r._month)monthRevs[r._month]=(monthRevs[r._month]||0)+r._aud;});
     var m12=Object.keys(monthRevs).sort().slice(-12);
-    barChart('execTrendC',m12.map(monthLabel),[{label:'Revenue',data:m12.map(function(m){return Math.round(monthRevs[m]||0);}),backgroundColor:'#2563eb88'}]);
-
-    var ins=generateInsights(orders,prev).slice(0,4);
+    barChart('execTrendC',m12.map(monthLabel),[
+      {label:'Revenue',data:m12.map(function(m){return Math.round(monthRevs[m]||0);}),backgroundColor:'#2563eb88'},
+    ]);
+    var ins=generateInsights(fyOrders,lyFyOrders).slice(0,4);
     document.getElementById('execInsBox').innerHTML=ins.length?ins.map(insightHtml).join(''):'<div class="empty" style="padding:20px"><div class="empty-icon">✅</div><div class="empty-title">All clear</div></div>';
   },50);
 }
-</script>
 
-<script>
-// ── Overview ───────────────────────────────────────────────────────────────
 function rOv(orders){
   var el=document.getElementById('panel-overview');
   var prev=getPrevOrders(orders);
