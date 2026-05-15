@@ -1257,6 +1257,7 @@ function preProcess(cb){
       row._shipped   = _sl.includes('shipped')||_sl.includes('completed')||_sl.includes('delivered');
       row._awaiting  = _sl.includes('awaiting fulfillment');
       row._zero      = row._aud < 0.01 || row._excluded;
+      row._freeOrder = row._aud < 0.01 && !row._excluded; // $0 valid orders (rewards redemptions)
 
       // Email/ID
       row._email = (row['Customer Email']||row['Billing Email']||row['Customer ID']||'').toLowerCase().trim();
@@ -1326,6 +1327,36 @@ function cycleESA(){
   if(btn){ btn.textContent = labels[esaFilter]; btn.className = classes[esaFilter]; btn.style.fontWeight='700'; btn.style.minWidth='90px'; }
   renderActive();
   updateTopbar();
+}
+
+function fOrdersAll(){
+  // Same filters as fOrders but includes $0 free orders (rewards redemptions)
+  var base = fOrders();
+  // Also get free orders that pass all filters except _zero
+  var range = document.getElementById('fRange').value;
+  var now = new Date();
+  var from = null, to = null;
+  if(range==='today'){ from=new Date(now.getFullYear(),now.getMonth(),now.getDate()); to=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59); }
+  else if(range==='mtd'){ from=new Date(now.getFullYear(),now.getMonth(),1); }
+  else if(range==='lm'){ from=new Date(now.getFullYear(),now.getMonth()-1,1); to=new Date(now.getFullYear(),now.getMonth(),0,23,59,59); }
+  else if(range==='fytd'){ var fyStart=now.getMonth()>=6?new Date(now.getFullYear(),6,1):new Date(now.getFullYear()-1,6,1); from=fyStart; }
+  else if(range==='custom'){ var fv=document.getElementById('fFrom').value,tv=document.getElementById('fTo').value; if(fv){var fp=fv.split('-');from=new Date(fp[0],fp[1]-1,fp[2]);}if(tv){var tp=tv.split('-');to=new Date(tp[0],tp[1]-1,tp[2],23,59,59);} }
+  else if(!isNaN(parseInt(range))){ from=new Date(now-parseInt(range)*86400000); }
+  var chk=filterState.channels, stk=filterState.statuses, payk=filterState.payMethods, ptk=filterState.prodTypes;
+  var freeOrders = rawO.filter(function(r){
+    if(!r._freeOrder) return false;
+    var d=r._date;
+    if((from||to)&&!d) return false;
+    if(from&&d<from) return false;
+    if(to&&d>to) return false;
+    if(chk.length&&!chk.includes(r._region)) return false;
+    if(stk.length&&!stk.includes(r._status)) return false;
+    if(payk.length&&!payk.includes(r._pay)) return false;
+    if(esaFilter==='esa'&&!r._esa) return false;
+    if(esaFilter==='noesa'&&r._esa) return false;
+    return true;
+  });
+  return base.concat(freeOrders);
 }
 
 function fOrders(){
@@ -1554,14 +1585,15 @@ function vsTgtBadge(actual, tgt){
 
 // ── Topbar KPIs ───────────────────────────────────────────────────────────
 function updateTopbar(){
-  var orders = fOrders();
-  var prev   = getPrevOrders(orders);
-  var rev    = orders.reduce(function(s,r){return s+r._aud;},0);
-  var prevRev= prev.reduce(function(s,r){return s+r._aud;},0);
-  var cnt    = orders.length;
-  var prevCnt= prev.length;
-  var aov    = cnt ? rev/cnt : 0;
-  var prevAov= prevCnt ? prevRev/prevCnt : 0;
+  var orders    = fOrders();       // paid orders only (revenue)
+  var ordersAll = fOrdersAll();    // paid + free orders (count + conversion)
+  var prev      = getPrevOrders(orders);
+  var rev     = orders.reduce(function(s,r){return s+r._aud;},0);
+  var prevRev = prev.reduce(function(s,r){return s+r._aud;},0);
+  var cnt     = ordersAll.length;  // includes free $0 rewards redemptions
+  var prevCnt = prev.length;
+  var aov     = orders.length ? rev/orders.length : 0;  // AOV excludes free orders
+  var prevAov = prevCnt ? prevRev/prevCnt : 0;
   var awaitC = rawO.filter(function(r){return r._awaiting;}).length;
 
   // Vs LY and Vs Target from TARGETS data
@@ -3582,7 +3614,8 @@ function rFinancials(orders){
 
   // ROAS and CAC per region
   function regData(regFilter, tKey){
-    var ro = paid.filter(function(r){return r._region===regFilter;});
+    var allReg = orders.filter(function(r){return r._region===regFilter&&!r._excluded;});
+    var ro = allReg;
     var rv = ro.reduce(function(s,r){return s+r._aud;},0);
     var roasV = (typeof calcROAS==='function') ? calcROAS(rv, regFilter) : null;
     var cacV  = (typeof calcCAC==='function')  ? calcCAC(ro, regFilter)  : null;
