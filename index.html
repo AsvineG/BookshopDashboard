@@ -6066,6 +6066,7 @@ function renderStkTable(reg) {
   var bm = (rawMod&&rawMod.length) ? buildBundleMapFromModifiers() : (window._activeBundleMap||{});
   if(rawMod&&rawMod.length) window._activeBundleMap = bm;
   var hasPL = rawPL && rawPL.length > 0;
+  console.log('renderStkTable: bm keys=', Object.keys(bm).length, 'sample=', Object.keys(bm).slice(0,3));
 
   // Filter
   var filtered = prods.filter(function(p) {
@@ -6115,6 +6116,7 @@ function renderStkTable(reg) {
     // Component expand rows for bundles
     var compRows = '';
     var comps = bm[p.sku] || [];
+    if(p.bundle) console.log('bundle', p.sku, 'comps=', comps.length, 'in bm=', p.sku in bm);
     if(p.bundle && comps.length) {
       compRows = '<tr id="stkExp-'+i+'" style="display:none"><td colspan="50" style="padding:0">'+
         '<table style="width:100%;border-collapse:collapse;background:var(--c-surface-2)">'+
