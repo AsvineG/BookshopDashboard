@@ -3249,6 +3249,17 @@ function rCustomers(orders){
     r._items.forEach(function(i){custMap[id].types.add(i.type);});
   });
   var custs=Object.values(custMap);
+
+  // Build profile map from rawC (Customer Profile column added by fetch_data.py)
+  var profileMap = {};
+  (rawC||[]).forEach(function(c){
+    var id = (c['Customer ID']||'').trim();
+    var prof = (c['Customer Profile']||'Unknown').trim();
+    if(id) profileMap[id] = prof;
+  });
+  // Attach profile to each customer in custMap
+  custs.forEach(function(c){ c.profile = profileMap[c.id] || 'Unknown'; });
+
   var newCusts=custs.filter(function(c){return c.orders.length===1;});
   var repeatCusts=custs.filter(function(c){return c.orders.length>1;});
   var highVal=custs.filter(function(c){return c.rev>500;});
