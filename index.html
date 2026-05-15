@@ -3263,6 +3263,57 @@ function rCustomers(orders){
     kpiCard('Avg LTV',audFmt(avgLTV),'per customer (period)','var(--c-cyn)')+
   '</div>'+
 
+  // ── Customer Profile section ─────────────────────────────────────────────
+  (function(){
+    var mums = custs.filter(function(c){return c.profile==='Mum';});
+    var dads = custs.filter(function(c){return c.profile==='Dad';});
+    var unkn = custs.filter(function(c){return c.profile==='Unknown';});
+    var mumRev = mums.reduce(function(s,c){return s+c.rev;},0);
+    var dadRev = dads.reduce(function(s,c){return s+c.rev;},0);
+    var mumAov = mums.length ? mumRev/mums.reduce(function(s,c){return s+c.orders.length;},0) : 0;
+    var dadAov = dads.length ? dadRev/dads.reduce(function(s,c){return s+c.orders.length;},0) : 0;
+    var total = custs.length||1;
+    el.innerHTML += '<div style="margin:20px 0 10px;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;padding-top:16px;border-top:1px solid var(--c-border)">Customer Profile</div>'+
+      '<div class="g4 mb14">'+
+        '<div class="card" style="border-left:3px solid #ec4899">'+
+          '<div class="card-title mb6">👩 Mums</div>'+
+          '<div style="font-size:22px;font-weight:800;color:#ec4899">'+mums.length.toLocaleString()+'</div>'+
+          '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">'+pctFmt(mums.length/total*100)+' of customers</div>'+
+          '<div style="margin-top:8px;font-size:11px">'+
+            '<div style="display:flex;justify-content:space-between"><span style="color:var(--c-text-3)">Revenue</span><span style="font-weight:600">'+audFmt(mumRev)+'</span></div>'+
+            '<div style="display:flex;justify-content:space-between"><span style="color:var(--c-text-3)">AOV</span><span style="font-weight:600">'+audFmt(mumAov)+'</span></div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="card" style="border-left:3px solid #3b82f6">'+
+          '<div class="card-title mb6">👨 Dads</div>'+
+          '<div style="font-size:22px;font-weight:800;color:#3b82f6">'+dads.length.toLocaleString()+'</div>'+
+          '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">'+pctFmt(dads.length/total*100)+' of customers</div>'+
+          '<div style="margin-top:8px;font-size:11px">'+
+            '<div style="display:flex;justify-content:space-between"><span style="color:var(--c-text-3)">Revenue</span><span style="font-weight:600">'+audFmt(dadRev)+'</span></div>'+
+            '<div style="display:flex;justify-content:space-between"><span style="color:var(--c-text-3)">AOV</span><span style="font-weight:600">'+audFmt(dadAov)+'</span></div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="card">'+
+          '<div class="card-title mb6">❓ Unknown</div>'+
+          '<div style="font-size:22px;font-weight:800;color:var(--c-text-3)">'+unkn.length.toLocaleString()+'</div>'+
+          '<div style="font-size:11px;color:var(--c-text-3);margin-top:2px">'+pctFmt(unkn.length/total*100)+' unidentified</div>'+
+          '<div style="font-size:11px;color:var(--c-text-3);margin-top:8px">Name not in dictionary or missing first name</div>'+
+        '</div>'+
+        '<div class="card">'+
+          '<div class="card-title mb6">📊 Mum vs Dad Split</div>'+
+          '<div style="height:8px;border-radius:4px;overflow:hidden;display:flex;margin:8px 0">'+
+            '<div style="width:'+pctFmt((mums.length+dads.length)>0?mums.length/(mums.length+dads.length)*100:50)+';background:#ec4899"></div>'+
+            '<div style="flex:1;background:#3b82f6"></div>'+
+          '</div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:11px">'+
+            '<span style="color:#ec4899;font-weight:600">'+pctFmt((mums.length+dads.length)>0?mums.length/(mums.length+dads.length)*100:0)+' Mum</span>'+
+            '<span style="color:#3b82f6;font-weight:600">'+pctFmt((mums.length+dads.length)>0?dads.length/(mums.length+dads.length)*100:0)+' Dad</span>'+
+          '</div>'+
+          '<div style="font-size:11px;color:var(--c-text-3);margin-top:8px">of identified customers</div>'+
+        '</div>'+
+      '</div>';
+  })();
+
   '<div class="g2 mb14">'+
     '<div class="card"><div class="card-hdr"><div class="card-title-lg">New vs Repeat</div></div><div class="cw h200"><canvas id="custRepeat"></canvas></div></div>'+
     '<div class="card"><div class="card-hdr"><div class="card-title-lg">LTV Segments</div></div>'+

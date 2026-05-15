@@ -203,6 +203,135 @@ try:
 except Exception as e:
     print(f'  Channel lookup failed: {e}')
 
+# ── Customer Profile — name-based inference ───────────────────────────────────
+# Maps first names to 'm' (Dad) or 'f' (Mum)
+_NAME_PROFILE = {
+    # Common female names
+    'emma':1,'olivia':1,'ava':1,'isabella':1,'sophia':1,'mia':1,'charlotte':1,
+    'amelia':1,'harper':1,'evelyn':1,'abigail':1,'emily':1,'elizabeth':1,
+    'mila':1,'ella':1,'avery':1,'sofia':1,'camila':1,'aria':1,'scarlett':1,
+    'victoria':1,'madison':1,'luna':1,'grace':1,'chloe':1,'penelope':1,
+    'layla':1,'riley':1,'zoey':1,'nora':1,'lily':1,'eleanor':1,'hannah':1,
+    'lillian':1,'addison':1,'aubrey':1,'ellie':1,'stella':1,'natalie':1,
+    'zoe':1,'leah':1,'hazel':1,'violet':1,'aurora':1,'savannah':1,'audrey':1,
+    'brooklyn':1,'bella':1,'claire':1,'skylar':1,'lucy':1,'paisley':1,
+    'everly':1,'anna':1,'caroline':1,'nova':1,'genesis':1,'emilia':1,
+    'kennedy':1,'samantha':1,'maya':1,'willow':1,'kinsley':1,'naomi':1,
+    'aaliyah':1,'elena':1,'sarah':1,'ariana':1,'allison':1,'gabriella':1,
+    'alice':1,'madelyn':1,'cora':1,'ruby':1,'eva':1,'serenity':1,'autumn':1,
+    'adeline':1,'hailey':1,'gianna':1,'valentina':1,'isla':1,'eliana':1,
+    'quinn':1,'nevaeh':1,'ivy':1,'sadie':1,'piper':1,'lydia':1,'alexa':1,
+    'josephine':1,'emery':1,'julia':1,'delilah':1,'arianna':1,'vivian':1,
+    'katherine':1,'claire':1,'reagan':1,'alice':1,'georgie':1,'georgia':1,
+    'jessica':1,'jennifer':1,'ashley':1,'amanda':1,'melissa':1,'stephanie':1,
+    'nicole':1,'elizabeth':1,'heather':1,'amber':1,'danielle':1,'brittany':1,
+    'rachel':1,'megan':1,'chelsea':1,'kayla':1,'angela':1,'tiffany':1,
+    'crystal':1,'kayla':1,'vanessa':1,'cassandra':1,'alexandria':1,'miranda':1,
+    'mary':1,'patricia':1,'linda':1,'barbara':1,'susan':1,'margaret':1,
+    'lisa':1,'betty':1,'dorothy':1,'sandra':1,'ashley':1,'kimberly':1,
+    'donna':1,'carol':1,'michelle':1,'emily':1,'amanda':1,'melissa':1,
+    'deborah':1,'stephanie':1,'sharon':1,'laura':1,'cynthia':1,'kathleen':1,
+    'amy':1,'angela':1,'shirley':1,'anna':1,'brenda':1,'pamela':1,'emma':1,
+    'tammy':1,'janet':1,'catherine':1,'frances':1,'ann':1,'joyce':1,
+    'diane':1,'alice':1,'julie':1,'heather':1,'teresa':1,'doris':1,
+    'gloria':1,'evelyn':1,'jean':1,'cheryl':1,'mildred':1,'katherine':1,
+    'joan':1,'ashley':1,'judith':1,'rose':1,'janice':1,'kelly':1,
+    'nicole':1,'judy':1,'christina':1,'kathy':1,'theresa':1,'beverly':1,
+    'denise':1,'tamara':1,'irene':1,'jane':1,'lori':1,'rachel':1,'marilyn':1,
+    'andrea':1,'katelyn':1,'louise':1,'sara':1,'anne':1,'jacqueline':1,
+    'wanda':1,'bonnie':1,'julia':1,'ruby':1,'lois':1,'tina':1,'phyllis':1,
+    'norma':1,'paula':1,'diana':1,'annie':1,'lillian':1,'emily':1,'robin':1,
+    'peggy':1,'crystal':1,'gladys':1,'rita':1,'dawn':1,'connie':1,'florence':1,
+    'tracy':1,'edna':1,'tiffany':1,'carmen':1,'rosa':1,'cindy':1,'grace':1,
+    'wendy':1,'victoria':1,'edith':1,'kim':1,'sherry':1,'sylvia':1,
+    'josephine':1,'thelma':1,'shannon':1,'sheila':1,'ethel':1,'ellen':1,
+    'elaine':1,'marjorie':1,'carrie':1,'charlotte':1,'monica':1,'esther':1,
+    'pauline':1,'emma':1,'juanita':1,'anita':1,'rhonda':1,'hazel':1,
+    'amber':1,'eva':1,'debbie':1,'april':1,'leslie':1,'clara':1,
+    'lucille':1,'jamie':1,'joanne':1,'eleanor':1,'valerie':1,'danielle':1,
+    'megan':1,'alicia':1,'suzanne':1,'michele':1,'gail':1,'bertha':1,
+    'darlene':1,'veronica':1,'jill':1,'erin':1,'geraldine':1,'lauren':1,
+    'cathy':1,'joann':1,'lorraine':1,'lynn':1,'sally':1,'regina':1,
+    'erica':1,'beatrice':1,'dolores':1,'bernice':1,'audrey':1,'yvonne':1,
+    'annette':1,'june':1,'samantha':1,'marion':1,'dana':1,'stacy':1,
+    'ana':1,'renee':1,'ida':1,'vivian':1,'roberta':1,'holly':1,'brittany':1,
+    'melanie':1,'loretta':1,'yolanda':1,'jeanette':1,'laurie':1,'katie':1,
+    'kristen':1,'vanessa':1,'alma':1,'sue':1,'elsie':1,'beth':1,'jeanne':1,
+    'vicki':1,'carla':1,'tara':1,'rosemary':1,'eileen':1,'terri':1,
+    'gertrude':1,'lucy':1,'tonya':1,'ella':1,'stacey':1,'wilma':1,
+    'gina':1,'kristin':1,'jessie':1,'natalie':1,'agnes':1,'vera':1,
+    'charlene':1,'bessie':1,'delores':1,'melinda':1,'pearl':1,'arlene':1,
+    'maureen':1,'colleen':1,'allison':1,'tamara':1,'joy':1,'georgia':1,
+    'constance':1,'lillie':1,'claudia':1,'jackie':1,'marcia':1,'tanya':1,
+    'nellie':1,'minnie':1,'marlene':1,'heidi':1,'glenda':1,'lydia':1,
+    'viola':1,'courtney':1,'marian':1,'stella':1,'caroline':1,'dora':1,
+    'jo':1,'vickie':1,'mattie':1,'terry':1,'maxine':1,'irma':1,'mabel':1,
+    'marsha':1,'myrtle':1,'lena':1,'christy':1,'deanna':1,'patsy':1,
+    'hilda':1,'gwendolyn':1,'jennie':1,'nora':1,'margie':1,'nina':1,
+    'cassandra':1,'leah':1,'penny':1,'kay':1,'priscilla':1,'naomi':1,
+    'carole':1,'brandy':1,'olga':1,'billie':1,'dianne':1,'tracey':1,
+    'leona':1,'jenny':1,'felicia':1,'sonia':1,'miriam':1,'velma':1,
+    'becky':1,'bobbie':1,'violet':1,'kristina':1,'toni':1,'misty':1,
+    'mae':1,'shelly':1,'daisy':1,'ramona':1,'sherri':1,'erika':1,
+    'katrina':1,'claire':1,'lindsey':1,'lindsay':1,'geneva':1,'guadalupe':1,
+    'belinda':1,'margarita':1,'sheryl':1,'cora':1,'faye':1,'ada':1,
+    'natasha':1,'sabrina':1,'isabel':1,'marguerite':1,'hattie':1,'harriet':1,
+    'molly':1,'cecelia':1,'kristi':1,'brandi':1,'blanche':1,'sandy':1,
+    'rosie':1,'joanna':1,'iris':1,'eunice':1,'angie':1,'inez':1,
+    'lynda':1,'madeline':1,'amelia':1,'andrea':1,'patrice':1,'brett':0,
+    # Australian / common
+    'kate':1,'kylie':1,'leanne':1,'tegan':1,'siobhan':1,'fiona':1,
+    'bronwyn':1,'kerrie':1,'maree':1,'taryn':1,'skye':1,'jayden':0,
+    # Common male names
+    'james':0,'john':0,'robert':0,'michael':0,'william':0,'david':0,
+    'richard':0,'joseph':0,'thomas':0,'charles':0,'christopher':0,'daniel':0,
+    'matthew':0,'anthony':0,'mark':0,'donald':0,'steven':0,'paul':0,
+    'andrew':0,'joshua':0,'kenneth':0,'kevin':0,'brian':0,'george':0,
+    'timothy':0,'ronald':0,'edward':0,'jason':0,'jeffrey':0,'ryan':0,
+    'jacob':0,'gary':0,'nicholas':0,'eric':0,'jonathan':0,'stephen':0,
+    'larry':0,'justin':0,'scott':0,'brandon':0,'benjamin':0,'samuel':0,
+    'raymond':0,'frank':0,'gregory':0,'frank':0,'alexander':0,'patrick':0,
+    'jack':0,'dennis':0,'jerry':0,'tyler':0,'aaron':0,'henry':0,
+    'jose':0,'adam':0,'douglas':0,'nathan':0,'peter':0,'zachary':0,
+    'kyle':0,'walter':0,'harold':0,'jeremy':0,'ethan':0,'carl':0,
+    'keith':0,'roger':0,'gerald':0,'christian':0,'terry':0,'sean':0,
+    'arthur':0,'austin':0,'noah':0,'lawrence':0,'jesse':0,'joe':0,
+    'bryan':0,'billy':0,'jordan':0,'albert':0,'dylan':0,'bruce':0,
+    'willie':0,'gabriel':0,'alan':0,'juan':0,'logan':0,'wayne':0,
+    'ralph':0,'roy':0,'eugene':0,'randy':0,'vincent':0,'russell':0,
+    'louis':0,'philip':0,'bobby':0,'johnny':0,'bradley':0,'liam':0,
+    'mason':0,'elijah':0,'oliver':0,'lucas':0,'aiden':0,'carter':0,
+    'grayson':0,'jackson':0,'wyatt':0,'julian':0,'hudson':0,'lincoln':0,
+    'landon':0,'caleb':0,'leo':0,'eli':0,'nolan':0,'isaac':0,
+    'hunter':0,'owen':0,'sebastian':0,'brayden':0,'xavier':0,'colton':0,
+    'cooper':0,'easton':0,'jaxon':0,'evan':0,'chase':0,'ryder':0,
+    'bentley':0,'kayden':0,'asher':0,'declan':0,'jace':0,'brody':0,
+    'luke':0,'dominic':0,'connor':0,'tristan':0,'cole':0,'blake':0,
+    'levi':0,'greyson':0,'parker':0,'emmett':0,'miles':0,'roman':0,
+    'harrison':0,'eli':0,'jaxson':0,'sawyer':0,'silas':0,'brooks':0,
+    'beau':0,'max':0,'axel':0,'carson':0,'omar':0,'miles':0,'ivan':0,
+    'elliot':0,'charlie':0,'maverick':0,'oscar':0,'luca':0,'gavin':0,
+    'simon':0,'alex':0,'matt':0,'mike':0,'dave':0,'chris':0,'steve':0,
+    'dan':0,'nick':0,'rob':0,'ben':0,'sam':0,'jake':0,'ryan':0,
+    'brad':0,'trevor':0,'darren':0,'glen':0,'brett':0,'craig':0,
+    'dylan':0,'cody':0,'travis':0,'derek':0,'lance':0,'shane':0,
+    'drew':0,'tj':0,'ed':0,'al':0,'jay':0,'ray':0,'ron':0,'don':0,
+    'jim':0,'bob':0,'bill':0,'tom':0,'tim':0,'ken':0,'rick':0,
+    'asvine':0,'lynda':1,
+}
+
+def infer_profile(first_name):
+    """Infer customer profile from first name. Returns 'Mum', 'Dad', or 'Unknown'"""
+    if not first_name:
+        return 'Unknown'
+    name = first_name.strip().lower().split()[0]  # use first word only
+    result = _NAME_PROFILE.get(name)
+    if result is None:
+        return 'Unknown'
+    return 'Mum' if result == 1 else 'Dad'
+
+
+
 # ── Existing data ─────────────────────────────────────────────────────────────
 existing_orders = read_csv('orders.csv')
 print(f'\n📋 Existing orders.csv: {len(existing_orders)} rows')
@@ -554,6 +683,8 @@ for c in customers:
     credits    = c.get('store_credit_amounts') or []
     credit_amt = credits[0].get('amount', 0) if credits else 0
     channel_ids = c.get('channel_ids') or [1]
+    _first = c.get('first_name', '') or ''
+    _profile = infer_profile(_first)
     clean_customers.append({
         'Customer ID':                           sha256(c.get('email', '')),
         'Date Joined':                           fmt_date(c.get('date_created', '')),
@@ -565,7 +696,8 @@ for c in customers:
         'First Name':                            '',
         'Last Name':                             '',
         'Email':                                 sha256(c.get('email', '')),
-    })
+        'Customer Profile':                      _profile,
+        })
 validate_no_pii(clean_customers, 'customers.csv')
 write_csv('customers.csv', clean_customers)
 
