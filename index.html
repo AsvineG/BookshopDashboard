@@ -1052,26 +1052,39 @@ function yNum(v){ return v===undefined||v===null||isNaN(v)?'—':Math.round(v).t
 
 // parseCSVFast
 function parseCSVFast(text){
-  var rows = [], lines = text.split('\n'), headers = [];
-  var parseRow = function(line){
-    var cols=[],col='',inQ=false;
-    for(var i=0;i<line.length;i++){
-      var c=line[i];
-      if(c==='"'){inQ=!inQ;}
-      else if(c===','&&!inQ){cols.push(col);col='';}
-      else{col+=c;}
+  var rows=[], headers=[];
+  var parseRow=function(line){
+    var cols=[],i=0,len=line.length;
+    while(i<=len){
+      if(i===len){cols.push('');break;}
+      if(line[i]==='"'){
+        var col='';i++;
+        while(i<len){
+          if(line[i]==='"'){
+            if(i+1<len&&line[i+1]==='"'){col+='"';i+=2;}
+            else{i++;break;}
+          }else{col+=line[i];i++;}
+        }
+        cols.push(col);
+        if(i<len&&line[i]===',')i++;
+      }else{
+        var start=i;
+        while(i<len&&line[i]!==',')i++;
+        cols.push(line.slice(start,i));
+        if(i<len)i++;
+      }
     }
-    cols.push(col);
     return cols;
   };
+  var lines=text.split(/\r?\n/);
   for(var i=0;i<lines.length;i++){
-    var line=lines[i].trim();
-    if(!line)continue;
+    var line=lines[i];
+    if(!line.trim())continue;
     var cols=parseRow(line);
     if(i===0){headers=cols.map(function(h){return h.trim();});}
     else{
       var row={};
-      headers.forEach(function(h,j){row[h]=(cols[j]||'').trim();});
+      headers.forEach(function(h,j){row[h]=(cols[j]!==undefined?cols[j]:'').trim();});
       rows.push(row);
     }
   }
@@ -5700,17 +5713,22 @@ function parseStockFromCustomFields(cfStr) {
 // Returns: { bundleSku: [componentSku, ...] }  (default options only)
 function buildBundleMapFromModifiers() {
   if(!rawMod || !rawMod.length){ console.warn('buildBundleMapFromModifiers: rawMod empty'); return {}; }
-  console.log('buildBundleMapFromModifiers: rawMod rows=', rawMod.length);
-  // Build productId → SKU lookup
+
+  // Build productId → SKU lookup from rawP
   var idToSku = {};
   (rawP||[]).forEach(function(p) {
     var pid = String(p['Product ID']||'').trim();
     var sku = (p['SKU']||'').trim();
     if(pid && sku) idToSku[pid] = sku;
   });
+
+  console.log('buildBundleMapFromModifiers: rawMod='+rawMod.length+' rawP='+Object.keys(idToSku).length+' idToSku entries');
+
   var bMap = {};
+  var misses = 0;
   rawMod.forEach(function(row) {
-    if((row['Is Default']||'').trim() !== 'Y') return;
+    var isDef = (row['Is Default']||'').trim().replace(/^'+|'+$/g,'');
+    if(isDef !== 'Y') return;
     var bSku = (row['Product SKU']||'').trim();
     var vd   = (row['Value Data']||'').trim();
     if(!bSku || !vd) return;
@@ -5721,9 +5739,16 @@ function buildBundleMapFromModifiers() {
       if(cSku) {
         if(!bMap[bSku]) bMap[bSku] = [];
         if(!bMap[bSku].includes(cSku)) bMap[bSku].push(cSku);
+      } else {
+        misses++;
       }
     } catch(e) {}
   });
+  console.log('buildBundleMapFromModifiers: bundles='+Object.keys(bMap).length+' misses='+misses);
+  if(Object.keys(bMap).length===0 && misses>0){
+    console.warn('All lookups missed — rawP Product IDs sample:', (rawP||[]).slice(0,3).map(function(p){return p["Product ID"];}));
+    console.warn('rawMod Value Data sample:', rawMod.slice(0,3).map(function(r){return r["Value Data"];}));
+  }
   return bMap;
 }
 
