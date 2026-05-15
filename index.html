@@ -1555,13 +1555,48 @@ function updateTopbar(){
     '</div>';
   }
 
+  // ESA revenue for filtered period
+  var esaRev = orders.filter(function(r){return r._esa;}).reduce(function(s,r){return s+r._aud;},0);
+  var esaPct = rev>0 ? esaRev/rev*100 : 0;
+
+  // Visitors and conversion rate from SETTINGS for the period
+  var periodVisitors = 0;
+  var visMap2 = {};
+  if(SETTINGS.visitors && SETTINGS.visitors.length) {
+    SETTINGS.visitors.forEach(function(v){ visMap2[v.month] = (v.all||0); });
+  }
+  if(periodMonths.length > 0) {
+    periodMonths.forEach(function(m){ periodVisitors += (visMap2[m]||0); });
+  } else if(range==='all') {
+    Object.values(visMap2).forEach(function(v){ periodVisitors += v; });
+  }
+  var convRate = (periodVisitors > 0 && cnt > 0) ? (cnt / periodVisitors * 100) : null;
+
   document.getElementById('topbarKpis').innerHTML =
-    kpiD(audFmt(rev),              'Revenue', rev,  prevRev,  'MoM') +
-    kpiD(cnt.toLocaleString('en-AU'), 'Orders', cnt, prevCnt, 'MoM') +
-    kpiD(audFmt(aov),              'AOV',     aov,  prevAov,  'MoM') +
+    kpiD(audFmt(rev),                   'Revenue',    rev,     prevRev,  'MoM') +
+    kpiD(cnt.toLocaleString('en-AU'),    'Orders',     cnt,     prevCnt,  'MoM') +
+    kpiD(audFmt(aov),                   'AOV',        aov,     prevAov,  'MoM') +
     vsChip('LY Revenue',  rev, lyRev) +
     vsChip('vs Target',   rev, tgtRev) +
-    '<div class="topbar-kpi"><div class="tb-val" style="color:var(--c-red)">'+awaitC+'</div><div class="tb-lbl">Awaiting</div><div class="tb-delta dn" style="font-size:8px">'+audFmt(awaitVal)+'</div></div>';
+    '<div class="topbar-kpi">'+
+      '<div class="tb-val" style="color:var(--c-pur)">'+audFmt(esaRev)+'</div>'+
+      '<div class="tb-lbl">ESA Revenue</div>'+
+      '<div class="tb-delta '+(esaPct>0?'up':'dn')+'" style="font-size:9px">'+esaPct.toFixed(0)+'% of rev</div>'+
+    '</div>' +
+    (periodVisitors > 0 ?
+      '<div class="topbar-kpi">'+
+        '<div class="tb-val">'+periodVisitors.toLocaleString('en-AU')+'</div>'+
+        '<div class="tb-lbl">Visitors</div>'+
+        (convRate!==null ? '<div class="tb-delta up" style="font-size:9px">'+convRate.toFixed(1)+'% conv</div>' : '')+
+      '</div>'
+    : '') +
+    (convRate !== null ?
+      '<div class="topbar-kpi">'+
+        '<div class="tb-val">'+(convRate.toFixed(1))+'%</div>'+
+        '<div class="tb-lbl">Conversion</div>'+
+        '<div class="tb-delta neu" style="font-size:9px">'+cnt+' / '+periodVisitors.toLocaleString('en-AU')+'</div>'+
+      '</div>'
+    : '');
 }
 
 function getRangeLabel(){
@@ -3550,8 +3585,8 @@ function rFinancials(orders){
          ['  Shipping Revenue','+'+audFmt(ship),'text-grn'],
          ['  Discounts Given','-'+audFmt(disc),'text-red'],
          ['= Net Revenue',audFmt(net),'bold'],
-         ['  Est. COGS',(gp!==null?'-'+audFmt(rev-gp):'—'),'text-muted'],
-         ['= Est. Gross Profit',(gp!==null?audFmt(gp):'Set margins'),'bold '+(gpPct!==null&&gpPct>40?'text-grn':'text-amb')]
+         ['  Est. COGS',(gp!==null?'-'+audFmt(rev-gp):'(Set margins in Settings)'),'text-muted'],
+         ['= Est. Gross Profit',(gp!==null?audFmt(gp):net>0?audFmt(net):'—'),'bold '+(gpPct!==null&&gpPct>40?'text-grn':gpPct!==null?'text-amb':'text-muted')]
         ].map(function(r){
           return '<div class="stat"><span class="stat-lbl '+r[2]+'">'+r[0]+'</span><span class="stat-val '+r[2]+'">'+r[1]+'</span></div>';
         }).join('')+
@@ -4519,15 +4554,17 @@ var BOOK1_B64='UEsDBBQABgAIAAAAIQBi7p1oXgEAAJAEAAATAAgCW0NvbnRlbnRfVHlwZXNdLnhtb
 // ═══════════════════════════════════════════════════════════════════════════
 
 function getOrderMargin(order){
+  var margin = SETTINGS.margin;
+  if(!margin) return null;
   var regionKey = order._ch.toLowerCase().includes('au')?'au':
                   order._ch.toLowerCase().includes('uk')?'uk':'us';
-  var mg = SETTINGS.margin[regionKey];
+  var mg = margin[regionKey] || margin['au'];
   if(!mg) return null;
-  var btype = order._basketType;
-  var pct = btype==='digital'?(mg.digital):
-            btype==='bundle'?(mg.bundle):
-            btype==='isbn'?(mg.physical):
-            (mg.digital); // default digital
+  var btype = order._basketType || 'isbn';
+  var pct = btype==='digital' ? (mg.digital||mg.physical||50) :
+            btype==='bundle'  ? (mg.bundle||mg.physical||50) :
+            btype==='isbn'    ? (mg.physical||50) :
+            (mg.digital||mg.physical||50);
   return pct ? pct/100 : null;
 }
 
