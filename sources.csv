@@ -1,4 +1,15 @@
 order_id,order_date,channel_id,attribution,total
+225006,17/05/2026,Reading Eggs UK,bigcommerce,34.41
+225005,17/05/2026,Reading Eggs UK,bigcommerce,0.0
+225004,17/05/2026,Reading Eggs USA,bigcommerce,0.0
+225003,17/05/2026,Reading Eggs USA,bigcommerce,0.0
+225002,17/05/2026,Reading Eggs UK,bigcommerce,57.35
+225001,17/05/2026,Reading Eggs AU,iphone,68.8
+225000,16/05/2026,Reading Eggs AU,www,122.4
+224999,16/05/2026,Reading Eggs AU,iphone,19.9
+224998,16/05/2026,Reading Eggs USA,bigcommerce,9.79
+224997,16/05/2026,Reading Eggs AU,android,226.8
+224996,16/05/2026,Reading Eggs AU,www,31.85
 224995,16/05/2026,Reading Eggs UK,bigcommerce,47.55
 224994,16/05/2026,Reading Eggs AU,android,35.85
 224993,16/05/2026,Reading Eggs AU,iphone,129.0
