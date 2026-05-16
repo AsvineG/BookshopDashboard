@@ -2,7 +2,7 @@
 <html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Reading Eggs · Bookshop Command Centre</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -802,95 +802,9 @@ body {
   z-index: 199;
 }
 
-@media (max-width: 768px) {
 
-  /* Show hamburger */
-  .mob-menu-btn { display: flex; align-items: center; }
-  .topbar-mob-left { display: flex !important; }
-  .topbar-brand { display: none !important; }
 
-  /* Sidebar — slide in from left */
-  .sidebar {
-    position: fixed !important;
-    left: -240px !important;
-    top: 0 !important; bottom: 0 !important;
-    width: 220px !important; min-width: 220px !important;
-    z-index: 200 !important;
-    transition: left 0.25s ease !important;
-    box-shadow: none;
-  }
-  .sidebar.open {
-    left: 0 !important;
-    box-shadow: 4px 0 24px rgba(0,0,0,0.18) !important;
-  }
 
-  /* Main fills full width */
-  .main { width: 100% !important; }
-
-  /* Topbar */
-  .topbar { padding: 0 4px !important; gap: 2px !important; }
-  .topbar-brand { min-width: 36px !important; padding: 0 6px !important; }
-  .topbar-brand .brand-name { display: none !important; }
-  .topbar-kpis {
-    overflow-x: auto !important;
-    scrollbar-width: none !important;
-    -webkit-overflow-scrolling: touch;
-  }
-  .topbar-kpis::-webkit-scrollbar { display: none; }
-  .topbar-kpi { min-width: 72px !important; padding: 0 6px !important; }
-  .topbar-kpi .kpi-label { font-size: 8px !important; }
-  .topbar-kpi .kpi-val { font-size: 12px !important; }
-  .topbar-kpi .kpi-sub { display: none !important; }
-  .topbar-actions { gap: 4px !important; padding: 0 4px !important; }
-
-  /* Panel */
-  .panel { padding: 12px 10px !important; -webkit-overflow-scrolling: touch; }
-
-  /* All grids collapse to 1 col */
-  .g2, .g3, .g4, .g5, .g6,
-  .g-2-1, .g-1-2, .g-3-1, .g-1-3,
-  .g-2-3, .g-3-2, .g-1-1-2 {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* Custom inline grids (used in exec S7 etc) */
-  [style*="grid-template-columns:340px"] {
-    grid-template-columns: 1fr !important;
-  }
-  [style*="grid-template-columns: 340px"] {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* Cards */
-  .card { padding: 12px !important; }
-
-  /* Tables — horizontal scroll */
-  .tbl-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-  table { min-width: 480px !important; }
-
-  /* Charts */
-  .h300 { height: 180px !important; }
-  .h280 { height: 180px !important; }
-  .h260 { height: 160px !important; }
-  .h240 { height: 160px !important; }
-  .h220 { height: 150px !important; }
-  .h200 { height: 140px !important; }
-  .h180 { height: 130px !important; }
-
-  /* Modals */
-  .modal-box, .modal { width: 94vw !important; max-height: 88vh !important; overflow-y: auto !important; }
-
-  /* Stock grid — keep 2 col */
-  .g3.stock-grid { grid-template-columns: 1fr 1fr !important; }
-
-  /* Hide non-essential on mobile */
-  .mobile-hide { display: none !important; }
-}
-
-@media (max-width: 420px) {
-  .topbar-kpi { min-width: 60px !important; }
-  .topbar-actions .sel-sm { display: none !important; }
-}
 
 .topbar-mob-left {
   display: none;
@@ -903,6 +817,326 @@ body {
   font-weight: 700;
   color: var(--c-text-1);
   white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE — iPhone 15 Pro (393px) & Pro Max (430px)
+   Full UX rebuild by mobile-first principles
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Base mobile tokens ── */
+.mob-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 12px;
+  height: var(--topbar-h);
+  font-size: 22px;
+  line-height: 1;
+  color: var(--c-text-1);
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.topbar-mob-left {
+  display: none;
+  align-items: center;
+  height: 100%;
+  flex-shrink: 0;
+  border-right: 1px solid var(--c-border);
+  padding-right: 0;
+}
+
+.mob-brand {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-text-1);
+  white-space: nowrap;
+  padding: 0 12px 0 4px;
+  letter-spacing: -0.01em;
+}
+
+#sidebarOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 199;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── 768px breakpoint — base mobile layout ── */
+
+
+/* ── iPhone 15 Pro Max — 430px ── */
+
+
+/* ── Safe area insets (iPhone notch/Dynamic Island) ── */
+
+
+/* ═══════════════════════════════════════════════════
+   MOBILE — iPhone 15 Pro (393px) & Pro Max (430px)
+═══════════════════════════════════════════════════ */
+
+/* Hamburger — hidden on desktop */
+.mob-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--c-text-1);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Mob-left block — hidden on desktop */
+.topbar-mob-left {
+  display: none;
+  align-items: center;
+  height: 100%;
+  flex-shrink: 0;
+}
+.mob-brand {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--c-text-1);
+  white-space: nowrap;
+  padding-right: 8px;
+}
+
+/* Overlay */
+#sidebarOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 998;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 768px) {
+
+  /* ── Global box model ── */
+  html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+  }
+
+  /* ── App shell ── */
+  .app {
+    display: block !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    overflow: hidden !important;
+    position: relative !important;
+  }
+
+  /* ── Sidebar: off-canvas, LEFT-based slide ── */
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 280px !important;
+    min-width: 0 !important;
+    z-index: 999 !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.28s ease !important;
+    box-shadow: none !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+  .sidebar.open {
+    transform: translateX(0%) !important;
+    box-shadow: 8px 0 32px rgba(0,0,0,0.2) !important;
+  }
+
+  /* ── Main: full width ── */
+  .main {
+    width: 100vw !important;
+    height: 100dvh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    position: relative !important;
+    margin-left: 0 !important;
+  }
+
+  /* ── Topbar ── */
+  .topbar {
+    height: 52px !important;
+    min-height: 52px !important;
+    flex-shrink: 0 !important;
+    overflow: hidden !important;
+    width: 100% !important;
+  }
+  .topbar-mob-left {
+    display: flex !important;
+    border-right: 1px solid var(--c-border);
+  }
+  .mob-menu-btn { display: flex !important; }
+
+  /* Hide desktop-only topbar elements */
+  .topbar-brand { display: none !important; }
+
+  /* KPI strip — scroll horizontally, no overflow */
+  .topbar-kpis {
+    flex: 1 !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .topbar-kpis::-webkit-scrollbar { display: none !important; }
+  .topbar-kpi {
+    min-width: 74px !important;
+    max-width: 90px !important;
+    padding: 0 6px !important;
+    flex-shrink: 0 !important;
+  }
+  .topbar-kpi .kpi-label { font-size: 8px !important; white-space: nowrap !important; }
+  .topbar-kpi .kpi-val { font-size: 12px !important; }
+  .topbar-kpi .kpi-sub { font-size: 9px !important; }
+
+  /* Topbar actions — compact */
+  .topbar-actions {
+    gap: 3px !important;
+    padding: 0 4px !important;
+    flex-shrink: 0 !important;
+    overflow: hidden !important;
+  }
+  .topbar-actions .sel-sm {
+    font-size: 10px !important;
+    padding: 3px 2px !important;
+    max-width: 80px !important;
+  }
+  /* Hide non-essential filter elements on mobile */
+  #customDates,
+  .topbar-actions .btn:not(#refreshBtn) { display: none !important; }
+
+  /* ── Content area ── */
+  .content-area {
+    flex: 1 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    position: relative !important;
+    width: 100% !important;
+  }
+
+  /* ── Panels ── */
+  .panel {
+    padding: 14px 12px 40px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+  }
+
+  /* ── All content must stay within viewport width ── */
+  .panel > * { max-width: 100% !important; }
+  .panel [style*="max-width:1400px"],
+  .panel [style*="width:100%"] { max-width: 100% !important; }
+
+  /* ── Grids: collapse everything to 1 column ── */
+  .g2, .g3, .g4, .g5, .g6,
+  .g-2-1, .g-1-2, .g-3-1, .g-1-3,
+  .g-2-3, .g-3-2, .g-1-1-2 {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* Keep 2-col for simple pairs */
+  .g2 { grid-template-columns: 1fr 1fr !important; }
+
+  /* Override ALL inline style grids */
+  [style*="display:grid"],
+  [style*="display: grid"] {
+    display: block !important;
+  }
+  [style*="display:grid"] > *,
+  [style*="display: grid"] > * {
+    width: 100% !important;
+    margin-bottom: 10px !important;
+  }
+
+  /* ── Cards ── */
+  .card {
+    padding: 14px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* ── Tables: horizontal scroll ── */
+  .tbl-wrap, [style*="overflow-y:auto"] table {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    max-width: 100% !important;
+  }
+  table {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  /* Only let explicitly wide tables scroll */
+  .tbl { min-width: 400px !important; }
+
+  /* ── Charts: reduce heights ── */
+  .h400, .h360 { height: 200px !important; }
+  .h320, .h300 { height: 180px !important; }
+  .h280, .h260 { height: 160px !important; }
+  .h240, .h220 { height: 150px !important; }
+  .h200, .h180 { height: 130px !important; }
+  .h160, .h140, .h120 { height: 110px !important; }
+
+  /* ── Modals ── */
+  .modal {
+    width: 92vw !important;
+    max-width: 92vw !important;
+    max-height: 84dvh !important;
+    overflow-y: auto !important;
+    border-radius: 14px !important;
+  }
+
+  /* ── Buttons ── */
+  .btn { min-height: 38px !important; font-size: 12px !important; }
+  .btn-sm { min-height: 32px !important; font-size: 11px !important; }
+
+  /* ── Tags / badges ── */
+  .tag { font-size: 9px !important; padding: 2px 5px !important; }
+
+  /* ── Misc ── */
+  .mobile-hide { display: none !important; }
+  .text-xs { font-size: 10px !important; }
+}
+
+/* iPhone 15 Pro Max (430px) */
+@media (max-width: 430px) {
+  .g2 { grid-template-columns: 1fr !important; }
+  .topbar-kpi { min-width: 66px !important; }
+  .topbar-kpi .kpi-val { font-size: 11px !important; }
+}
+
+/* iOS safe areas (Dynamic Island + home indicator) */
+@supports (padding-top: env(safe-area-inset-top)) {
+  @media (max-width: 768px) {
+    .sidebar {
+      padding-top: env(safe-area-inset-top) !important;
+      padding-bottom: env(safe-area-inset-bottom) !important;
+    }
+    .panel {
+      padding-bottom: max(40px, calc(env(safe-area-inset-bottom) + 20px)) !important;
+    }
+  }
 }
 </style>
 </head>
@@ -1060,8 +1294,12 @@ body {
     <!-- TOP BAR -->
     <div class="topbar">
       <div class="topbar-mob-left">
-        <button class="mob-menu-btn" id="mobMenuBtn" onclick="toggleMobMenu()" aria-label="Open menu">☰</button>
-        <span class="mob-brand">📚 Bookshop CC</span>
+        <button class="mob-menu-btn" id="mobMenuBtn" onclick="toggleMobMenu()" aria-label="Open menu" style="-webkit-tap-highlight-color:transparent">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+        <span class="mob-brand">Bookshop CC</span>
       </div>
       <div class="topbar-kpis" id="topbarKpis"></div>
       <div class="topbar-actions">
@@ -1918,30 +2156,42 @@ function buildSidebar(){
 
 // ── Tab navigation ─────────────────────────────────────────────────────────
 function toggleMobMenu(){
-  var sb = document.querySelector('.sidebar');
-  if(!sb) return;
-  var isOpen = sb.classList.contains('open');
-  if(isOpen){
+  if(document.querySelector('.sidebar').classList.contains('open')){
     closeMobMenu();
   } else {
-    sb.classList.add('open');
-    var ov = document.getElementById('sidebarOverlay');
-    if(!ov){
-      ov = document.createElement('div');
-      ov.id = 'sidebarOverlay';
-      ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:199;display:block';
-      ov.onclick = closeMobMenu;
-      document.body.appendChild(ov);
-    } else {
-      ov.style.display = 'block';
-    }
+    openMobMenu();
   }
+}
+function openMobMenu(){
+  var sb = document.querySelector('.sidebar');
+  if(!sb) return;
+  // Ensure sidebar is visible before animating
+  sb.style.visibility = 'visible';
+  // Small delay so browser paints before transform fires
+  requestAnimationFrame(function(){
+    sb.classList.add('open');
+  });
+  // Create or show overlay
+  var ov = document.getElementById('sidebarOverlay');
+  if(!ov){
+    ov = document.createElement('div');
+    ov.id = 'sidebarOverlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:998;display:none';
+    ov.addEventListener('click', closeMobMenu);
+    ov.addEventListener('touchend', function(e){ e.preventDefault(); closeMobMenu(); });
+    document.body.appendChild(ov);
+  }
+  ov.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  document.body.style.touchAction = 'none';
 }
 function closeMobMenu(){
   var sb = document.querySelector('.sidebar');
   if(sb) sb.classList.remove('open');
   var ov = document.getElementById('sidebarOverlay');
   if(ov) ov.style.display = 'none';
+  document.body.style.overflow = '';
+  document.body.style.touchAction = '';
 }
 // Close sidebar when nav item clicked on mobile
 document.addEventListener('DOMContentLoaded', function(){
