@@ -540,12 +540,26 @@ if new_orders or FULL_REFRESH:
     write_csv('orders.csv', clean_orders, reference_rows=existing_orders if existing_orders else None)
 
 
-# ── Shipments (carrier, tracking) ──────────────────────────────────────────
-print('\n🚚 Fetching shipment details…')
+# ── Shipments (carrier, tracking) — last 90 days only ────────────────────
+print('\n🚚 Fetching shipment details (last 90 days)…')
 try:
+    from datetime import datetime, timedelta
+    cutoff = datetime.now() - timedelta(days=90)
     shipped_statuses = {'shipped', 'partially shipped', 'completed', 'awaiting shipment'}
-    orders_to_ship   = [o for o in clean_orders
-                        if (o.get('Order Status', '') or '').lower() in shipped_statuses]
+
+    def parse_order_date(ds):
+        if not ds: return None
+        for fmt in ['%d/%m/%Y', '%Y-%m-%d', '%m/%d/%Y']:
+            try: return datetime.strptime(ds.strip(), fmt)
+            except: pass
+        return None
+
+    # Only fetch for recent shipped orders — cap at 500 to avoid timeout
+    orders_to_ship = [o for o in clean_orders
+                      if (o.get('Order Status', '') or '').lower() in shipped_statuses
+                      and (parse_order_date(o.get('Order Date', '')) or datetime.min) >= cutoff]
+    orders_to_ship = orders_to_ship[:500]  # hard cap — prevents timeout
+    print(f'  {len(orders_to_ship)} recent shipped orders to fetch (capped at 500)')
 
     def fetch_shipments(oid):
         data = safe_get(f'{BASE_V2}/orders/{oid}/shipments')
@@ -562,11 +576,9 @@ try:
 
     order_shipments = {}
     if orders_to_ship:
-        print(f'  Fetching for {len(orders_to_ship)} shipped orders…')
-        with ThreadPoolExecutor(max_workers=8) as ex:
+        with ThreadPoolExecutor(max_workers=10) as ex:
             futures = {ex.submit(fetch_shipments, o['Order ID']): o['Order ID']
                        for o in orders_to_ship}
-            done = 0
             for future in as_completed(futures):
                 try:
                     oid, ship = future.result()
@@ -574,26 +586,23 @@ try:
                         order_shipments[str(oid)] = ship
                 except Exception:
                     pass
-                done += 1
-                if done % 1000 == 0:
-                    print(f'  {done}/{len(orders_to_ship)} done')
 
     # Patch shipment fields back into clean_orders and re-write
     if order_shipments:
         for row in clean_orders:
             ship = order_shipments.get(str(row.get('Order ID', '')), {})
-            row['Tracking Number']    = ship.get('tracking_number', '')
-            row['Carrier']            = ship.get('carrier', '')
-            row['Ship Method Detail'] = ship.get('ship_method', '')
-            row['Shipped At']         = ship.get('shipped_at', '') or row.get('Date Shipped', '')
-            row['Num Shipments']      = ship.get('num_shipments', '')
-        # Re-write with new columns
+            if ship:
+                row['Tracking Number']    = ship.get('tracking_number', '')
+                row['Carrier']            = ship.get('carrier', '')
+                row['Ship Method Detail'] = ship.get('ship_method', '')
+                row['Shipped At']         = ship.get('shipped_at', '') or row.get('Date Shipped', '')
+                row['Num Shipments']      = ship.get('num_shipments', '')
         write_csv('orders.csv', clean_orders, reference_rows=existing_orders if existing_orders else None)
         print(f'  ✅ Shipment data added for {len(order_shipments)} orders')
     else:
         print('  ℹ️  No shipment data returned')
 except Exception as e:
-    print(f'  ⚠️  Shipments fetch failed: {e}')
+    print(f'  ⚠️  Shipments fetch skipped: {e}')
 
     print('\n📊 Rebuilding sources.csv...')
     clean_sources = [{'order_id': r['Order ID'], 'order_date': r['Order Date'],

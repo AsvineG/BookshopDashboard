@@ -1397,7 +1397,7 @@ var CSV_VER     = 'v8';
 
 // ── State ─────────────────────────────────────────────────────────────────
 var rawO = [], rawP = [], rawC = [], rawReviews = [], rawSubs = [], rawCarts = [], rawSrc = [], rawPL = [], rawMod = [];
-var lO = false, lP = false, lC = false;
+var lO = false, lP = false, lC = false, lSubs = false, lRev = false;
 var SETTINGS = {
   spend: { au:[], uk:[], us:[] },
   margin: { au:{digital:100,physical:55,bundle:55}, uk:{digital:100,physical:65,bundle:65}, us:{digital:100,physical:80,bundle:80} },
@@ -1559,12 +1559,40 @@ function parseCSVFast(text){
 
 // classifyProd
 function classifyProd(name, sku){
-  var n=(name||'').toLowerCase(), s=(sku||'').toLowerCase();
-  if(s.match(/^\d{13}$/)||n.includes(' book')||n.includes(' reader')||n.includes('isbn'))return'isbn';
-  if(n.includes('bundle')||n.includes('pack ')||n.includes('pack+')||s.includes('bundle'))return'bundle';
-  if(n.includes('program')||n.includes('access')||n.includes('digital')||n.includes('subscription'))return'digital';
-  if(s.match(/^\d{13}$/))return'isbn';
-  return 'digital';
+  var n = (name||'').toLowerCase();
+  var s = (sku||'').toLowerCase();
+
+  // 1. Digital / Subscription — check SKU patterns first (most reliable)
+  //    SKUs: ABCRE12MTH, COM12MTHUS, REHSMAX12MUS, RE12MTHUS, MS12MTHUS etc.
+  if(/\d{2}mth|subscription|program access|digital|e-voucher|evoucher/i.test(name)) return 'digital';
+  if(/mth(us|au|uk|gv|sub)|12mth|24mth|abcre12|abcms12|abcrems|rems\d|com\d+mth|rehsmax|re12|ms12|com12mthusrmk/i.test(s)) return 'digital';
+
+  // 2. Merchandise — hats, socks, medals, keyrings
+  if(/regbl|medal|hat|socks|keyring/i.test(s)) return 'merch';
+  if(/medal|bucket hat|socks|keyring set/i.test(n)) return 'merch';
+
+  // 3. ISBN books — 13-digit numeric SKU starting with 978/979
+  //    Also covers -1 suffix variants (e.g. 9781742153421-1)
+  if(/^978[\d]{10}(-\d)?$/.test(s)) return 'isbn';
+
+  // 4. Bundles / Packs — SKU-based detection (most reliable)
+  //    RE7995*, RMK*, RM1-5*, REWBR*, REWBK*, MSWBK*, REMSWBK*, REMSULT*
+  //    GETREADYPACK*, EGGSPERTSBKPACK, MSMEGAPACK, ABCREADMATH*, 140READEGG*
+  //    139READEGG*, RE7995ACT*, RE7995PK*, RE7995FLASH*, RE7995MBP*, RE7995BATH*
+  //    RE7995WATER*, RE7995SET*, RE7995ACTMBP*
+  if(/^re7995|^rmk|^rm[1-9]|^rewbr|^rewbk|^mswbk|^remswbk|^remsult|^getreadypack/i.test(s)) return 'bundle';
+  if(/^eggspertsbkpack|^msmegapack|^abcreadmath|^139readegg|^140readegg|^abcreadmath/i.test(s)) return 'bundle';
+  if(/^re7995act|^re7995pk|^re7995flash|^re7995mbp|^re7995bath|^re7995water|^re7995set/i.test(s)) return 'bundle';
+  if(/^rewbrwbb|^com12mthusrmk/i.test(s)) return 'bundle';
+
+  // 5. Name-based bundle detection (fallback for non-standard SKUs)
+  if(/book pack|book bundle|activity bundle|mega pack|mega bundle|family bundle|education bundle/i.test(n)) return 'bundle';
+
+  // 6. Default — if SKU looks like ISBN range but didn't match above, treat as isbn
+  if(/^97[89]/.test(s)) return 'isbn';
+
+  // 7. Anything else physical = bundle (catch-all for unknown physical SKUs)
+  return 'bundle';
 }
 function isESA(pay){ var l=(pay||'').toLowerCase(); return l.includes('esa')||(l.includes('offline')&&l.includes('internal')); }
 function cleanPay(p){
@@ -1700,7 +1728,7 @@ function preProcess(cb){
 
       // Derived
       row._hasDigital  = row._items.some(function(it){return it.type==='digital';});
-      row._hasPhysical = row._items.some(function(it){return it.type==='bundle'||it.type==='isbn';});
+      row._hasPhysical = row._items.some(function(it){return it.type==='bundle'||it.type==='isbn'||it.type==='merch';});
       row._hasBundle   = row._items.some(function(it){return it.type==='bundle';});
       row._hasISBN     = row._items.some(function(it){return it.type==='isbn';});
       row._paidItems   = row._items.filter(function(it){return it.audPrice>0.01;}).length;
@@ -3293,9 +3321,9 @@ function rOv(orders){
     donutChart('ovPay',topPays.map(function(p){return p[0];}),topPays.map(function(p){return Math.round(p[1]);}),null,{animation:false});
 
     // Mix donut
-    var digR=0,bunR=0,isbnR=0;
+    var digR=0,bunR=0,isbnR=0,merchR=0;
     orders.forEach(function(r){r._items.forEach(function(i){if(i.type==='digital')digR+=i.audPrice;else if(i.type==='bundle')bunR+=i.audPrice;else isbnR+=i.audPrice;});});
-    donutChart('ovMix',['💻 Digital','🧩 Bundle','📚 ISBN'],[Math.round(digR),Math.round(bunR),Math.round(isbnR)],['#2563eb','#7c3aed','#ea580c'],{animation:false});
+    donutChart('ovMix',['💻 Digital','🧩 Bundle','📚 ISBN','🎁 Merch'],[Math.round(digR),Math.round(bunR),Math.round(isbnR),Math.round(merchR)],['#2563eb','#7c3aed','#ea580c','#10b981'],{animation:false});
 
     // DOW bar
     var dowLabels=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], dowRevs=[0,0,0,0,0,0,0];
@@ -3511,12 +3539,26 @@ function plPriceCell(lookup, sku, curr) {
 }
 
 // ── Products ───────────────────────────────────────────────────────────────
-function rProd(orders){
-  var el=document.getElementById('panel-products');
+
 
   // ── Reviews section ─────────────────────────────────────────────────────
   (function(){
-    if(!rawReviews || rawReviews.length === 0) return;
+    if(!rawReviews || rawReviews.length === 0){
+      el.innerHTML += '<div style="margin:20px 0 10px;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;padding-top:16px;border-top:1px solid var(--c-border)">⭐ Product Reviews</div>'+
+        '<div class="card mb14" style="padding:24px;text-align:center">'+
+          '<div style="font-size:32px;margin-bottom:12px">⭐</div>'+
+          '<div style="font-size:14px;font-weight:600;color:var(--c-text-1);margin-bottom:6px">Product reviews not loaded yet</div>'+
+          '<div style="font-size:12px;color:var(--c-text-3);max-width:400px;margin:0 auto">'+
+            'Run a full refresh to fetch product reviews from BigCommerce. '+
+            'Reviews will appear here automatically once <code style="background:var(--c-surface-2);padding:1px 5px;border-radius:3px">reviews.csv</code> is generated.'+
+          '</div>'+
+          '<div style="margin-top:16px;padding:10px 16px;background:rgba(37,99,235,0.06);border-radius:8px;border:1px solid rgba(37,99,235,0.15);display:inline-block">'+
+            '<div style="font-size:11px;color:var(--c-brand);font-weight:600">What you will see after refresh:</div>'+
+            '<div style="font-size:11px;color:var(--c-text-3);margin-top:4px">Total reviews · Avg rating · 5★ breakdown · Recent review feed</div>'+
+          '</div>'+
+        '</div>';
+      return;
+    }
 
     var totalRevs = rawReviews.length;
     var avgRating = rawReviews.reduce(function(s,r){return s+(parseFloat(r['Rating'])||0);},0) / Math.max(totalRevs,1);
@@ -3581,7 +3623,10 @@ function rProd(orders){
     '</div>';
 
     el.innerHTML += h;
-  })();
+  })();function rProd(orders){
+  var el=document.getElementById('panel-products');
+
+
 
   // Aggregate by product
   var prodMap={};
@@ -3635,8 +3680,8 @@ function rProd(orders){
 
   '<div class="g-2-1 mb14">'+
     '<div class="card"><div class="card-hdr"><div class="card-title-lg">Top 15 Products by Revenue</div></div><div class="cw h320"><canvas id="prodTopBar"></canvas></div></div>'+
-    '<div class="card"><div class="card-hdr"><div class="card-title-lg">Revenue by Type & Region</div></div><div class="cw h320"><canvas id="prodTypeReg"></canvas></div></div>'+
   '</div>'+
+  '<div class="card mb14"><div class="card-hdr"><div class="card-title-lg">Revenue by Type & Region</div></div><div class="cw h220"><canvas id="prodTypeReg"></canvas></div></div>'+
 
   '<div class="card"><div class="card-hdr"><div class="card-title-lg">All Products</div>'+
     '<div class="flex gap6">'+
@@ -3673,6 +3718,74 @@ function rProd(orders){
 
   window._allProds = prods;
 
+  // ── Reviews ──────────────────────────────────────────────────────────────
+  (function(){
+    var secHdr = '<div style="margin:20px 0 10px;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;padding-top:16px;border-top:1px solid var(--c-border)">⭐ Product Reviews</div>';
+    if(!rawReviews || rawReviews.length===0){
+      el.innerHTML += secHdr+
+        '<div class="card mb14" style="padding:24px;text-align:center">'+
+          '<div style="font-size:28px;margin-bottom:10px">⭐</div>'+
+          '<div style="font-size:14px;font-weight:600;margin-bottom:6px">No reviews yet</div>'+
+          '<div style="font-size:12px;color:var(--c-text-3)">Run a full refresh to load reviews.csv from BigCommerce.</div>'+
+          '<div style="margin-top:14px;padding:8px 14px;background:rgba(37,99,235,0.06);border-radius:8px;border:1px solid rgba(37,99,235,0.15);display:inline-block;font-size:11px;color:var(--c-text-3)">'+
+            'After refresh: Total reviews · Avg rating · 5★ count · Recent review feed'+
+          '</div>'+
+        '</div>';
+      return;
+    }
+    var total=rawReviews.length;
+    var avg=rawReviews.reduce(function(s,r){return s+(parseFloat(r['Rating'])||0);},0)/Math.max(total,1);
+    var five=rawReviews.filter(function(r){return parseInt(r['Rating']||0)===5;}).length;
+    var low=rawReviews.filter(function(r){return parseInt(r['Rating']||0)<=2;}).length;
+    var revMap={};
+    rawReviews.forEach(function(r){var s=r['SKU']||'';if(!revMap[s])revMap[s]=[];revMap[s].push(r);});
+    var rated=Object.entries(revMap).map(function(e){
+      var rs=e[1],a=rs.reduce(function(s,r){return s+(parseFloat(r['Rating'])||0);},0)/rs.length;
+      return {sku:e[0],name:(rs[0]['Product Name']||e[0]).slice(0,38),avg:a,count:rs.length,
+              low:rs.filter(function(r){return parseInt(r['Rating']||0)<=2;}).length};
+    }).sort(function(a,b){return b.count-a.count;});
+
+    var h=secHdr;
+    h+='<div class="g4 mb14">'+
+      kpiCard('Total Reviews',total.toLocaleString(),'approved reviews','var(--c-brand)')+
+      kpiCard('Avg Rating',avg.toFixed(1)+' / 5','across reviewed products','var(--c-grn)')+
+      kpiCard('5★ Reviews',five.toLocaleString(),pctFmt(total?five/total*100:0)+' of all reviews','var(--c-pur)')+
+      kpiCard('1-2★ Reviews',low.toLocaleString(),pctFmt(total?low/total*100:0)+' need attention','var(--c-red)')+
+    '</div>';
+    h+='<div class="g-2-1 mb14">'+
+      '<div class="card"><div class="card-title mb8">Product Ratings</div>'+
+        '<div class="tbl-wrap"><table class="tbl"><thead><tr>'+
+          '<th>Product</th><th class="r">Reviews</th><th class="r">Avg</th><th class="r">5★</th><th class="r">≤2★</th>'+
+        '</tr></thead><tbody>'+
+        rated.slice(0,15).map(function(p){
+          return '<tr style="border-bottom:1px solid var(--c-border)">'+
+            '<td style="padding:6px;font-weight:500">'+p.name+'<div style="font-size:10px;font-family:monospace;color:var(--c-text-3)">'+p.sku+'</div></td>'+
+            '<td class="num">'+p.count+'</td>'+
+            '<td class="num"><span style="font-weight:700;color:'+(p.avg>=4?'var(--c-grn)':p.avg>=3?'var(--c-amb)':'var(--c-red)')+'">'+p.avg.toFixed(1)+'</span></td>'+
+            '<td class="num" style="color:var(--c-grn)">'+revMap[p.sku].filter(function(r){return parseInt(r['Rating']||0)===5;}).length+'</td>'+
+            '<td class="num" style="color:'+(p.low>0?'var(--c-red)':'var(--c-text-3)')+'">'+p.low+'</td>'+
+          '</tr>';
+        }).join('')+'</tbody></table></div></div>'+
+      '<div class="card"><div class="card-title mb8">Recent Reviews</div>'+
+        '<div style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:8px">'+
+        rawReviews.slice().sort(function(a,b){return(b['Date']||'').localeCompare(a['Date']||'');}).slice(0,8).map(function(r){
+          var rt=parseInt(r['Rating']||0);
+          var stars='★'.repeat(rt)+'☆'.repeat(5-rt);
+          var col=rt>=4?'var(--c-grn)':rt>=3?'var(--c-amb)':'var(--c-red)';
+          return '<div style="padding:10px;border-radius:8px;background:var(--c-surface-2);border:1px solid var(--c-border)">'+
+            '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
+              '<span style="font-size:13px;color:'+col+'">'+stars+'</span>'+
+              '<span style="font-size:10px;color:var(--c-text-3)">'+r['Date']+'</span>'+
+            '</div>'+
+            '<div style="font-size:11px;font-weight:600;margin-bottom:2px">'+(r['Product Name']||'').slice(0,40)+'</div>'+
+            (r['Title']?'<div style="font-size:11px;font-weight:600">'+r['Title']+'</div>':'')+
+            '<div style="font-size:11px;color:var(--c-text-2)">'+(r['Text']||'').slice(0,120)+((r['Text']||'').length>120?'...':'')+'</div>'+
+          '</div>';
+        }).join('')+
+      '</div></div></div>';
+    el.innerHTML += h;
+  })();
+
   setTimeout(function(){
     var top15=prods.slice(0,15);
     var colors=top15.map(function(p){return p.type==='digital'?'#2563ebcc':p.type==='bundle'?'#7c3aedcc':'#ea580ccc';});
@@ -3685,7 +3798,7 @@ function rProd(orders){
       var colors2=['#2563ebcc','#7c3aedcc','#ea580ccc'];
       return{label:{digital:'💻 Digital',bundle:'🧩 Bundle',isbn:'📚 ISBN'}[t],data:['au','uk','us'].map(function(reg){return Math.round(regionOrders(orders,reg).reduce(function(s,r){return s+r._items.filter(function(i){return i.type===t;}).reduce(function(s2,i){return s2+i.audPrice;},0);},0));}),backgroundColor:colors2[ti]};
     });
-    barChart('prodTypeReg',labels3,ds,{plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:8}}}});
+    barChart('prodTypeReg',labels3,ds,{animation:false,plugins:{legend:{display:true,position:'right',labels:{font:{size:11},boxWidth:12,padding:16}}},scales:{x:{grid:{display:false}},y:{ticks:{callback:function(v){return 'A$'+(v/1000).toFixed(0)+'K';}}}}});
   },50);
 }
 
@@ -3964,7 +4077,22 @@ function rCustomers(orders){
   '</div>';
     // ── Subscriber section ─────────────────────────────────────────────────
   (function(){
-    if(!rawSubs || rawSubs.length === 0) return;
+    if(!rawSubs || rawSubs.length === 0){
+      el.innerHTML += '<div style="margin:20px 0 10px;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;padding-top:16px;border-top:1px solid var(--c-border)">📧 Email Subscribers</div>'+
+        '<div class="card mb14" style="padding:24px;text-align:center">'+
+          '<div style="font-size:32px;margin-bottom:12px">📧</div>'+
+          '<div style="font-size:14px;font-weight:600;color:var(--c-text-1);margin-bottom:6px">Subscriber data not loaded yet</div>'+
+          '<div style="font-size:12px;color:var(--c-text-3);max-width:400px;margin:0 auto">'+
+            'Run a full refresh to fetch your email subscriber list from BigCommerce. '+
+            '<code style="background:var(--c-surface-2);padding:1px 5px;border-radius:3px">subscribers.csv</code> will be created automatically.'+
+          '</div>'+
+          '<div style="margin-top:16px;padding:10px 16px;background:rgba(37,99,235,0.06);border-radius:8px;border:1px solid rgba(37,99,235,0.15);display:inline-block">'+
+            '<div style="font-size:11px;color:var(--c-brand);font-weight:600">What you will see after refresh:</div>'+
+            '<div style="font-size:11px;color:var(--c-text-3);margin-top:4px">Total subscribers · Subscriber vs buyer rate · Top signup sources</div>'+
+          '</div>'+
+        '</div>';
+      return;
+    }
     var totalSubs = rawSubs.length;
     var sources = {};
     rawSubs.forEach(function(s){
@@ -4154,12 +4282,16 @@ function rRet(orders){
 // ── Cohort Analysis ─────────────────────────────────────────────────────────
 function rCoh(orders){
   var el=document.getElementById('panel-cohort');
+  if(!orders || orders.length === 0){
+    el.innerHTML='<div style="padding:40px;text-align:center;color:var(--c-text-3)">No orders in this period. Try a wider date range.</div>';
+    return;
+  }
   var cnt=orders.length;
 
   // Hour/day heatmap
   var hourDay=Array.from({length:7},function(){return new Array(24).fill(0);});
   orders.forEach(function(r){if(r._dow>=0&&r._hour>=0)hourDay[r._dow][r._hour]++;});
-  var maxVal=Math.max.apply(null,hourDay.map(function(d){return Math.max.apply(null,d);}));
+  var allVals=hourDay.reduce(function(a,d){return a.concat(d);},[]).filter(function(v){return v>0;}); var maxVal=allVals.length?Math.max.apply(null,allVals):1;
   var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var hours=Array.from({length:24},function(_,i){return i===0?'12am':i<12?i+'am':i===12?'12pm':(i-12)+'pm';});
 
@@ -4182,7 +4314,7 @@ function rCoh(orders){
   var monthMap={};
   orders.forEach(function(r){if(r._month)monthMap[r._month]=(monthMap[r._month]||0)+r._aud;});
   var months=Object.keys(monthMap).sort().slice(-12);
-  var maxMonthRev=Math.max.apply(null,months.map(function(m){return monthMap[m]||0;}));
+  var maxMonthRev=months.length?Math.max.apply(null,months.map(function(m){return monthMap[m]||0;})):1;
 
   // Repeat analysis
   var emMap={};
@@ -4207,7 +4339,7 @@ function rCoh(orders){
   buyers.filter(function(b){return b.cnt>=2&&b.first&&b.last;}).forEach(function(b){
     intervals.push((b.last-b.first)/86400000/(b.cnt-1));
   });
-  var avgInterval=intervals.length?Math.round(intervals.reduce(function(s,v){return s+v;},0)/intervals.length):0;
+  var avgInterval=intervals.length?Math.round(intervals.reduce(function(s,v){return s+v;},0)/intervals.length):90;
 
   // Customer lifetime value distribution
   var ltvBuckets={'<A$50':0,'A$50-100':0,'A$100-200':0,'A$200-500':0,'>A$500':0};
@@ -4244,8 +4376,8 @@ function rCoh(orders){
       '<div class="text-xs text-muted">Based on '+cnt.toLocaleString()+' orders</div></div>'+
       heatHtml+
       '<div class="flex gap12 mt12">'+
-        '<div><div class="text-xs text-muted">Peak Day</div><div class="bold text-sm">'+(function(){var maxD=hourDay.map(function(d,i){return{day:days[i],v:d.reduce(function(s,v){return s+v;},0)};}).sort(function(a,b){return b.v-a.v;})[0]; return maxD.day+' ('+maxD.v+' orders)';}())+'</div></div>'+
-        '<div><div class="text-xs text-muted">Peak Hour</div><div class="bold text-sm">'+(function(){var hourTotals=Array.from({length:24},function(_,h){return{h:h,v:hourDay.reduce(function(s,d){return s+d[h];},0)};}).sort(function(a,b){return b.v-a.v;})[0]; return hours[hourTotals.h]+' ('+hourTotals.v+' orders)';}())+'</div></div>'+
+        '<div><div class="text-xs text-muted">Peak Day</div><div class="bold text-sm">'+(function(){var sorted=hourDay.map(function(d,i){return{day:days[i],v:d.reduce(function(s,v){return s+v;},0)};}).sort(function(a,b){return b.v-a.v;}); var maxD=sorted[0]; return maxD&&maxD.v>0?maxD.day+' ('+maxD.v+' orders)':'—';}())+'</div></div>'+
+        '<div><div class="text-xs text-muted">Peak Hour</div><div class="bold text-sm">'+(function(){var hourSorted=Array.from({length:24},function(_,h){return{h:h,v:hourDay.reduce(function(s,d){return s+d[h];},0)};}).sort(function(a,b){return b.v-a.v;}); var hourTotals=hourSorted[0]; return hourTotals&&hourTotals.v>0?hours[hourTotals.h]+' ('+hourTotals.v+' orders)':'—';}())+'</div></div>'+
       '</div>'+
     '</div>'+
     '<div class="card"><div class="card-hdr"><div class="card-title-lg">Monthly Revenue Heatmap</div></div>'+
@@ -4265,7 +4397,30 @@ function rCoh(orders){
 
   h+='<div class="g3 mb14">'+
     '<div class="card"><div class="card-title mb8">Buyer Frequency</div><div class="cw h200"><canvas id="cohRep"></canvas></div></div>'+
-    '<div class="card"><div class="card-title mb8">LTV Segments</div>'+buildLTVTableFromOrders(orders)+'</div>'+
+    '<div class="card"><div class="card-title mb8">LTV Segments</div>'+(function(){
+      // Simple LTV segments table
+      var custRev={};
+      orders.forEach(function(r){if(r._email) custRev[r._email]=(custRev[r._email]||0)+r._aud;});
+      var revVals=Object.values(custRev);
+      var high=revVals.filter(function(v){return v>500;});
+      var mid=revVals.filter(function(v){return v>=100&&v<=500;});
+      var low=revVals.filter(function(v){return v<100;});
+      return '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+        '<thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid var(--c-border);color:var(--c-text-3)">Segment</th>'+
+        '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--c-border);color:var(--c-text-3)">Customers</th>'+
+        '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--c-border);color:var(--c-text-3)">Avg LTV</th></tr></thead>'+
+        '<tbody>'+
+        '<tr style="border-bottom:1px solid var(--c-border)"><td style="padding:6px"><span style="background:rgba(34,197,94,0.1);color:var(--c-grn);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">High (>A$500)</span></td>'+
+          '<td style="padding:6px;text-align:right;font-weight:600">'+high.length+'</td>'+
+          '<td style="padding:6px;text-align:right">'+audFmt(high.length?high.reduce(function(s,v){return s+v;},0)/high.length:0)+'</td></tr>'+
+        '<tr style="border-bottom:1px solid var(--c-border)"><td style="padding:6px"><span style="background:rgba(37,99,235,0.1);color:var(--c-brand);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">Mid (A$100-500)</span></td>'+
+          '<td style="padding:6px;text-align:right;font-weight:600">'+mid.length+'</td>'+
+          '<td style="padding:6px;text-align:right">'+audFmt(mid.length?mid.reduce(function(s,v){return s+v;},0)/mid.length:0)+'</td></tr>'+
+        '<tr><td style="padding:6px"><span style="background:rgba(245,158,11,0.1);color:var(--c-amb);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">Low (<A$100)</span></td>'+
+          '<td style="padding:6px;text-align:right;font-weight:600">'+low.length+'</td>'+
+          '<td style="padding:6px;text-align:right">'+audFmt(low.length?low.reduce(function(s,v){return s+v;},0)/low.length:0)+'</td></tr>'+
+        '</tbody></table>';
+    })()+'</div>'+
     '<div class="card"><div class="card-title mb8">Monthly Order Volume</div><div class="cw h200"><canvas id="cohMon"></canvas></div></div>'+
   '</div>';
 
@@ -4930,7 +5085,7 @@ function rESA(orders){
   function secHdr(t){return '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;margin:24px 0 12px;padding-top:20px;border-top:1px solid var(--c-border)">'+t+'</div>';}
   function metaRow(l,v,sub){return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--c-border)"><span style="font-size:12px;color:var(--c-text-2)">'+l+'</span><span style="font-size:13px;font-weight:600">'+v+(sub?'<span style="font-size:11px;color:var(--c-text-3);margin-left:6px">'+sub+'</span>':'')+'</span></div>';}
 
-  var h='<div style="max-width:1400px">';
+  var h='<div style="width:100%">';
 
   // ── S1: ESA Scorecard ───────────────────────────────────────────────────
   h += '<div class="g4 mb14" style="align-items:stretch">';
@@ -5886,30 +6041,46 @@ function loadProductsCSV(){
 
 function loadCustomersCSV(){
   setStartup('Loading customers…', 60);
-  var cached = getCachedCSV('customers.csv');
-  if(cached){ rawC=parseCSVFast(cached); lC=rawC.length>0; onAllLoaded(); return; }
-  fetchCSV('subscribers.csv', function(text){
-    rawSubs = parseCSVFast(text);
-    onAllLoaded();
-  });
-  fetchCSV('reviews.csv', function(text){
-    rawReviews = parseCSVFast(text);
-    onAllLoaded();
-  });
-  fetchCSV('customers.csv', function(text){
-    rawC=parseCSVFast(text||''); lC=rawC.length>0; onAllLoaded();
-  });
+
+  // Track how many of the 3 CSVs have finished
+  var done = 0;
+  function allDone(){ done++; if(done >= 3) onAllLoaded(); }
+
+  // subscribers.csv
+  var cachedSubs = getCachedCSV('subscribers.csv');
+  if(cachedSubs){ rawSubs=parseCSVFast(cachedSubs); lSubs=true; allDone(); }
+  else {
+    fetchCSV('subscribers.csv', function(text){
+      rawSubs=parseCSVFast(text||''); lSubs=true; allDone();
+    }, function(){ lSubs=true; allDone(); });
+  }
+
+  // reviews.csv
+  var cachedRev = getCachedCSV('reviews.csv');
+  if(cachedRev){ rawReviews=parseCSVFast(cachedRev); lRev=true; allDone(); }
+  else {
+    fetchCSV('reviews.csv', function(text){
+      rawReviews=parseCSVFast(text||''); lRev=true; allDone();
+    }, function(){ lRev=true; allDone(); });
+  }
+
+  // customers.csv
+  var cachedC = getCachedCSV('customers.csv');
+  if(cachedC){ rawC=parseCSVFast(cachedC); lC=rawC.length>0; allDone(); }
+  else {
+    fetchCSV('customers.csv', function(text){
+      rawC=parseCSVFast(text||''); lC=rawC.length>0; allDone();
+    }, function(){ lC=false; allDone(); });
+  }
 }
 
 function onAllLoaded(){
+  // Wait for all CSVs: orders, products, customers, subscribers, reviews
+  if(!lO || !lP || !lC || !lSubs || !lRev) return;
   setStartup('Processing data…', 65);
-  if(lO){
-    preProcess(function(){
-      showApp();
-    });
-  } else {
+  preProcess(function(){
     showApp();
-  }
+  });
 }
 
 function showApp(){
