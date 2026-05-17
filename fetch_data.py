@@ -418,6 +418,49 @@ if new_orders or FULL_REFRESH:
         data = safe_get(f'{BASE_V2}/orders/{oid}/coupons')
         return oid, (data if isinstance(data, list) else [])
 
+    # ── Shipments fetch (carrier, tracking, precise ship date) ─────────────
+    shipped_statuses = {'shipped','partially shipped','completed','awaiting shipment'}
+    orders_shipped   = [o for o in clean_orders
+                        if (o.get('Order Status','') or '').lower() in shipped_statuses
+                        and not (o.get('Tracking Number',''))]  # skip if already have tracking
+
+    order_shipments = {}  # str(oid) → {tracking, carrier, method, shipped_at, count}
+
+    def fetch_shipments(oid):
+        data = safe_get(f'{BASE_V2}/orders/{oid}/shipments')
+        if not isinstance(data, list) or not data:
+            return oid, {}
+        s = data[0]  # use first shipment
+        return oid, {
+            'tracking_number': (s.get('tracking_number') or '').strip(),
+            'carrier':         (s.get('shipping_provider') or s.get('tracking_carrier') or '').strip(),
+            'ship_method':     (s.get('shipping_method') or '').strip(),
+            'shipped_at':      fmt_date(s.get('date_created', '')),
+            'num_shipments':   len(data),
+        }
+
+    if orders_shipped:
+        print(f'  Fetching shipment details for {len(orders_shipped)} orders…')
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            ship_futures = {ex.submit(fetch_shipments, o['Order ID']): o['Order ID']
+                            for o in orders_shipped}
+            for future in as_completed(ship_futures):
+                try:
+                    oid, ship = future.result()
+                    if ship: order_shipments[str(oid)] = ship
+                except:
+                    pass
+        print(f'  ✅ Shipment data fetched for {len(order_shipments)} orders')
+
+    # Inject shipment fields into clean_orders
+    for row in clean_orders:
+        ship = order_shipments.get(str(row.get('Order ID', '')), {})
+        row['Tracking Number']   = ship.get('tracking_number', '')
+        row['Carrier']           = ship.get('carrier', '')
+        row['Ship Method Detail']= ship.get('ship_method', '')
+        row['Shipped At']        = ship.get('shipped_at', '') or row.get('Date Shipped', '')
+        row['Num Shipments']     = ship.get('num_shipments', '')
+
     if orders_with_disc:
         with ThreadPoolExecutor(max_workers=10) as ex:
             futures = {ex.submit(fetch_coupons, o['id']): o['id'] for o in orders_with_disc}
@@ -510,6 +553,10 @@ if new_orders or FULL_REFRESH:
             'Order Time':             fmt_time(o.get('date_created', '')),
             'Ship Method':            ship_method,
             'Date Shipped':           fmt_date(o.get('date_shipped', '')),
+            'Tracking Number':        shipments.get(str(oid), {}).get('tracking_number', ''),
+            'Carrier':                shipments.get(str(oid), {}).get('carrier', ''),
+            'Ship Method Detail':     shipments.get(str(oid), {}).get('ship_method', ''),
+            'Num Shipments':          shipments.get(str(oid), {}).get('num_shipments', ''),
             'Total Shipped':          o.get('items_shipped', 0),
             'Customer ID':            sha256(billing.get('email', '')),
             'Order Currency Code':    o.get('currency_code', 'AUD'),
@@ -660,6 +707,15 @@ for p in products:
         'Min Variant Price':       round(min_var_price, 2) if min_var_price else '',
         'Max Variant Price':       round(max_var_price, 2) if max_var_price else '',
 
+        # ── Reviews (from BC base products endpoint — no extra API call) ──
+        'Reviews Count':           p.get('reviews_count', 0),
+        'Reviews Rating Sum':      p.get('reviews_rating_sum', 0),
+        'Avg Rating':              round(p.get('reviews_rating_sum', 0) / p.get('reviews_count', 1), 2) if p.get('reviews_count', 0) > 0 else 0,
+
+        # ── Per-product review details (from /catalog/products/{id}/reviews) ─
+        # Populated separately below via fetch_product_reviews()
+        'Review Texts':            '',   # filled in second pass
+
         # ── SEO & content ─────────────────────────────────────────────
         'Page Title':              p.get('page_title', ''),
         'Meta Description':        p.get('meta_description', '') or '',
@@ -673,6 +729,37 @@ for p in products:
 
 validate_no_pii(clean_products, 'products.csv')
 write_csv('products.csv', clean_products)
+
+# ── Fetch individual product reviews ────────────────────────────────────
+print('Fetching product reviews…')
+try:
+    reviewed = [p for p in clean_products if int(p.get('Reviews Count', 0) or 0) > 0]
+    print(f'  {len(reviewed)} products have reviews')
+    clean_reviews = []
+    for p in reviewed[:100]:  # cap at 100 products to avoid long refresh
+        pid = p.get('Product ID', '')
+        pname = p.get('Product Name', '')
+        psku = p.get('SKU', '')
+        rev_data = safe_get(f'{BASE_V3}/catalog/products/{pid}/reviews',
+                            {'limit': 50, 'status': 'approved'})
+        if isinstance(rev_data, list):
+            for r in rev_data:
+                clean_reviews.append({
+                    'Product ID':    pid,
+                    'Product Name':  pname,
+                    'SKU':           psku,
+                    'Review ID':     r.get('id', ''),
+                    'Rating':        r.get('rating', ''),
+                    'Title':         r.get('title', '') or '',
+                    'Text':          (r.get('text', '') or '')[:500],
+                    'Reviewer':      r.get('name', '') or 'Anonymous',
+                    'Date':          fmt_date(r.get('date_reviewed', '')),
+                    'Status':        r.get('status', ''),
+                })
+    write_csv('reviews.csv', clean_reviews)
+    print(f'  ✅ {len(clean_reviews)} reviews written')
+except Exception as e:
+    print(f'  ⚠️  Reviews fetch failed: {e}')
 print(f'  Products enriched with: total_sold, view_count, sale_price, cost_price,')
 print(f'    is_visible, channel_assignments, categories (names), custom_fields, variants')
 
@@ -726,10 +813,29 @@ try:
     if clean_carts:
         validate_no_pii(clean_carts, 'carts.csv')
         write_csv('carts.csv', clean_carts)
-    else:
-        print('  ⚠️  No abandoned carts found')
 except Exception as e:
-    print(f'  ⚠️  Abandoned carts skipped: {e}')
+    print(f'  ⚠️  Carts fetch failed: {e}')
+
+# ── Subscribers ──────────────────────────────────────────────────────────
+print('Fetching email subscribers…')
+try:
+    subs_raw = bc_get_all_v3('/customers/subscribers', {'limit': 250})
+    clean_subs = []
+    for s in (subs_raw or []):
+        clean_subs.append({
+            'Subscriber ID':  s.get('id', ''),
+            'Date Created':   fmt_date(s.get('date_created', '')),
+            'Date Modified':  fmt_date(s.get('date_modified', '')),
+            'Channel ID':     s.get('channel_id', 1),
+            'Source':         (s.get('source') or 'Unknown').strip(),
+            'Order Count':    s.get('order_count', 0),
+        })
+    write_csv('subscribers.csv', clean_subs)
+    print(f'  ✅ {len(clean_subs)} subscribers written')
+except Exception as e:
+    print(f'  ⚠️  Subscribers fetch failed: {e}')
+    write_csv('subscribers.csv', [{'Subscriber ID':'','Date Created':'',
+        'Date Modified':'','Channel ID':'','Source':'','Order Count':''}])
 
 # ── 6. Price Lists ────────────────────────────────────────────────────────────
 print('\n💰 Fetching price lists...')
@@ -969,3 +1075,5 @@ print('  pricelist_records.csv    — per-SKU prices for each price list')
 print('  pricelist_assignments.csv — which channels/groups each price list applies to')
 print('  product_modifiers.csv    — bundle compositions (pick list options per product)')
 print('  customer_groups.csv — customer segment definitions')
+print('  reviews.csv         — individual product reviews with ratings and text')
+print('  subscribers.csv     — email subscriber list with source and order count')

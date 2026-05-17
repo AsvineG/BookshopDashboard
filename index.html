@@ -1396,7 +1396,7 @@ var WORKFLOW    = 'refresh-data.yml';
 var CSV_VER     = 'v8';
 
 // ── State ─────────────────────────────────────────────────────────────────
-var rawO = [], rawP = [], rawC = [], rawCarts = [], rawSrc = [], rawPL = [], rawMod = [];
+var rawO = [], rawP = [], rawC = [], rawReviews = [], rawSubs = [], rawCarts = [], rawSrc = [], rawPL = [], rawMod = [];
 var lO = false, lP = false, lC = false;
 var SETTINGS = {
   spend: { au:[], uk:[], us:[] },
@@ -3513,6 +3513,76 @@ function plPriceCell(lookup, sku, curr) {
 // ── Products ───────────────────────────────────────────────────────────────
 function rProd(orders){
   var el=document.getElementById('panel-products');
+
+  // ── Reviews section ─────────────────────────────────────────────────────
+  (function(){
+    if(!rawReviews || rawReviews.length === 0) return;
+
+    var totalRevs = rawReviews.length;
+    var avgRating = rawReviews.reduce(function(s,r){return s+(parseFloat(r['Rating'])||0);},0) / Math.max(totalRevs,1);
+    var fiveStar  = rawReviews.filter(function(r){return parseInt(r['Rating']||0)===5;}).length;
+    var lowStar   = rawReviews.filter(function(r){return parseInt(r['Rating']||0)<=2;}).length;
+
+    var revMap = {};
+    rawReviews.forEach(function(r){
+      var sku = r['SKU']||'';
+      if(!revMap[sku]) revMap[sku] = [];
+      revMap[sku].push(r);
+    });
+    var prodRatings = Object.entries(revMap).map(function(e){
+      var revs=e[1];
+      var avg=revs.reduce(function(s,r){return s+(parseFloat(r['Rating'])||0);},0)/revs.length;
+      return {sku:e[0],name:(revs[0]['Product Name']||e[0]).slice(0,40),avg:avg,count:revs.length,low:revs.filter(function(r){return parseInt(r['Rating']||0)<=2;}).length};
+    }).sort(function(a,b){return b.count-a.count;});
+
+    var h = '<div style="margin:20px 0 10px;font-size:11px;font-weight:700;letter-spacing:.08em;'+
+      'color:var(--c-text-3);text-transform:uppercase;padding-top:16px;border-top:1px solid var(--c-border)">'+
+      '⭐ Product Reviews</div>';
+
+    h += '<div class="g4 mb14">'+
+      kpiCard('Total Reviews', totalRevs.toLocaleString(), 'approved reviews', 'var(--c-brand)')+
+      kpiCard('Avg Rating', avgRating.toFixed(1)+' / 5', 'across all reviewed products', 'var(--c-grn)')+
+      kpiCard('5★ Reviews', fiveStar.toLocaleString(), pctFmt(totalRevs?fiveStar/totalRevs*100:0)+' of all reviews', 'var(--c-pur)')+
+      kpiCard('1-2★ Reviews', lowStar.toLocaleString(), pctFmt(totalRevs?lowStar/totalRevs*100:0)+' — need attention', 'var(--c-red)')+
+    '</div>';
+
+    h += '<div class="g-2-1 mb14">'+
+      '<div class="card"><div class="card-title mb8">Product Ratings</div>'+
+        '<div class="tbl-wrap"><table class="tbl"><thead><tr>'+
+          '<th>Product</th><th class="r">Reviews</th><th class="r">Avg</th><th class="r">5★</th><th class="r">≤2★</th>'+
+        '</tr></thead><tbody>'+
+        prodRatings.slice(0,15).map(function(p){
+          return '<tr style="border-bottom:1px solid var(--c-border)">'+
+            '<td style="padding:6px;font-weight:500">'+p.name+'<div style="font-size:10px;font-family:monospace;color:var(--c-text-3)">'+p.sku+'</div></td>'+
+            '<td class="num">'+p.count+'</td>'+
+            '<td class="num"><span style="font-weight:700;color:'+(p.avg>=4?'var(--c-grn)':p.avg>=3?'var(--c-amb)':'var(--c-red)')+'">'+p.avg.toFixed(1)+'</span></td>'+
+            '<td class="num" style="color:var(--c-grn)">'+revMap[p.sku].filter(function(r){return parseInt(r['Rating']||0)===5;}).length+'</td>'+
+            '<td class="num" style="color:'+(p.low>0?'var(--c-red)':'var(--c-text-3)')+'">'+p.low+'</td>'+
+          '</tr>';
+        }).join('')+
+        '</tbody></table></div></div>'+
+      '<div class="card"><div class="card-title mb8">Recent Reviews</div>'+
+        '<div style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:8px">'+
+        rawReviews.slice().sort(function(a,b){return (b['Date']||'').localeCompare(a['Date']||'');}).slice(0,8).map(function(r){
+          var rating=parseInt(r['Rating']||0);
+          var stars='★'.repeat(rating)+'☆'.repeat(5-rating);
+          var col=rating>=4?'var(--c-grn)':rating>=3?'var(--c-amb)':'var(--c-red)';
+          return '<div style="padding:10px;border-radius:8px;background:var(--c-surface-2);border:1px solid var(--c-border)">'+
+            '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
+              '<span style="font-size:13px;color:'+col+'">'+stars+'</span>'+
+              '<span style="font-size:10px;color:var(--c-text-3)">'+r['Date']+'</span>'+
+            '</div>'+
+            '<div style="font-size:11px;font-weight:600;margin-bottom:2px">'+r['Product Name'].slice(0,40)+'</div>'+
+            (r['Title']?'<div style="font-size:11px;font-weight:600">'+r['Title']+'</div>':'')+
+            '<div style="font-size:11px;color:var(--c-text-2)">'+r['Text'].slice(0,120)+(r['Text'].length>120?'…':'')+'</div>'+
+          '</div>';
+        }).join('')+
+      '</div></div>'+
+    '</div>';
+
+    el.innerHTML += h;
+  })();
+
   // Aggregate by product
   var prodMap={};
   orders.forEach(function(r){
@@ -3892,6 +3962,56 @@ function rCustomers(orders){
       '<div class="cw h120"><canvas id="custFreq"></canvas></div>'+
     '</div>'+
   '</div>';
+    // ── Subscriber section ─────────────────────────────────────────────────
+  (function(){
+    if(!rawSubs || rawSubs.length === 0) return;
+    var totalSubs = rawSubs.length;
+    var sources = {};
+    rawSubs.forEach(function(s){
+      var src = (s['Source']||'Unknown').trim();
+      sources[src] = (sources[src]||0) + 1;
+    });
+    var topSrc = Object.entries(sources).sort(function(a,b){return b[1]-a[1];})[0];
+    var subWithOrders = rawSubs.filter(function(s){return parseInt(s['Order Count']||0)>0;}).length;
+
+    el.innerHTML += '<div style="margin:20px 0 10px;font-size:11px;font-weight:700;'+
+      'letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;'+
+      'padding-top:16px;border-top:1px solid var(--c-border)">📧 Email Subscribers</div>'+
+      '<div class="g3 mb14">'+
+        '<div class="card" style="border-left:3px solid var(--c-brand)">'+
+          '<div class="card-title mb4">Total Subscribers</div>'+
+          '<div style="font-size:28px;font-weight:900;color:var(--c-brand)">'+totalSubs.toLocaleString('en-AU')+'</div>'+
+          '<div style="font-size:11px;color:var(--c-text-3);margin-top:4px">email list size</div>'+
+          '<div style="font-size:12px;margin-top:8px"><span style="color:var(--c-text-3)">Buyers: </span><strong>'+subWithOrders.toLocaleString('en-AU')+'</strong> <span style="color:var(--c-text-3)">('+pctFmt(totalSubs?subWithOrders/totalSubs*100:0)+' converted)</span></div>'+
+        '</div>'+
+        '<div class="card" style="border-left:3px solid var(--c-grn)">'+
+          '<div class="card-title mb4">Subscriber vs Customer</div>'+
+          '<div style="height:8px;border-radius:4px;overflow:hidden;display:flex;margin:8px 0">'+
+            '<div style="width:'+pctFmt(totalSubs>0&&custs.length>0?Math.min(100,totalSubs/Math.max(totalSubs,custs.length)*100):50)+';background:var(--c-brand)"></div>'+
+            '<div style="flex:1;background:var(--c-grn)"></div>'+
+          '</div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:11px">'+
+            '<span style="color:var(--c-brand);font-weight:600">'+totalSubs.toLocaleString('en-AU')+' subscribers</span>'+
+            '<span style="color:var(--c-grn);font-weight:600">'+custs.length.toLocaleString('en-AU')+' buyers</span>'+
+          '</div>'+
+          '<div style="font-size:11px;color:var(--c-text-3);margin-top:6px">'+
+            pctFmt(custs.length&&totalSubs?custs.length/totalSubs*100:0)+' of subscribers have purchased'+
+          '</div>'+
+        '</div>'+
+        '<div class="card" style="border-left:3px solid var(--c-pur)">'+
+          '<div class="card-title mb4">Top Signup Source</div>'+
+          '<div style="font-size:20px;font-weight:800;color:var(--c-pur)">'+(topSrc?topSrc[0]:'—')+'</div>'+
+          '<div style="font-size:11px;color:var(--c-text-3);margin-top:4px">'+(topSrc?topSrc[1]+' subscribers':'')+'</div>'+
+          '<div style="margin-top:10px">'+
+            Object.entries(sources).sort(function(a,b){return b[1]-a[1];}).slice(0,4).map(function(s){
+              return '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0">'+
+                '<span>'+s[0]+'</span><span style="font-weight:600">'+s[1]+'</span></div>';
+            }).join('')+
+          '</div>'+
+        '</div>'+
+      '</div>';
+  })();
+
   // ── Customer Profile (Mum / Dad) ─────────────────────────────────────────
   (function(){
     var mums = custs.filter(function(c){return c.profile==='Mum';});
@@ -4551,7 +4671,68 @@ function rDelivery(orders){
         '</tbody></table></div>'+
       '</div>'+
     '</div>';
-  // Regional ship time cards
+
+
+  // ── Carrier & tracking breakdown ────────────────────────────────────────
+  (function(){
+    var carrierMap = {au:{}, uk:{}, us:{}};
+    var withTracking = 0;
+    shipped.forEach(function(r){
+      var carrier = (r['Carrier']||'').trim() || 'Unknown';
+      var reg = r._region || 'unknown';
+      if(carrierMap[reg]) carrierMap[reg][carrier] = (carrierMap[reg][carrier]||0) + 1;
+      if((r['Tracking Number']||'').trim()) withTracking++;
+    });
+    var trackingRate = shipped.length ? withTracking/shipped.length*100 : 0;
+    var hasCarrierData = shipped.some(function(r){return (r['Carrier']||'').trim();});
+
+    if(!hasCarrierData){
+      el.innerHTML += '<div style="margin:20px 0 10px;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;padding-top:16px;border-top:1px solid var(--c-border)">Carrier & Tracking</div>'+
+        '<div class="card mb14" style="padding:16px;color:var(--c-text-3);font-size:12px">'+
+          'Carrier and tracking data available after next full refresh (fetched from /orders/{id}/shipments API).'+
+        '</div>';
+      return;
+    }
+
+    var h = '<div style="margin:20px 0 10px;font-size:11px;font-weight:700;letter-spacing:.08em;'+
+      'color:var(--c-text-3);text-transform:uppercase;padding-top:16px;border-top:1px solid var(--c-border)">'+
+      'Carrier & Tracking</div>';
+
+    h += '<div class="g-2-1 mb14">'+
+      '<div class="card"><div class="card-title mb8">Carrier Split by Region</div>'+
+        '<div class="tbl-wrap"><table class="tbl"><thead><tr>'+
+          '<th>Region</th><th>Carrier</th><th class="r">Shipments</th><th class="r">Share</th>'+
+        '</tr></thead><tbody>'+
+        Object.entries(carrierMap).filter(function(e){return Object.keys(e[1]).length>0;}).map(function(e){
+          var regLabel={au:'🇦🇺 AU',uk:'🇬🇧 UK',us:'🇺🇸 USA'}[e[0]]||e[0];
+          var total=Object.values(e[1]).reduce(function(s,v){return s+v;},0);
+          return Object.entries(e[1]).sort(function(a,b){return b[1]-a[1];}).map(function(c,i){
+            return '<tr style="border-bottom:1px solid var(--c-border)">'+
+              '<td style="padding:6px;font-weight:600">'+(i===0?regLabel:'')+'</td>'+
+              '<td style="padding:6px">'+c[0]+'</td>'+
+              '<td class="num">'+c[1]+'</td>'+
+              '<td class="num">'+pctFmt(total?c[1]/total*100:0)+'</td>'+
+            '</tr>';
+          }).join('');
+        }).join('')+
+        '</tbody></table></div></div>'+
+      '<div class="card"><div class="card-title mb8">Tracking Coverage</div>'+
+        '<div style="font-size:28px;font-weight:900;color:'+(trackingRate>90?'var(--c-grn)':trackingRate>70?'var(--c-amb)':'var(--c-red)')+'">'+pctFmt(trackingRate)+'</div>'+
+        '<div style="font-size:11px;color:var(--c-text-3);margin:4px 0 12px">of shipped orders have tracking numbers</div>'+
+        '<div style="height:6px;border-radius:3px;background:var(--c-border);margin-bottom:12px">'+
+          '<div style="height:100%;border-radius:3px;width:'+Math.min(100,trackingRate)+'%;background:'+(trackingRate>90?'var(--c-grn)':trackingRate>70?'var(--c-amb)':'var(--c-red)')+'"></div>'+
+        '</div>'+
+        '<div style="font-size:12px;display:flex;flex-direction:column;gap:4px">'+
+          '<div><span style="color:var(--c-text-3)">With tracking: </span><strong>'+withTracking+'</strong></div>'+
+          '<div><span style="color:var(--c-text-3)">Without: </span><strong>'+(shipped.length-withTracking)+'</strong></div>'+
+          '<div><span style="color:var(--c-text-3)">Total shipped: </span><strong>'+shipped.length+'</strong></div>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+
+    el.innerHTML += h;
+  })();
+
   el.innerHTML += '<div style="margin:20px 0 10px;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;padding-top:16px;border-top:1px solid var(--c-border)">Avg Days to Ship by Region</div>'+
     '<div class="g3 mb14">'+
       '<div class="card" style="border-left:3px solid #2563eb">'+
@@ -5707,6 +5888,14 @@ function loadCustomersCSV(){
   setStartup('Loading customers…', 60);
   var cached = getCachedCSV('customers.csv');
   if(cached){ rawC=parseCSVFast(cached); lC=rawC.length>0; onAllLoaded(); return; }
+  fetchCSV('subscribers.csv', function(text){
+    rawSubs = parseCSVFast(text);
+    onAllLoaded();
+  });
+  fetchCSV('reviews.csv', function(text){
+    rawReviews = parseCSVFast(text);
+    onAllLoaded();
+  });
   fetchCSV('customers.csv', function(text){
     rawC=parseCSVFast(text||''); lC=rawC.length>0; onAllLoaded();
   });
