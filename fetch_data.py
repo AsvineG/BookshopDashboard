@@ -418,48 +418,6 @@ if new_orders or FULL_REFRESH:
         data = safe_get(f'{BASE_V2}/orders/{oid}/coupons')
         return oid, (data if isinstance(data, list) else [])
 
-    # ── Shipments fetch (carrier, tracking, precise ship date) ─────────────
-    shipped_statuses = {'shipped','partially shipped','completed','awaiting shipment'}
-    orders_shipped   = [o for o in clean_orders
-                        if (o.get('Order Status','') or '').lower() in shipped_statuses
-                        and not (o.get('Tracking Number',''))]  # skip if already have tracking
-
-    order_shipments = {}  # str(oid) → {tracking, carrier, method, shipped_at, count}
-
-    def fetch_shipments(oid):
-        data = safe_get(f'{BASE_V2}/orders/{oid}/shipments')
-        if not isinstance(data, list) or not data:
-            return oid, {}
-        s = data[0]  # use first shipment
-        return oid, {
-            'tracking_number': (s.get('tracking_number') or '').strip(),
-            'carrier':         (s.get('shipping_provider') or s.get('tracking_carrier') or '').strip(),
-            'ship_method':     (s.get('shipping_method') or '').strip(),
-            'shipped_at':      fmt_date(s.get('date_created', '')),
-            'num_shipments':   len(data),
-        }
-
-    if orders_shipped:
-        print(f'  Fetching shipment details for {len(orders_shipped)} orders…')
-        with ThreadPoolExecutor(max_workers=8) as ex:
-            ship_futures = {ex.submit(fetch_shipments, o['Order ID']): o['Order ID']
-                            for o in orders_shipped}
-            for future in as_completed(ship_futures):
-                try:
-                    oid, ship = future.result()
-                    if ship: order_shipments[str(oid)] = ship
-                except:
-                    pass
-        print(f'  ✅ Shipment data fetched for {len(order_shipments)} orders')
-
-    # Inject shipment fields into clean_orders
-    for row in clean_orders:
-        ship = order_shipments.get(str(row.get('Order ID', '')), {})
-        row['Tracking Number']   = ship.get('tracking_number', '')
-        row['Carrier']           = ship.get('carrier', '')
-        row['Ship Method Detail']= ship.get('ship_method', '')
-        row['Shipped At']        = ship.get('shipped_at', '') or row.get('Date Shipped', '')
-        row['Num Shipments']     = ship.get('num_shipments', '')
 
     if orders_with_disc:
         with ThreadPoolExecutor(max_workers=10) as ex:
@@ -580,6 +538,61 @@ if new_orders or FULL_REFRESH:
 
     validate_no_pii(clean_orders, 'orders.csv')
     write_csv('orders.csv', clean_orders, reference_rows=existing_orders if existing_orders else None)
+
+# ── Shipments (carrier, tracking) ──────────────────────────────────────────
+print('\n🚚 Fetching shipment details…')
+try:
+    shipped_statuses = {'shipped', 'partially shipped', 'completed', 'awaiting shipment'}
+    orders_to_ship   = [o for o in clean_orders
+                        if (o.get('Order Status', '') or '').lower() in shipped_statuses]
+
+    def fetch_shipments(oid):
+        data = safe_get(f'{BASE_V2}/orders/{oid}/shipments')
+        if not isinstance(data, list) or not data:
+            return oid, {}
+        s = data[0]
+        return oid, {
+            'tracking_number': (s.get('tracking_number') or '').strip(),
+            'carrier':         (s.get('shipping_provider') or s.get('tracking_carrier') or '').strip(),
+            'ship_method':     (s.get('shipping_method') or '').strip(),
+            'shipped_at':      fmt_date(s.get('date_created', '')),
+            'num_shipments':   len(data),
+        }
+
+    order_shipments = {}
+    if orders_to_ship:
+        print(f'  Fetching for {len(orders_to_ship)} shipped orders…')
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            futures = {ex.submit(fetch_shipments, o['Order ID']): o['Order ID']
+                       for o in orders_to_ship}
+            done = 0
+            for future in as_completed(futures):
+                try:
+                    oid, ship = future.result()
+                    if ship:
+                        order_shipments[str(oid)] = ship
+                except Exception:
+                    pass
+                done += 1
+                if done % 1000 == 0:
+                    print(f'  {done}/{len(orders_to_ship)} done')
+
+    # Patch shipment fields back into clean_orders and re-write
+    if order_shipments:
+        for row in clean_orders:
+            ship = order_shipments.get(str(row.get('Order ID', '')), {})
+            row['Tracking Number']    = ship.get('tracking_number', '')
+            row['Carrier']            = ship.get('carrier', '')
+            row['Ship Method Detail'] = ship.get('ship_method', '')
+            row['Shipped At']         = ship.get('shipped_at', '') or row.get('Date Shipped', '')
+            row['Num Shipments']      = ship.get('num_shipments', '')
+        # Re-write with new columns
+        write_csv('orders.csv', clean_orders, reference_rows=existing_orders if existing_orders else None)
+        print(f'  ✅ Shipment data added for {len(order_shipments)} orders')
+    else:
+        print('  ℹ️  No shipment data returned')
+except Exception as e:
+    print(f'  ⚠️  Shipments fetch failed: {e}')
 
     print('\n📊 Rebuilding sources.csv...')
     clean_sources = [{'order_id': r['Order ID'], 'order_date': r['Order Date'],
