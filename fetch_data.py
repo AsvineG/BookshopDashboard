@@ -511,10 +511,10 @@ if new_orders or FULL_REFRESH:
             'Order Time':             fmt_time(o.get('date_created', '')),
             'Ship Method':            ship_method,
             'Date Shipped':           fmt_date(o.get('date_shipped', '')),
-            'Tracking Number':        shipments.get(str(oid), {}).get('tracking_number', ''),
-            'Carrier':                shipments.get(str(oid), {}).get('carrier', ''),
-            'Ship Method Detail':     shipments.get(str(oid), {}).get('ship_method', ''),
-            'Num Shipments':          shipments.get(str(oid), {}).get('num_shipments', ''),
+            'Tracking Number':        '',
+            'Carrier':                '',
+            'Ship Method Detail':     '',
+            'Num Shipments':          '',
             'Total Shipped':          o.get('items_shipped', 0),
             'Customer ID':            sha256(billing.get('email', '')),
             'Order Currency Code':    o.get('currency_code', 'AUD'),
@@ -538,6 +538,7 @@ if new_orders or FULL_REFRESH:
 
     validate_no_pii(clean_orders, 'orders.csv')
     write_csv('orders.csv', clean_orders, reference_rows=existing_orders if existing_orders else None)
+
 
 # ── Shipments (carrier, tracking) ──────────────────────────────────────────
 print('\n🚚 Fetching shipment details…')
