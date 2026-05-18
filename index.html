@@ -3540,6 +3540,8 @@ function plPriceCell(lookup, sku, curr) {
 
 function rProd(orders){
   var el = document.getElementById('panel-products');
+
+
   var prodMap = {};
   orders.forEach(function(r){
     (r._items||[]).forEach(function(it){
@@ -3551,14 +3553,13 @@ function rProd(orders){
       if(r._region==='au') prodMap[key].au+=it.qty;
       if(r._region==='uk') prodMap[key].gb+=it.qty;
       if(r._region==='us') prodMap[key].us+=it.qty;
-      var recs=(rawPL||[]).filter(function(p){return p['SKU']===it.sku;});
-      recs.forEach(function(rec){
-        if(rec['Currency']==='AUD') prodMap[key].auP=parseFloat(rec['Price'])||0;
-        if(rec['Currency']==='GBP') prodMap[key].gbP=parseFloat(rec['Price'])||0;
-        if(rec['Currency']==='USD') prodMap[key].usP=parseFloat(rec['Price'])||0;
-      });
+      // Price will be set from priceMap after the loop
     });
   });
+  // Build pricelist lookup
+  var plLookup = buildPLLookup();
+  var hasPL    = Object.keys(plLookup).length > 0;
+
   var prods=Object.values(prodMap).sort(function(a,b){return b.rev-a.rev;});
   var totalRev=prods.reduce(function(s,p){return s+p.rev;},0);
   var digProds=prods.filter(function(p){return p.type==='digital';});
@@ -3591,7 +3592,7 @@ function rProd(orders){
         '<th class="r">Revenue</th><th class="r">Share</th><th class="r">Qty</th>'+
         '<th class="r">Direct</th><th class="r">Via Bundle</th>'+
         '<th class="r">AU</th><th class="r">GB</th><th class="r">US</th>'+
-        '<th class="r">AU AUD</th><th class="r">GB GBP</th><th class="r">US USD</th>'+
+        (hasPL?'<th class="r" style="color:var(--c-brand)">AU AUD</th><th class="r" style="color:var(--c-pur)">GB GBP</th><th class="r" style="color:var(--c-grn)">US USD</th>':'')+
       '</tr></thead><tbody>'+
       prods.map(function(p){
         var tCol={digital:'var(--c-brand)',bundle:'var(--c-pur)',isbn:'var(--c-amb)',merch:'var(--c-grn)'}[p.type]||'var(--c-text-3)';
@@ -3608,9 +3609,7 @@ function rProd(orders){
           '<td class="num">'+p.au+'</td>'+
           '<td class="num">'+p.gb+'</td>'+
           '<td class="num">'+p.us+'</td>'+
-          '<td class="num">'+(p.auP?'A$'+p.auP.toFixed(2):'--')+'</td>'+
-          '<td class="num">'+(p.gbP?'GBP'+p.gbP.toFixed(2):'--')+'</td>'+
-          '<td class="num">'+(p.usP?'US$'+p.usP.toFixed(2):'--')+'</td>'+
+          (hasPL?plPriceCell(plLookup,p.sku,'AUD')+plPriceCell(plLookup,p.sku,'GBP')+plPriceCell(plLookup,p.sku,'USD'):'')+
         '</tr>';
       }).join('')+
       '</tbody></table></div>'+
@@ -3618,60 +3617,98 @@ function rProd(orders){
 
   window._allProds=prods;
 
-  // Reviews
+  // ── Reviews (from rawP — products.csv) ───────────────────────────────────
   (function(){
-    var hdr='<div style="margin:20px 0 10px;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;padding-top:16px;border-top:1px solid var(--c-border)">Product Reviews</div>';
-    if(!rawReviews||rawReviews.length===0){
-      el.innerHTML+=hdr+'<div class="card mb14" style="padding:24px;text-align:center"><div style="font-size:14px;font-weight:600;margin-bottom:6px">No reviews loaded yet</div><div style="font-size:12px;color:var(--c-text-3)">Run a full refresh — reviews.csv must be in your GitHub repo.</div></div>';
+    var hdr = '<div style="margin:20px 0 10px;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;padding-top:16px;border-top:1px solid var(--c-border)">&#9733; Product Reviews</div>';
+
+    // Build review summary from rawP (products.csv has Reviews Count, Avg Rating, Reviews Rating Sum)
+    var revProds = (rawP||[]).filter(function(p){ return parseInt(p['Reviews Count']||0) > 0; });
+
+    if(!revProds.length){
+      el.innerHTML += hdr +
+        '<div class="card mb14" style="padding:24px;text-align:center">'+
+          '<div style="font-size:14px;font-weight:600;margin-bottom:6px">No reviews found</div>'+
+          '<div style="font-size:12px;color:var(--c-text-3)">No products have reviews yet in BigCommerce.</div>'+
+        '</div>';
       return;
     }
-    var total=rawReviews.length;
-    var avg=rawReviews.reduce(function(s,r){return s+(parseFloat(r['Rating'])||0);},0)/Math.max(total,1);
-    var five=rawReviews.filter(function(r){return parseInt(r['Rating']||0)===5;}).length;
-    var low=rawReviews.filter(function(r){return parseInt(r['Rating']||0)<=2;}).length;
-    var rMap={};
-    rawReviews.forEach(function(r){var s=r['SKU']||'';if(!rMap[s])rMap[s]=[];rMap[s].push(r);});
-    var rated=Object.entries(rMap).map(function(e){
-      var rs=e[1],a=rs.reduce(function(s,r){return s+(parseFloat(r['Rating'])||0);},0)/rs.length;
-      return{sku:e[0],name:(rs[0]['Product Name']||e[0]).slice(0,38),avg:a,count:rs.length,low:rs.filter(function(r){return parseInt(r['Rating']||0)<=2;}).length};
-    }).sort(function(a,b){return b.count-a.count;});
-    var h=hdr+
-      '<div class="g4 mb14">'+
-        kpiCard('Total Reviews',total.toLocaleString(),'approved','var(--c-brand)')+
-        kpiCard('Avg Rating',avg.toFixed(1)+' / 5','all products','var(--c-grn)')+
-        kpiCard('5-Star Reviews',five.toLocaleString(),pctFmt(total?five/total*100:0)+' of reviews','var(--c-pur)')+
-        kpiCard('Low (1-2 Star)',low.toLocaleString(),pctFmt(total?low/total*100:0)+' need attention','var(--c-red)')+
-      '</div>'+
-      '<div class="g-2-1 mb14">'+
-        '<div class="card"><div class="card-title mb8">Product Ratings</div>'+
-          '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Product</th><th class="r">Reviews</th><th class="r">Avg</th><th class="r">5-Star</th><th class="r">Low</th></tr></thead><tbody>'+
-          rated.slice(0,15).map(function(p){
-            return '<tr style="border-bottom:1px solid var(--c-border)">'+
-              '<td style="padding:6px;font-weight:500">'+p.name+'<div style="font-size:10px;font-family:monospace;color:var(--c-text-3)">'+p.sku+'</div></td>'+
-              '<td class="num">'+p.count+'</td>'+
-              '<td class="num"><span style="font-weight:700;color:'+(p.avg>=4?'var(--c-grn)':p.avg>=3?'var(--c-amb)':'var(--c-red)')+'">'+p.avg.toFixed(1)+'</span></td>'+
-              '<td class="num" style="color:var(--c-grn)">'+rMap[p.sku].filter(function(r){return parseInt(r['Rating']||0)===5;}).length+'</td>'+
-              '<td class="num" style="color:'+(p.low>0?'var(--c-red)':'var(--c-text-3)')+'">'+p.low+'</td>'+
-            '</tr>';
-          }).join('')+'</tbody></table></div></div>'+
-        '<div class="card"><div class="card-title mb8">Recent Reviews</div>'+
-          '<div style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:8px">'+
-          rawReviews.slice().sort(function(a,b){return(b['Date']||'').localeCompare(a['Date']||'');}).slice(0,8).map(function(r){
-            var rt=parseInt(r['Rating']||0);
-            var col=rt>=4?'var(--c-grn)':rt>=3?'var(--c-amb)':'var(--c-red)';
-            return '<div style="padding:10px;border-radius:8px;background:var(--c-surface-2);border:1px solid var(--c-border)">'+
-              '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
-                '<span style="font-size:13px;color:'+col+'">'+'&#9733;'.repeat(rt)+'&#9734;'.repeat(5-rt)+'</span>'+
-                '<span style="font-size:10px;color:var(--c-text-3)">'+r['Date']+'</span>'+
-              '</div>'+
-              '<div style="font-size:11px;font-weight:600;margin-bottom:2px">'+(r['Product Name']||'').slice(0,40)+'</div>'+
-              (r['Title']?'<div style="font-size:11px;font-weight:600">'+r['Title']+'</div>':'')+
-              '<div style="font-size:11px;color:var(--c-text-2)">'+(r['Text']||'').slice(0,120)+'</div>'+
+
+    // Aggregate totals
+    var totalRevs = revProds.reduce(function(s,p){ return s + parseInt(p['Reviews Count']||0); }, 0);
+    var totalSum  = revProds.reduce(function(s,p){ return s + parseFloat(p['Reviews Rating Sum']||0); }, 0);
+    var avgRating = totalRevs > 0 ? totalSum / totalRevs : 0;
+
+    // Build per-product rating rows
+    var rated = revProds.map(function(p){
+      var count = parseInt(p['Reviews Count']||0);
+      var avg   = parseFloat(p['Avg Rating']||0);
+      return { sku: p['SKU']||'', name: (p['Product Name']||'').slice(0,40), count: count, avg: avg };
+    }).sort(function(a,b){ return b.count - a.count; });
+
+    // Star bar helper
+    function starBar(avg){
+      var full = Math.round(avg);
+      var s = '';
+      for(var i=1;i<=5;i++) s += '<span style="color:'+(i<=full?'#f59e0b':'var(--c-border)')+'">&#9733;</span>';
+      return s;
+    }
+
+    var h = hdr;
+
+    // KPI cards
+    h += '<div class="g3 mb14">'+
+      kpiCard('Total Reviews', totalRevs.toLocaleString('en-AU'), revProds.length+' products reviewed', 'var(--c-brand)')+
+      kpiCard('Avg Rating', avgRating.toFixed(1)+' / 5', 'across all reviewed products', 'var(--c-grn)')+
+      kpiCard('5-Star Products', revProds.filter(function(p){return parseFloat(p['Avg Rating']||0)>=4.5;}).length, 'rated 4.5 stars or above', 'var(--c-pur)')+
+    '</div>';
+
+    // Ratings table
+    h += '<div class="g-2-1 mb14">'+
+      '<div class="card"><div class="card-title mb8">Product Ratings</div>'+
+        '<div class="tbl-wrap"><table class="tbl"><thead><tr>'+
+          '<th>Product</th><th>SKU</th><th class="r">Reviews</th><th class="r">Rating</th><th class="r">Stars</th>'+
+        '</tr></thead><tbody>'+
+        rated.slice(0,20).map(function(p){
+          var col = p.avg >= 4 ? 'var(--c-grn)' : p.avg >= 3 ? 'var(--c-amb)' : 'var(--c-red)';
+          return '<tr style="border-bottom:1px solid var(--c-border)">'+
+            '<td style="padding:7px 6px;font-weight:500">'+p.name+'</td>'+
+            '<td style="padding:7px 6px;font-family:monospace;font-size:10px;color:var(--c-text-3)">'+p.sku+'</td>'+
+            '<td class="num">'+p.count+'</td>'+
+            '<td class="num"><span style="font-weight:700;color:'+col+'">'+p.avg.toFixed(1)+'</span></td>'+
+            '<td class="num">'+starBar(p.avg)+'</td>'+
+          '</tr>';
+        }).join('')+
+        '</tbody></table></div></div>'+
+
+      // Right col: review feed from reviews.csv if available, else placeholder
+      '<div class="card"><div class="card-title mb8">Recent Reviews</div>'+
+        (function(){
+          if(!rawReviews || rawReviews.length === 0){
+            return '<div style="padding:16px;text-align:center;color:var(--c-text-3);font-size:12px">'+
+              '<div style="margin-bottom:8px">Individual review text available after full refresh</div>'+
+              '<div style="font-size:11px">reviews.csv will be generated automatically</div>'+
             '</div>';
-          }).join('')+
-          '</div></div>'+
-      '</div>';
-    el.innerHTML+=h;
+          }
+          return '<div style="max-height:380px;overflow-y:auto;display:flex;flex-direction:column;gap:8px">'+
+            rawReviews.slice().sort(function(a,b){return(b['Date']||'').localeCompare(a['Date']||'');}).slice(0,8).map(function(r){
+              var rt=parseInt(r['Rating']||0);
+              var col=rt>=4?'var(--c-grn)':rt>=3?'var(--c-amb)':'var(--c-red)';
+              return '<div style="padding:10px;border-radius:8px;background:var(--c-surface-2);border:1px solid var(--c-border)">'+
+                '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
+                  '<span style="color:'+col+'">'+'&#9733;'.repeat(rt)+'&#9734;'.repeat(5-rt)+'</span>'+
+                  '<span style="font-size:10px;color:var(--c-text-3)">'+r['Date']+'</span>'+
+                '</div>'+
+                '<div style="font-size:11px;font-weight:600;margin-bottom:2px">'+(r['Product Name']||'').slice(0,40)+'</div>'+
+                (r['Title']?'<div style="font-size:11px;font-weight:600">'+r['Title']+'</div>':'')+
+                '<div style="font-size:11px;color:var(--c-text-2)">'+(r['Text']||'').slice(0,120)+'</div>'+
+              '</div>';
+            }).join('')+
+          '</div>';
+        })()+
+      '</div>'+
+    '</div>';
+
+    el.innerHTML += h;
   })();
 
   setTimeout(function(){
