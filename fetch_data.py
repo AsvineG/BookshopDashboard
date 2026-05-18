@@ -1100,3 +1100,175 @@ print('  product_modifiers.csv    — bundle compositions (pick list options per
 print('  customer_groups.csv — customer segment definitions')
 print('  reviews.csv         — individual product reviews with ratings and text')
 print('  subscribers.csv     — email subscriber list with source and order count')
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SHIPBOB INTEGRATION — US fulfillment only
+# Fetches: order status, fulfillment times, carrier, inventory levels
+# No customer PII — reference IDs only (match BC order IDs)
+# ═══════════════════════════════════════════════════════════════════════════
+
+import os as _os
+SHIPBOB_TOKEN      = _os.environ.get('SHIPBOB_TOKEN', '')
+SHIPBOB_CHANNEL_ID = _os.environ.get('SHIPBOB_CHANNEL_ID', '')
+SB_BASE            = 'https://api.shipbob.com/1.0'
+
+def sb_get(endpoint, params=None):
+    """Safe GET against ShipBob API."""
+    if not SHIPBOB_TOKEN:
+        return None
+    import urllib.parse
+    url = SB_BASE + endpoint
+    if params:
+        url += '?' + urllib.parse.urlencode(params)
+    try:
+        import urllib.request
+        req = urllib.request.Request(url)
+        req.add_header('Authorization', f'Bearer {SHIPBOB_TOKEN}')
+        req.add_header('Accept', 'application/json')
+        if SHIPBOB_CHANNEL_ID:
+            req.add_header('shipbob_channel_id', SHIPBOB_CHANNEL_ID)
+        with urllib.request.urlopen(req, timeout=15) as r:
+            import json
+            return json.loads(r.read().decode())
+    except Exception as e:
+        print(f'  ⚠️  ShipBob API error: {e}')
+        return None
+
+def sb_get_all(endpoint, params=None):
+    """Paginate through all ShipBob results."""
+    results = []
+    page = 1
+    while True:
+        p = dict(params or {})
+        p['Page'] = page
+        p['Limit'] = 250
+        data = sb_get(endpoint, p)
+        if not data or not isinstance(data, list):
+            break
+        results.extend(data)
+        print(f'    Page {page}: {len(data)} records (total {len(results)})')
+        if len(data) < 250:
+            break
+        page += 1
+        time.sleep(0.1)
+    return results
+
+if SHIPBOB_TOKEN:
+    print('\n📦 Fetching ShipBob data (US)…')
+
+    # ── 1. Orders — last 90 days, reference ID + fulfillment data only ───────
+    print('  Fetching ShipBob orders (last 90 days)…')
+    try:
+        from datetime import datetime, timedelta
+        since = (datetime.now() - timedelta(days=180)).strftime('%Y-%m-%dT00:00:00')
+
+        sb_orders_raw = sb_get_all('/order', {
+            'StartDate': since,
+            'HasTracking': 'false',  # get all, not just tracked
+        })
+        # Also get shipped orders
+        sb_orders_shipped = sb_get_all('/order', {
+            'StartDate': since,
+        })
+        # Merge and dedupe by id
+        all_sb = {o['id']: o for o in sb_orders_raw + sb_orders_shipped}
+        sb_orders_raw = list(all_sb.values())
+
+        clean_sb_orders = []
+        for o in sb_orders_raw:
+            ref_id = str(o.get('reference_id') or o.get('order_number') or '')
+            if not ref_id:
+                continue
+
+            # Get first shipment details (no customer data)
+            shipments = o.get('shipments') or []
+            tracking  = ''
+            carrier   = ''
+            ship_date = ''
+            est_cost  = ''
+            sb_status = o.get('status', '')
+            fulfill_mins = None
+
+            if shipments:
+                s = shipments[0]
+                tracking  = s.get('tracking_number', '') or ''
+                carrier   = (s.get('carrier') or {}).get('name', '') if isinstance(s.get('carrier'), dict) else str(s.get('carrier', ''))
+                ship_date = fmt_date(s.get('actual_fulfillment_date') or s.get('estimated_fulfillment_date', ''))
+                # Fulfillment time: order created → shipped
+                created   = o.get('created_date', '')
+                fulfilled = s.get('actual_fulfillment_date', '')
+                if created and fulfilled:
+                    try:
+                        from datetime import datetime as dt
+                        c = dt.fromisoformat(created.replace('Z',''))
+                        f = dt.fromisoformat(fulfilled.replace('Z',''))
+                        fulfill_mins = int((f - c).total_seconds() / 60)
+                    except:
+                        pass
+
+            clean_sb_orders.append({
+                'BC Order ID':        ref_id,
+                'SB Status':          sb_status,
+                'SB Carrier':         carrier,
+                'SB Tracking':        tracking,
+                'SB Ship Date':       ship_date,
+                'SB Fulfill Mins':    fulfill_mins or '',
+                'SB Fulfill Hours':   round(fulfill_mins/60, 1) if fulfill_mins else '',
+                'SB Fulfill Days':    round(fulfill_mins/1440, 1) if fulfill_mins else '',
+                'SB Shipment Count':  len(shipments),
+            })
+
+        write_csv('shipbob_orders.csv', clean_sb_orders)
+        print(f'  ✅ {len(clean_sb_orders)} ShipBob orders written')
+
+    except Exception as e:
+        print(f'  ⚠️  ShipBob orders failed: {e}')
+        write_csv('shipbob_orders.csv', [{'BC Order ID':'','SB Status':'','SB Carrier':'',
+            'SB Tracking':'','SB Ship Date':'','SB Fulfill Mins':'',
+            'SB Fulfill Hours':'','SB Fulfill Days':'','SB Shipment Count':''}])
+
+    # ── 2. Inventory — per SKU, on hand / fulfillable / committed ────────────
+    print('  Fetching ShipBob inventory…')
+    try:
+        inv_raw = sb_get_all('/inventory')
+        clean_sb_inv = []
+        for item in (inv_raw or []):
+            # Get SKU from product info — no customer data here
+            sku = ''
+            refs = item.get('references') or []
+            for ref in refs:
+                if ref.get('sku'):
+                    sku = ref['sku']
+                    break
+            if not sku:
+                sku = item.get('name', '')
+
+            # Fulfillment centre breakdown
+            fcs = item.get('fulfillable_quantity_by_fulfillment_center') or []
+            fc_names = ', '.join([fc.get('name','') for fc in fcs if fc.get('fulfillable_quantity',0)>0])
+
+            clean_sb_inv.append({
+                'SKU':               sku,
+                'Name':              item.get('name', ''),
+                'On Hand':           item.get('total_fulfillable_quantity', 0) + item.get('total_committed_quantity', 0),
+                'Fulfillable':       item.get('total_fulfillable_quantity', 0),
+                'Committed':         item.get('total_committed_quantity', 0),
+                'Sellable':          item.get('total_sellable_quantity', 0),
+                'Awaiting Qty':      item.get('total_awaiting_quantity', 0),
+                'Exception Qty':     item.get('total_exception_quantity', 0),
+                'FC Locations':      fc_names,
+                'Is Active':         item.get('is_active', True),
+                'Is Digital':        item.get('is_digital', False),
+            })
+
+        write_csv('shipbob_inventory.csv', clean_sb_inv)
+        print(f'  ✅ {len(clean_sb_inv)} ShipBob inventory items written')
+
+    except Exception as e:
+        print(f'  ⚠️  ShipBob inventory failed: {e}')
+        write_csv('shipbob_inventory.csv', [{'SKU':'','Name':'','On Hand':'','Fulfillable':'',
+            'Committed':'','Sellable':'','Awaiting Qty':'','Exception Qty':'',
+            'FC Locations':'','Is Active':'','Is Digital':''}])
+
+else:
+    print('\n⏭️  ShipBob skipped — SHIPBOB_TOKEN not set')
