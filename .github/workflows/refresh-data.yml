@@ -41,15 +41,12 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add orders.csv products.csv customers.csv carts.csv sources.csv \
-                  pricelists.csv pricelist_records.csv pricelist_assignments.csv \
-                  product_modifiers.csv customer_groups.csv
+          git add *.csv
           if git diff --staged --quiet; then
             echo "No changes — already up to date."
           else
             TIMESTAMP=$(TZ='Australia/Sydney' date '+%Y-%m-%d %H:%M AEST')
             git commit -m "Auto-refresh data — ${TIMESTAMP}"
-            git pull --rebase origin main
             git push
             echo "Committed and pushed."
           fi
