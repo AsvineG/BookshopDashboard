@@ -3538,265 +3538,151 @@ function plPriceCell(lookup, sku, curr) {
   return '<td class="num">'+disp+'</td>';
 }
 
-// ── Products ───────────────────────────────────────────────────────────────
-
-
-  // ── Reviews section ─────────────────────────────────────────────────────
-  (function(){
-    if(!rawReviews || rawReviews.length === 0){
-      el.innerHTML += '<div style="margin:20px 0 10px;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;padding-top:16px;border-top:1px solid var(--c-border)">⭐ Product Reviews</div>'+
-        '<div class="card mb14" style="padding:24px;text-align:center">'+
-          '<div style="font-size:32px;margin-bottom:12px">⭐</div>'+
-          '<div style="font-size:14px;font-weight:600;color:var(--c-text-1);margin-bottom:6px">Product reviews not loaded yet</div>'+
-          '<div style="font-size:12px;color:var(--c-text-3);max-width:400px;margin:0 auto">'+
-            'Run a full refresh to fetch product reviews from BigCommerce. '+
-            'Reviews will appear here automatically once <code style="background:var(--c-surface-2);padding:1px 5px;border-radius:3px">reviews.csv</code> is generated.'+
-          '</div>'+
-          '<div style="margin-top:16px;padding:10px 16px;background:rgba(37,99,235,0.06);border-radius:8px;border:1px solid rgba(37,99,235,0.15);display:inline-block">'+
-            '<div style="font-size:11px;color:var(--c-brand);font-weight:600">What you will see after refresh:</div>'+
-            '<div style="font-size:11px;color:var(--c-text-3);margin-top:4px">Total reviews · Avg rating · 5★ breakdown · Recent review feed</div>'+
-          '</div>'+
-        '</div>';
-      return;
-    }
-
-    var totalRevs = rawReviews.length;
-    var avgRating = rawReviews.reduce(function(s,r){return s+(parseFloat(r['Rating'])||0);},0) / Math.max(totalRevs,1);
-    var fiveStar  = rawReviews.filter(function(r){return parseInt(r['Rating']||0)===5;}).length;
-    var lowStar   = rawReviews.filter(function(r){return parseInt(r['Rating']||0)<=2;}).length;
-
-    var revMap = {};
-    rawReviews.forEach(function(r){
-      var sku = r['SKU']||'';
-      if(!revMap[sku]) revMap[sku] = [];
-      revMap[sku].push(r);
-    });
-    var prodRatings = Object.entries(revMap).map(function(e){
-      var revs=e[1];
-      var avg=revs.reduce(function(s,r){return s+(parseFloat(r['Rating'])||0);},0)/revs.length;
-      return {sku:e[0],name:(revs[0]['Product Name']||e[0]).slice(0,40),avg:avg,count:revs.length,low:revs.filter(function(r){return parseInt(r['Rating']||0)<=2;}).length};
-    }).sort(function(a,b){return b.count-a.count;});
-
-    var h = '<div style="margin:20px 0 10px;font-size:11px;font-weight:700;letter-spacing:.08em;'+
-      'color:var(--c-text-3);text-transform:uppercase;padding-top:16px;border-top:1px solid var(--c-border)">'+
-      '⭐ Product Reviews</div>';
-
-    h += '<div class="g4 mb14">'+
-      kpiCard('Total Reviews', totalRevs.toLocaleString(), 'approved reviews', 'var(--c-brand)')+
-      kpiCard('Avg Rating', avgRating.toFixed(1)+' / 5', 'across all reviewed products', 'var(--c-grn)')+
-      kpiCard('5★ Reviews', fiveStar.toLocaleString(), pctFmt(totalRevs?fiveStar/totalRevs*100:0)+' of all reviews', 'var(--c-pur)')+
-      kpiCard('1-2★ Reviews', lowStar.toLocaleString(), pctFmt(totalRevs?lowStar/totalRevs*100:0)+' — need attention', 'var(--c-red)')+
-    '</div>';
-
-    h += '<div class="g-2-1 mb14">'+
-      '<div class="card"><div class="card-title mb8">Product Ratings</div>'+
-        '<div class="tbl-wrap"><table class="tbl"><thead><tr>'+
-          '<th>Product</th><th class="r">Reviews</th><th class="r">Avg</th><th class="r">5★</th><th class="r">≤2★</th>'+
-        '</tr></thead><tbody>'+
-        prodRatings.slice(0,15).map(function(p){
-          return '<tr style="border-bottom:1px solid var(--c-border)">'+
-            '<td style="padding:6px;font-weight:500">'+p.name+'<div style="font-size:10px;font-family:monospace;color:var(--c-text-3)">'+p.sku+'</div></td>'+
-            '<td class="num">'+p.count+'</td>'+
-            '<td class="num"><span style="font-weight:700;color:'+(p.avg>=4?'var(--c-grn)':p.avg>=3?'var(--c-amb)':'var(--c-red)')+'">'+p.avg.toFixed(1)+'</span></td>'+
-            '<td class="num" style="color:var(--c-grn)">'+revMap[p.sku].filter(function(r){return parseInt(r['Rating']||0)===5;}).length+'</td>'+
-            '<td class="num" style="color:'+(p.low>0?'var(--c-red)':'var(--c-text-3)')+'">'+p.low+'</td>'+
-          '</tr>';
-        }).join('')+
-        '</tbody></table></div></div>'+
-      '<div class="card"><div class="card-title mb8">Recent Reviews</div>'+
-        '<div style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:8px">'+
-        rawReviews.slice().sort(function(a,b){return (b['Date']||'').localeCompare(a['Date']||'');}).slice(0,8).map(function(r){
-          var rating=parseInt(r['Rating']||0);
-          var stars='★'.repeat(rating)+'☆'.repeat(5-rating);
-          var col=rating>=4?'var(--c-grn)':rating>=3?'var(--c-amb)':'var(--c-red)';
-          return '<div style="padding:10px;border-radius:8px;background:var(--c-surface-2);border:1px solid var(--c-border)">'+
-            '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
-              '<span style="font-size:13px;color:'+col+'">'+stars+'</span>'+
-              '<span style="font-size:10px;color:var(--c-text-3)">'+r['Date']+'</span>'+
-            '</div>'+
-            '<div style="font-size:11px;font-weight:600;margin-bottom:2px">'+r['Product Name'].slice(0,40)+'</div>'+
-            (r['Title']?'<div style="font-size:11px;font-weight:600">'+r['Title']+'</div>':'')+
-            '<div style="font-size:11px;color:var(--c-text-2)">'+r['Text'].slice(0,120)+(r['Text'].length>120?'…':'')+'</div>'+
-          '</div>';
-        }).join('')+
-      '</div></div>'+
-    '</div>';
-
-    el.innerHTML += h;
-  })();function rProd(orders){
-  var el=document.getElementById('panel-products');
-
-
-
-  // Aggregate by product
-  var prodMap={};
+function rProd(orders){
+  var el = document.getElementById('panel-products');
+  var prodMap = {};
   orders.forEach(function(r){
-    r._items.forEach(function(it){
-      if(!prodMap[it.name]) prodMap[it.name]={name:it.name,sku:it.sku,type:it.type,rev:0,qty:0,orders:0,regions:{au:0,uk:0,us:0}};
-      prodMap[it.name].rev+=it.audPrice;
-      prodMap[it.name].qty+=it.qty;
-      prodMap[it.name].orders++;
-      if(r._region && prodMap[it.name].regions[r._region]!==undefined) prodMap[it.name].regions[r._region]++;
+    (r._items||[]).forEach(function(it){
+      var key = it.sku || it.name;
+      if(!prodMap[key]) prodMap[key]={name:it.name,sku:it.sku,type:it.type,rev:0,qty:0,direct:0,viaBundle:0,au:0,gb:0,us:0,auP:0,gbP:0,usP:0};
+      prodMap[key].rev+=it.audPrice; prodMap[key].qty+=it.qty;
+      if(r._hasBundle&&it.type!=='bundle') prodMap[key].viaBundle+=it.qty;
+      else prodMap[key].direct+=it.qty;
+      if(r._region==='au') prodMap[key].au+=it.qty;
+      if(r._region==='uk') prodMap[key].gb+=it.qty;
+      if(r._region==='us') prodMap[key].us+=it.qty;
+      var recs=(rawPL||[]).filter(function(p){return p['SKU']===it.sku;});
+      recs.forEach(function(rec){
+        if(rec['Currency']==='AUD') prodMap[key].auP=parseFloat(rec['Price'])||0;
+        if(rec['Currency']==='GBP') prodMap[key].gbP=parseFloat(rec['Price'])||0;
+        if(rec['Currency']==='USD') prodMap[key].usP=parseFloat(rec['Price'])||0;
+      });
     });
   });
   var prods=Object.values(prodMap).sort(function(a,b){return b.rev-a.rev;});
   var totalRev=prods.reduce(function(s,p){return s+p.rev;},0);
-
   var digProds=prods.filter(function(p){return p.type==='digital';});
   var bunProds=prods.filter(function(p){return p.type==='bundle';});
   var isbnProds=prods.filter(function(p){return p.type==='isbn';});
+  var merchProds=prods.filter(function(p){return p.type==='merch';});
+  var top=prods[0]||{name:'--',rev:0};
 
-
-  // Build price lookup for this render from rawPL
-  var plLookup = buildPLLookup();
-  var hasPL    = Object.keys(plLookup).length > 0;
-
-  // Build direct vs bundle sales split per SKU from rawO
-  var prodSalesSplit = {};
-  var bMapP = buildBundleMapFromModifiers();
-  var paid2 = rawO.filter(function(r){return !r._zero;});
-  paid2.forEach(function(r){
-    r._items.forEach(function(it){
-      var sku = (it.sku||'').trim();
-      var qty = it.qty||1;
-      if(!sku||it.type==='digital') return;
-      if(!prodSalesSplit[sku]) prodSalesSplit[sku]={direct:0,bundle:0};
-      prodSalesSplit[sku].direct += qty;
-      // Propagate to components
-      if(it.type==='bundle'){
-        (bMapP[sku]||[]).forEach(function(csku){
-          if(!prodSalesSplit[csku]) prodSalesSplit[csku]={direct:0,bundle:0};
-          prodSalesSplit[csku].bundle += qty;
-        });
-      }
-    });
-  });
-
-  el.innerHTML='<div class="g3 mb14">'+
-    kpiCard('Total Products',prods.length.toString(),'across all types','var(--c-brand)')+
-    kpiCard('Top Product',prods[0]?prods[0].name.slice(0,28):'—',prods[0]?audFmt(prods[0].rev)+' · '+pctFmt(totalRev?prods[0].rev/totalRev*100:0)+' of revenue':'','var(--c-grn)')+
-    kpiCard('Revenue / SKU',audFmt(prods.length?totalRev/prods.length:0),'average per product','var(--c-pur)')+
-  '</div>'+
-
-  '<div class="g-2-1 mb14">'+
-    '<div class="card"><div class="card-hdr"><div class="card-title-lg">Top 15 Products by Revenue</div></div><div class="cw h320"><canvas id="prodTopBar"></canvas></div></div>'+
-  '</div>'+
-  '<div class="card mb14"><div class="card-hdr"><div class="card-title-lg">Revenue by Type & Region</div></div><div class="cw h220"><canvas id="prodTypeReg"></canvas></div></div>'+
-
-  '<div class="card"><div class="card-hdr"><div class="card-title-lg">All Products</div>'+
-    '<div class="flex gap6">'+
-      '<button class="pill on" id="ptAll" onclick="filterProdTable(\'all\',this)">All ('+prods.length+')</button>'+
-      '<button class="pill" id="ptDig" onclick="filterProdTable(\'digital\',this)">💻 Digital ('+digProds.length+')</button>'+
-      '<button class="pill" id="ptBun" onclick="filterProdTable(\'bundle\',this)">🧩 Bundle ('+bunProds.length+')</button>'+
-      '<button class="pill" id="ptIsbn" onclick="filterProdTable(\'isbn\',this)">📚 ISBN ('+isbnProds.length+')</button>'+
+  el.innerHTML=
+    '<div class="g3 mb14">'+
+      kpiCard('Total Products',prods.length,'across all types','var(--c-brand)')+
+      kpiCard('Top Product',top.name.slice(0,22),audFmt(top.rev)+' - '+pctFmt(totalRev?top.rev/totalRev*100:0)+' of revenue','var(--c-grn)')+
+      kpiCard('Revenue / SKU',audFmt(prods.length?totalRev/prods.length:0),'average per product','var(--c-pur)')+
     '</div>'+
-  '</div>'+
+    '<div class="mb14"><div class="card"><div class="card-hdr"><div class="card-title-lg">Top 15 Products by Revenue</div></div><div class="cw h320"><canvas id="prodTopBar"></canvas></div></div></div>'+
+    '<div class="card mb14"><div class="card-hdr"><div class="card-title-lg">Revenue by Type &amp; Region</div></div><div class="cw h220"><canvas id="prodTypeReg"></canvas></div></div>'+
+    '<div class="card">'+
+      '<div class="card-hdr" style="flex-wrap:wrap;gap:8px">'+
+        '<div class="card-title-lg">All Products</div>'+
+        '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+          '<button class="pill on" id="ptAll"   onclick="filterProdTable(\'all\',this)">All ('+prods.length+')</button>'+
+          '<button class="pill"    id="ptDig"   onclick="filterProdTable(\'digital\',this)">Digital ('+digProds.length+')</button>'+
+          '<button class="pill"    id="ptBun"   onclick="filterProdTable(\'bundle\',this)">Bundle ('+bunProds.length+')</button>'+
+          '<button class="pill"    id="ptIsbn"  onclick="filterProdTable(\'isbn\',this)">ISBN ('+isbnProds.length+')</button>'+
+          '<button class="pill"    id="ptMerch" onclick="filterProdTable(\'merch\',this)">Merch ('+merchProds.length+')</button>'+
+        '</div>'+
+      '</div>'+
+      '<div class="tbl-wrap"><table class="tbl" id="prodTable"><thead><tr>'+
+        '<th>Product</th><th>SKU</th><th>Type</th>'+
+        '<th class="r">Revenue</th><th class="r">Share</th><th class="r">Qty</th>'+
+        '<th class="r">Direct</th><th class="r">Via Bundle</th>'+
+        '<th class="r">AU</th><th class="r">GB</th><th class="r">US</th>'+
+        '<th class="r">AU AUD</th><th class="r">GB GBP</th><th class="r">US USD</th>'+
+      '</tr></thead><tbody>'+
+      prods.map(function(p){
+        var tCol={digital:'var(--c-brand)',bundle:'var(--c-pur)',isbn:'var(--c-amb)',merch:'var(--c-grn)'}[p.type]||'var(--c-text-3)';
+        var tLbl={digital:'digital',bundle:'bundle',isbn:'isbn',merch:'merch'}[p.type]||p.type;
+        return '<tr data-type="'+p.type+'" style="border-bottom:1px solid var(--c-border)">'+
+          '<td style="padding:8px 6px;font-weight:600;max-width:220px">'+p.name+'</td>'+
+          '<td style="padding:8px 6px;font-family:monospace;font-size:11px;color:var(--c-text-3)">'+p.sku+'</td>'+
+          '<td style="padding:8px 6px"><span style="font-size:10px;padding:2px 8px;border-radius:10px;background:'+tCol+'22;color:'+tCol+';font-weight:700">'+tLbl+'</span></td>'+
+          '<td class="num">'+audFmt(p.rev)+'</td>'+
+          '<td class="num">'+pctFmt(totalRev?p.rev/totalRev*100:0)+'</td>'+
+          '<td class="num">'+p.qty+'</td>'+
+          '<td class="num">'+p.direct+'</td>'+
+          '<td class="num">'+p.viaBundle+'</td>'+
+          '<td class="num">'+p.au+'</td>'+
+          '<td class="num">'+p.gb+'</td>'+
+          '<td class="num">'+p.us+'</td>'+
+          '<td class="num">'+(p.auP?'A$'+p.auP.toFixed(2):'--')+'</td>'+
+          '<td class="num">'+(p.gbP?'GBP'+p.gbP.toFixed(2):'--')+'</td>'+
+          '<td class="num">'+(p.usP?'US$'+p.usP.toFixed(2):'--')+'</td>'+
+        '</tr>';
+      }).join('')+
+      '</tbody></table></div>'+
+    '</div>';
 
+  window._allProds=prods;
 
-  '<div class="tbl-wrap" id="prodTableWrap"><table class="tbl" id="prodTable">'+
-    '<thead><tr><th>Product</th><th>SKU</th><th>Type</th><th class="r">Revenue</th><th class="r">Share</th><th class="r">Qty</th><th class="r">Direct</th><th class="r">Via Bundle</th><th class="r">🇦🇺</th><th class="r">🇬🇧</th><th class="r">🇺🇸</th>'+
-    (hasPL?'<th class="r" style="color:var(--c-brand)">🇦🇺 AUD</th><th class="r" style="color:var(--c-pur)">🇬🇧 GBP</th><th class="r" style="color:var(--c-grn)">🇺🇸 USD</th>':'')+
-    '</tr></thead>'+
-    '<tbody>'+prods.slice(0,50).map(function(p,i){
-      var tc={digital:'blu',bundle:'pur',isbn:'org'};
-      return '<tr data-type="'+p.type+'">'+
-        '<td><span class="bold">'+p.name.slice(0,40)+'</span></td>'+
-        '<td class="mono text-sm text-muted">'+p.sku+'</td>'+
-        '<td>'+tag(p.type,tc[p.type]||'neu')+'</td>'+
-        '<td class="num">'+audFmt(p.rev)+'</td>'+
-        '<td class="num text-muted">'+pctFmt(totalRev?p.rev/totalRev*100:0)+'</td>'+
-        '<td class="num">'+p.qty.toLocaleString('en-AU')+'</td>'+
-        (function(){ var sp=prodSalesSplit[p.sku]||{direct:0,bundle:0};
-          return '<td class="num">'+sp.direct.toLocaleString('en-AU')+'</td>'+
-                 '<td class="num '+(sp.bundle>0?'text-grn':sp.bundle===0&&sp.direct===0?'text-muted':'text-muted')+'">'+(sp.bundle>0?'+':'')+sp.bundle.toLocaleString('en-AU')+'</td>'; })()+
-        '<td class="num">'+p.regions.au+'</td>'+
-        '<td class="num">'+p.regions.uk+'</td>'+
-        '<td class="num">'+p.regions.us+'</td>'+
-        (hasPL?plPriceCell(plLookup,p.sku,'AUD')+plPriceCell(plLookup,p.sku,'GBP')+plPriceCell(plLookup,p.sku,'USD'):'')+
-      '</tr>';
-    }).join('')+'</tbody></table></div></div>';
-
-  window._allProds = prods;
-
-  // ── Reviews ──────────────────────────────────────────────────────────────
+  // Reviews
   (function(){
-    var secHdr = '<div style="margin:20px 0 10px;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;padding-top:16px;border-top:1px solid var(--c-border)">⭐ Product Reviews</div>';
-    if(!rawReviews || rawReviews.length===0){
-      el.innerHTML += secHdr+
-        '<div class="card mb14" style="padding:24px;text-align:center">'+
-          '<div style="font-size:28px;margin-bottom:10px">⭐</div>'+
-          '<div style="font-size:14px;font-weight:600;margin-bottom:6px">No reviews yet</div>'+
-          '<div style="font-size:12px;color:var(--c-text-3)">Run a full refresh to load reviews.csv from BigCommerce.</div>'+
-          '<div style="margin-top:14px;padding:8px 14px;background:rgba(37,99,235,0.06);border-radius:8px;border:1px solid rgba(37,99,235,0.15);display:inline-block;font-size:11px;color:var(--c-text-3)">'+
-            'After refresh: Total reviews · Avg rating · 5★ count · Recent review feed'+
-          '</div>'+
-        '</div>';
+    var hdr='<div style="margin:20px 0 10px;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--c-text-3);text-transform:uppercase;padding-top:16px;border-top:1px solid var(--c-border)">Product Reviews</div>';
+    if(!rawReviews||rawReviews.length===0){
+      el.innerHTML+=hdr+'<div class="card mb14" style="padding:24px;text-align:center"><div style="font-size:14px;font-weight:600;margin-bottom:6px">No reviews loaded yet</div><div style="font-size:12px;color:var(--c-text-3)">Run a full refresh — reviews.csv must be in your GitHub repo.</div></div>';
       return;
     }
     var total=rawReviews.length;
     var avg=rawReviews.reduce(function(s,r){return s+(parseFloat(r['Rating'])||0);},0)/Math.max(total,1);
     var five=rawReviews.filter(function(r){return parseInt(r['Rating']||0)===5;}).length;
     var low=rawReviews.filter(function(r){return parseInt(r['Rating']||0)<=2;}).length;
-    var revMap={};
-    rawReviews.forEach(function(r){var s=r['SKU']||'';if(!revMap[s])revMap[s]=[];revMap[s].push(r);});
-    var rated=Object.entries(revMap).map(function(e){
+    var rMap={};
+    rawReviews.forEach(function(r){var s=r['SKU']||'';if(!rMap[s])rMap[s]=[];rMap[s].push(r);});
+    var rated=Object.entries(rMap).map(function(e){
       var rs=e[1],a=rs.reduce(function(s,r){return s+(parseFloat(r['Rating'])||0);},0)/rs.length;
-      return {sku:e[0],name:(rs[0]['Product Name']||e[0]).slice(0,38),avg:a,count:rs.length,
-              low:rs.filter(function(r){return parseInt(r['Rating']||0)<=2;}).length};
+      return{sku:e[0],name:(rs[0]['Product Name']||e[0]).slice(0,38),avg:a,count:rs.length,low:rs.filter(function(r){return parseInt(r['Rating']||0)<=2;}).length};
     }).sort(function(a,b){return b.count-a.count;});
-
-    var h=secHdr;
-    h+='<div class="g4 mb14">'+
-      kpiCard('Total Reviews',total.toLocaleString(),'approved reviews','var(--c-brand)')+
-      kpiCard('Avg Rating',avg.toFixed(1)+' / 5','across reviewed products','var(--c-grn)')+
-      kpiCard('5★ Reviews',five.toLocaleString(),pctFmt(total?five/total*100:0)+' of all reviews','var(--c-pur)')+
-      kpiCard('1-2★ Reviews',low.toLocaleString(),pctFmt(total?low/total*100:0)+' need attention','var(--c-red)')+
-    '</div>';
-    h+='<div class="g-2-1 mb14">'+
-      '<div class="card"><div class="card-title mb8">Product Ratings</div>'+
-        '<div class="tbl-wrap"><table class="tbl"><thead><tr>'+
-          '<th>Product</th><th class="r">Reviews</th><th class="r">Avg</th><th class="r">5★</th><th class="r">≤2★</th>'+
-        '</tr></thead><tbody>'+
-        rated.slice(0,15).map(function(p){
-          return '<tr style="border-bottom:1px solid var(--c-border)">'+
-            '<td style="padding:6px;font-weight:500">'+p.name+'<div style="font-size:10px;font-family:monospace;color:var(--c-text-3)">'+p.sku+'</div></td>'+
-            '<td class="num">'+p.count+'</td>'+
-            '<td class="num"><span style="font-weight:700;color:'+(p.avg>=4?'var(--c-grn)':p.avg>=3?'var(--c-amb)':'var(--c-red)')+'">'+p.avg.toFixed(1)+'</span></td>'+
-            '<td class="num" style="color:var(--c-grn)">'+revMap[p.sku].filter(function(r){return parseInt(r['Rating']||0)===5;}).length+'</td>'+
-            '<td class="num" style="color:'+(p.low>0?'var(--c-red)':'var(--c-text-3)')+'">'+p.low+'</td>'+
-          '</tr>';
-        }).join('')+'</tbody></table></div></div>'+
-      '<div class="card"><div class="card-title mb8">Recent Reviews</div>'+
-        '<div style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:8px">'+
-        rawReviews.slice().sort(function(a,b){return(b['Date']||'').localeCompare(a['Date']||'');}).slice(0,8).map(function(r){
-          var rt=parseInt(r['Rating']||0);
-          var stars='★'.repeat(rt)+'☆'.repeat(5-rt);
-          var col=rt>=4?'var(--c-grn)':rt>=3?'var(--c-amb)':'var(--c-red)';
-          return '<div style="padding:10px;border-radius:8px;background:var(--c-surface-2);border:1px solid var(--c-border)">'+
-            '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
-              '<span style="font-size:13px;color:'+col+'">'+stars+'</span>'+
-              '<span style="font-size:10px;color:var(--c-text-3)">'+r['Date']+'</span>'+
-            '</div>'+
-            '<div style="font-size:11px;font-weight:600;margin-bottom:2px">'+(r['Product Name']||'').slice(0,40)+'</div>'+
-            (r['Title']?'<div style="font-size:11px;font-weight:600">'+r['Title']+'</div>':'')+
-            '<div style="font-size:11px;color:var(--c-text-2)">'+(r['Text']||'').slice(0,120)+((r['Text']||'').length>120?'...':'')+'</div>'+
-          '</div>';
-        }).join('')+
-      '</div></div></div>';
-    el.innerHTML += h;
+    var h=hdr+
+      '<div class="g4 mb14">'+
+        kpiCard('Total Reviews',total.toLocaleString(),'approved','var(--c-brand)')+
+        kpiCard('Avg Rating',avg.toFixed(1)+' / 5','all products','var(--c-grn)')+
+        kpiCard('5-Star Reviews',five.toLocaleString(),pctFmt(total?five/total*100:0)+' of reviews','var(--c-pur)')+
+        kpiCard('Low (1-2 Star)',low.toLocaleString(),pctFmt(total?low/total*100:0)+' need attention','var(--c-red)')+
+      '</div>'+
+      '<div class="g-2-1 mb14">'+
+        '<div class="card"><div class="card-title mb8">Product Ratings</div>'+
+          '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Product</th><th class="r">Reviews</th><th class="r">Avg</th><th class="r">5-Star</th><th class="r">Low</th></tr></thead><tbody>'+
+          rated.slice(0,15).map(function(p){
+            return '<tr style="border-bottom:1px solid var(--c-border)">'+
+              '<td style="padding:6px;font-weight:500">'+p.name+'<div style="font-size:10px;font-family:monospace;color:var(--c-text-3)">'+p.sku+'</div></td>'+
+              '<td class="num">'+p.count+'</td>'+
+              '<td class="num"><span style="font-weight:700;color:'+(p.avg>=4?'var(--c-grn)':p.avg>=3?'var(--c-amb)':'var(--c-red)')+'">'+p.avg.toFixed(1)+'</span></td>'+
+              '<td class="num" style="color:var(--c-grn)">'+rMap[p.sku].filter(function(r){return parseInt(r['Rating']||0)===5;}).length+'</td>'+
+              '<td class="num" style="color:'+(p.low>0?'var(--c-red)':'var(--c-text-3)')+'">'+p.low+'</td>'+
+            '</tr>';
+          }).join('')+'</tbody></table></div></div>'+
+        '<div class="card"><div class="card-title mb8">Recent Reviews</div>'+
+          '<div style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:8px">'+
+          rawReviews.slice().sort(function(a,b){return(b['Date']||'').localeCompare(a['Date']||'');}).slice(0,8).map(function(r){
+            var rt=parseInt(r['Rating']||0);
+            var col=rt>=4?'var(--c-grn)':rt>=3?'var(--c-amb)':'var(--c-red)';
+            return '<div style="padding:10px;border-radius:8px;background:var(--c-surface-2);border:1px solid var(--c-border)">'+
+              '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
+                '<span style="font-size:13px;color:'+col+'">'+'&#9733;'.repeat(rt)+'&#9734;'.repeat(5-rt)+'</span>'+
+                '<span style="font-size:10px;color:var(--c-text-3)">'+r['Date']+'</span>'+
+              '</div>'+
+              '<div style="font-size:11px;font-weight:600;margin-bottom:2px">'+(r['Product Name']||'').slice(0,40)+'</div>'+
+              (r['Title']?'<div style="font-size:11px;font-weight:600">'+r['Title']+'</div>':'')+
+              '<div style="font-size:11px;color:var(--c-text-2)">'+(r['Text']||'').slice(0,120)+'</div>'+
+            '</div>';
+          }).join('')+
+          '</div></div>'+
+      '</div>';
+    el.innerHTML+=h;
   })();
 
   setTimeout(function(){
     var top15=prods.slice(0,15);
-    var colors=top15.map(function(p){return p.type==='digital'?'#2563ebcc':p.type==='bundle'?'#7c3aedcc':'#ea580ccc';});
-    mkChart('prodTopBar',{type:'bar',data:{labels:top15.map(function(p){return p.name.slice(0,22);}),datasets:[{data:top15.map(function(p){return Math.round(p.rev);}),backgroundColor:colors,borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f172a',padding:8,cornerRadius:6,callbacks:{label:function(ctx){return ' '+audFmt(ctx.raw);}}}},scales:{x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{callback:function(v){return 'A$'+(v/1000).toFixed(0)+'K';},color:'#64748b',font:{size:10}},border:{display:false}},y:{grid:{display:false},ticks:{color:'#334155',font:{size:10.5}},border:{display:false}}}}});
-
-    // Type × Region grouped bar
+    var colors=top15.map(function(p){return p.type==='digital'?'#2563ebcc':p.type==='bundle'?'#7c3aedcc':p.type==='merch'?'#10b981cc':'#ea580ccc';});
+    mkChart('prodTopBar',{type:'bar',data:{labels:top15.map(function(p){return p.name.slice(0,22);}),datasets:[{data:top15.map(function(p){return Math.round(p.rev);}),backgroundColor:colors,borderRadius:4}]},options:{animation:false,indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{callback:function(v){return 'A$'+(v/1000).toFixed(0)+'K';}},border:{display:false}},y:{grid:{display:false},border:{display:false}}}}});
+    var labels3=['AU AU','GB UK','US USA'];
     var types2=['digital','bundle','isbn'];
-    var labels3=['🇦🇺 AU','🇬🇧 UK','🇺🇸 USA'];
     var ds=types2.map(function(t,ti){
       var colors2=['#2563ebcc','#7c3aedcc','#ea580ccc'];
-      return{label:{digital:'💻 Digital',bundle:'🧩 Bundle',isbn:'📚 ISBN'}[t],data:['au','uk','us'].map(function(reg){return Math.round(regionOrders(orders,reg).reduce(function(s,r){return s+r._items.filter(function(i){return i.type===t;}).reduce(function(s2,i){return s2+i.audPrice;},0);},0));}),backgroundColor:colors2[ti]};
+      return{label:{digital:'Digital',bundle:'Bundle',isbn:'ISBN'}[t],data:['au','uk','us'].map(function(reg){return Math.round(regionOrders(orders,reg).reduce(function(s,r){return s+r._items.filter(function(i){return i.type===t;}).reduce(function(s2,i){return s2+i.audPrice;},0);},0));}),backgroundColor:colors2[ti]};
     });
     barChart('prodTypeReg',labels3,ds,{animation:false,plugins:{legend:{display:true,position:'right',labels:{font:{size:11},boxWidth:12,padding:16}}},scales:{x:{grid:{display:false}},y:{ticks:{callback:function(v){return 'A$'+(v/1000).toFixed(0)+'K';}}}}});
   },50);
@@ -3809,6 +3695,7 @@ window.filterProdTable=function(type,btn){
     tr.style.display=type==='all'||tr.dataset.type===type?'':'none';
   });
 };
+
 
 // ── Bundle Analysis ─────────────────────────────────────────────────────────
 function rBundles(orders){
